@@ -23,10 +23,11 @@ pub use self::tags::{Tags, FutureTags};
 #[derive(Debug)]
 pub struct Client {
     base_url: String,
+    credentials: Option<(String, String)>,
     hclient: client::Client<hyper_tls::HttpsConnector>,
     index: String,
+    user_agent: Option<String>,
     token: Option<String>,
-    credentials: Option<(String, String)>,
 }
 
 pub type FutureBool = Box<futures::Future<Item = bool, Error = Error>>;
@@ -38,10 +39,13 @@ impl Client {
 
     fn new_request(&self, method: hyper::Method, url: hyper::Uri) -> hyper::client::Request {
         let mut req = client::Request::new(method, url);
-        req.headers_mut().set(hyper::header::UserAgent(super::USER_AGENT.to_owned()));
         if let Some(ref t) = self.token {
-            req.headers_mut()
-                .set(hyper::header::Authorization(hyper::header::Bearer { token: t.to_owned() }));
+            req.headers_mut().set(hyper::header::Authorization(hyper::header::Bearer {
+                                                                   token: t.to_owned(),
+                                                               }));
+        };
+        if let Some(ref ua) = self.user_agent {
+            req.headers_mut().set(hyper::header::UserAgent(ua.to_owned()));
         };
         return req;
     }
@@ -53,12 +57,15 @@ impl Client {
         let url = try!(hyper::Uri::from_str((self.base_url.clone() + "/v2/").as_str()));
         let req = self.new_request(hyper::Method::Get, url);
         let freq = self.hclient.request(req);
-        let fres = freq.and_then(move |r| match (r.status(), r.headers().get_raw(api_header)) {
-                (&hyper::status::StatusCode::Ok, Some(x)) => Ok(x == api_version),
-                (&hyper::status::StatusCode::Unauthorized, Some(x)) => Ok(x == api_version),
-                (_, _) => Ok(false),
-            })
-            .map_err(|e| e.into());
+        let fres =
+            freq.and_then(move |r| match (r.status(), r.headers().get_raw(api_header)) {
+                              (&hyper::status::StatusCode::Ok, Some(x)) => Ok(x == api_version),
+                              (&hyper::status::StatusCode::Unauthorized, Some(x)) => {
+                                  Ok(x == api_version)
+                              }
+                              (_, _) => Ok(false),
+                          })
+                .map_err(|e| e.into());
         return Ok(Box::new(fres));
     }
 
@@ -67,9 +74,9 @@ impl Client {
         let req = self.new_request(hyper::Method::Get, url);
         let freq = self.hclient.request(req);
         let fres = freq.and_then(move |r| match r.status() {
-                &hyper::status::StatusCode::Ok => Ok(true),
-                _ => Ok(false),
-            })
+                                     &hyper::status::StatusCode::Ok => Ok(true),
+                                     _ => Ok(false),
+                                 })
             .map_err(|e| e.into());
         return Ok(Box::new(fres));
     }
@@ -116,33 +123,34 @@ impl Client {
 
         let mut auth_req = client::Request::new(hyper::Method::Get, auth_url);
         if let Some(ref creds) = self.credentials {
-            auth_req.headers_mut().set(hyper::header::Authorization(hyper::header::Basic {
-                username: creds.0.to_owned(),
-                password: Some(creds.1.to_owned()),
-            }))
+            auth_req.headers_mut()
+                .set(hyper::header::Authorization(hyper::header::Basic {
+                                                      username: creds.0.to_owned(),
+                                                      password: Some(creds.1.to_owned()),
+                                                  }))
         };
         let fut_req = client.request(auth_req);
         let auth_resp = fut_req.map_err(|e| e.into())
             .and_then(move |r| {
-                if r.status() != &hyper::status::StatusCode::Ok {
-                    return Err(hyper::Error::Status);
-                };
-                Ok(r)
-            })
+                          if r.status() != &hyper::status::StatusCode::Ok {
+                              return Err(hyper::Error::Status);
+                          };
+                          Ok(r)
+                      })
             .and_then(move |r| {
-                r.body().fold(Vec::new(), |mut v, chunk| {
+                          r.body().fold(Vec::new(), |mut v, chunk| {
                     v.extend(&chunk[..]);
                     futures::future::ok::<_, hyper::Error>(v)
                 })
-            })
+                      })
             .and_then(|chunks| {
-                let s = String::from_utf8(chunks).unwrap();
-                Ok(s)
-            })
+                          let s = String::from_utf8(chunks).unwrap();
+                          Ok(s)
+                      })
             .map_err(|e| e.into())
             .and_then(move |body| -> Result<TokenAuth> {
-                serde_json::from_slice(body.as_bytes()).map_err(|e| e.into())
-            });
+                          serde_json::from_slice(body.as_bytes()).map_err(|e| e.into())
+                      });
 
         let t: TokenAuth = tcore.run(auth_resp)?;
         self.token = Some(t.token);
@@ -161,24 +169,24 @@ impl Client {
         let freq = self.hclient.request(req);
         let fres = freq.map_err(|e| e.into())
             .and_then(move |r| {
-                if r.status() != &hyper::status::StatusCode::Ok {
-                    return Err(hyper::Error::Status);
-                };
-                Ok(r)
-            })
+                          if r.status() != &hyper::status::StatusCode::Ok {
+                              return Err(hyper::Error::Status);
+                          };
+                          Ok(r)
+                      })
             .and_then(move |r| {
-                r.body().fold(Vec::new(), |mut v, chunk| {
+                          r.body().fold(Vec::new(), |mut v, chunk| {
                     v.extend(&chunk[..]);
                     futures::future::ok::<_, hyper::Error>(v)
                 })
-            })
+                      })
             .and_then(|chunks| {
-                let s = String::from_utf8(chunks).unwrap();
-                Ok(s)
-            })
+                          let s = String::from_utf8(chunks).unwrap();
+                          Ok(s)
+                      })
             .and_then(move |body| {
-                serde_json::from_slice(body.as_bytes()).map_err(|_| hyper::Error::Status)
-            })
+                          serde_json::from_slice(body.as_bytes()).map_err(|_| hyper::Error::Status)
+                      })
             .map_err(|e| e.into());
         return Ok(Box::new(fres));
     }

@@ -7,12 +7,12 @@ pub struct Config {
     handle: reactor::Handle,
     index: String,
     insecure_registry: bool,
+    user_agent: Option<String>,
     username: Option<String>,
     password: Option<String>,
 }
 
 impl Config {
-
     /// Initialize `Config` with default values.
     pub fn default(handle: &reactor::Handle) -> Self {
         Self {
@@ -21,6 +21,7 @@ impl Config {
             handle: handle.clone(),
             index: "registry-1.docker.io".into(),
             insecure_registry: false,
+            user_agent: Some(::USER_AGENT.to_owned()),
             username: None,
             password: None,
         }
@@ -34,6 +35,13 @@ impl Config {
     /// Whether to use an insecure HTTP connection to the registry.
     pub fn insecure_registry(mut self, insecure: bool) -> Self {
         self.insecure_registry = insecure;
+        self
+    }
+
+
+    /// Set the user-agent to be used for registry authentication.
+    pub fn user_agent(mut self, user_agent: Option<String>) -> Self {
+        self.user_agent = user_agent;
         self
     }
 
@@ -62,10 +70,11 @@ impl Config {
         };
         let c = Client {
             base_url: base,
+            credentials: creds,
             hclient: hclient,
             index: self.index,
+            user_agent: self.user_agent,
             token: None,
-            credentials: creds,
         };
         return Ok(c);
     }

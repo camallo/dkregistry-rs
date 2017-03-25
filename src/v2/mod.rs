@@ -10,19 +10,13 @@ use serde_json;
 use std::str::FromStr;
 use futures::{Future, Stream};
 
+mod config;
+pub use self::config::Config;
+
 mod manifest;
 pub use self::manifest::{Manifest, FutureManifest};
 
-#[derive(Debug)]
-pub struct Config {
-    config: client::Config<hyper_tls::HttpsConnector, hyper::Body>,
-    handle: reactor::Handle,
-    index: String,
-    insecure_registry: bool,
-    username: Option<String>,
-    password: Option<String>,
-}
-
+/// A Client to make outgoing API requests to a registry.
 #[derive(Debug)]
 pub struct Client {
     base_url: String,
@@ -33,60 +27,6 @@ pub struct Client {
 }
 
 pub type FutureBool = Box<futures::Future<Item = bool, Error = Error>>;
-
-impl Config {
-    pub fn default(handle: &reactor::Handle) -> Self {
-        Self {
-            config: hyper::client::Client::configure()
-                .connector(hyper_tls::HttpsConnector::new(4, handle)),
-            handle: handle.clone(),
-            index: "registry-1.docker.io".into(),
-            insecure_registry: false,
-            username: None,
-            password: None,
-        }
-    }
-
-    pub fn registry(mut self, reg: &str) -> Self {
-        self.index = reg.to_owned();
-        self
-    }
-
-    pub fn insecure_registry(mut self, insecure: bool) -> Self {
-        self.insecure_registry = insecure;
-        self
-    }
-
-    pub fn username(mut self, user: Option<String>) -> Self {
-        self.username = user;
-        self
-    }
-
-    pub fn password(mut self, password: Option<String>) -> Self {
-        self.password = password;
-        self
-    }
-
-    pub fn build(self) -> Result<Client> {
-        let hclient = self.config.build(&self.handle);
-        let base = match self.insecure_registry {
-            false => "https://".to_string() + &self.index,
-            true => "http://".to_string() + &self.index,
-        };
-        let creds = match (self.username, self.password) {
-            (None, None) => None,
-            (u, p) => Some((u.unwrap_or("".into()), p.unwrap_or("".into()))),
-        };
-        let c = Client {
-            base_url: base,
-            hclient: hclient,
-            index: self.index,
-            token: None,
-            credentials: creds,
-        };
-        return Ok(c);
-    }
-}
 
 impl Client {
     pub fn configure(handle: &reactor::Handle) -> Config {

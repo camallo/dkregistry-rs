@@ -1,3 +1,8 @@
+//! A pure-Rust asynchronous library for Docker Registry API.
+//!
+//! It provides support for asynchronous interaction with
+//! container registries conformant to the Docker Registry HTTP API V2.
+
 extern crate futures;
 extern crate hyper;
 extern crate hyper_tls;
@@ -14,4 +19,8 @@ extern crate log;
 mod errors;
 pub use errors::*;
 
+pub mod mediatypes;
 pub mod v2;
+
+/// Default User-Agent client identity.
+pub static USER_AGENT: &'static str = "camallo-dkregistry/0.0";

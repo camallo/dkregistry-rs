@@ -40,7 +40,7 @@ fn test_base_no_insecure() {
 #[test]
 fn test_base_useragent() {
     mock("GET", "/v2/")
-        .match_header("user-agent", dkregistry::v2::USER_AGENT)
+        .match_header("user-agent", dkregistry::USER_AGENT)
         .with_status(200)
         .with_header(API_VERSION_K, API_VERSION_V)
         .create();

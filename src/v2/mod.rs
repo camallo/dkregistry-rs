@@ -1,3 +1,5 @@
+//! Docker Registry API v2.
+
 use hyper::{self, client};
 use hyper_tls;
 use tokio_core::reactor;
@@ -7,8 +9,6 @@ use serde_json;
 
 use std::str::FromStr;
 use futures::{Future, Stream};
-
-pub static USER_AGENT: &'static str = "camallo-dkregistry/0.0";
 
 #[derive(Debug)]
 pub struct Config {
@@ -92,7 +92,7 @@ impl Client {
 
     fn new_request(&self, method: hyper::Method, url: hyper::Uri) -> hyper::client::Request {
         let mut req = client::Request::new(method, url);
-        req.headers_mut().set(hyper::header::UserAgent(USER_AGENT.to_owned()));
+        req.headers_mut().set(hyper::header::UserAgent(super::USER_AGENT.to_owned()));
         if let Some(ref t) = self.token {
             req.headers_mut()
                 .set(hyper::header::Authorization(hyper::header::Bearer { token: t.to_owned() }));

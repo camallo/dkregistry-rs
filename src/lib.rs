@@ -15,3 +15,6 @@ mod errors;
 pub use errors::*;
 
 pub mod v2;
+
+/// Default User-Agent client identity.
+pub static USER_AGENT: &'static str = "camallo-dkregistry/0.0";

@@ -1,6 +1,12 @@
-# dkregistry-rs
+# dkregistry
 
-`dkregistry` is a Rust library for asynchronous interaction with container registries
+
+[![Build Status](https://travis-ci.org/camallo/dkregistry-rs.svg?branch=master)](https://travis-ci.org/camallo/caps-rs)
+[![LoC](https://tokei.rs/b1/github/camallo/dkregistry-rs?category=code)](https://github.com/camallo/caps-rs)
+
+A pure-Rust asynchronous library for Docker Registry API.
+
+`dkregistry` provides support for asynchronous interaction with container registries
 conformant to the [Docker Registry HTTP API V2][registry-v2] specification.
 
 [registry-v2]: https://docs.docker.com/registry/spec/api/

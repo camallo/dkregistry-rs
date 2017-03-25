@@ -2,6 +2,15 @@
 name = "dkregistry"
 version = "0.0.1-dev"
 authors = ["Luca Bruno <lucab@debian.org>"]
+license = "MIT/Apache-2.0"
+repository = "https://github.com/camallo/dkregistry-rs"
+description = "A pure-Rust asynchronous library for Docker Registry API"
+keywords = ["docker", "registry", "async"]
+exclude = [
+".gitignore",
+".travis.yml",
+]
+
 
 [dependencies]
 hyper = { git = "https://github.com/hyperium/hyper" }

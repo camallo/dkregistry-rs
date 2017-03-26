@@ -19,6 +19,9 @@ pub use self::manifest::{Manifest, FutureManifest};
 mod tags;
 pub use self::tags::{Tags, FutureTags};
 
+mod blobs;
+pub use self::blobs::FutureUuid;
+
 /// A Client to make outgoing API requests to a registry.
 #[derive(Debug)]
 pub struct Client {

@@ -31,12 +31,12 @@ fn main() {
 
 fn run(host: &str, user: Option<String>, passwd: Option<String>) -> Result<()> {
     let mut tcore = try!(Core::new());
-    let mut dclient = try!(dkregistry::v2::Client::configure(&tcore.handle())
-        .registry(host)
-        .insecure_registry(false)
-        .username(user)
-        .password(passwd)
-        .build());
+    let dclient = try!(dkregistry::v2::Client::configure(&tcore.handle())
+                               .registry(host)
+                               .insecure_registry(false)
+                               .username(user)
+                               .password(passwd)
+                               .build());
 
     let futcheck = try!(dclient.is_v2_supported());
     let supported = try!(tcore.run(futcheck));
@@ -44,14 +44,16 @@ fn run(host: &str, user: Option<String>, passwd: Option<String>) -> Result<()> {
         return Err("API v2 not supported".into());
     }
 
-    let futauth = try!(dclient.is_auth());
+    let futauth = try!(dclient.is_auth(None));
     let logged_in = try!(tcore.run(futauth));
     if logged_in {
         return Err("no login performed, but already authenticated".into());
     }
 
-    try!(dclient.login(vec![]));
-    let futauth = try!(dclient.is_auth());
+    let fut_token = try!(dclient.login(vec![]));
+    let token = try!(tcore.run(fut_token));
+
+    let futauth = try!(dclient.is_auth(Some(token.token())));
     let done = try!(tcore.run(futauth));
 
     match done {

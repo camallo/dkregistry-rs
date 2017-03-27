@@ -51,11 +51,15 @@ fn run(host: &str, user: Option<String>, passwd: Option<String>, image: &str) ->
     }
 
     try!(dclient.login(vec![&format!("repository:{}:pull", image)]));
+    let fut_token = try!(dclient.login(vec![&format!("repository:{}:pull", image)]));
+    let token_auth = try!(tcore.run(fut_token));
 
-    let futauth = try!(dclient.is_auth());
+    let futauth = try!(dclient.is_auth(Some(token_auth.token())));
     if !try!(tcore.run(futauth)) {
         return Err("login failed".into());
     }
+
+    dclient.set_token(Some(token_auth.token()));
 
     let fut_tags = try!(dclient.get_tags(image, None));
     let tags = try!(tcore.run(fut_tags));

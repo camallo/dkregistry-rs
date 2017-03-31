@@ -13,7 +13,9 @@ conformant to the [Docker Registry HTTP API V2][registry-v2] specification.
 
 ## Testing
 
-This library relies on [mockito][mockito-gh] for tests and mocking, which is not multi-thread aware.
+### Integration tests
+
+This library relies on the [mockito][mockito-gh] framework for mocking. At this time, it is not multi-thread aware.
 
 As such, tests should be run serially via:
 ```
@@ -21,3 +23,16 @@ cargo test -- --test-threads=1
 ```
 
 [mockito-gh]: https://github.com/lipanski/mockito
+
+### Interoperability tests
+
+This library includes additional interoperability tests against some of the most common registries.
+
+Those tests are not run by default as they required network access and registry credentials.
+
+They are gated behind a dedicated "test-net" feature and can be run as:
+```
+cargo test --features test-net
+```
+
+Credentials for those registries must be provided via environmental flags.

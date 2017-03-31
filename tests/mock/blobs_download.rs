@@ -2,8 +2,8 @@ extern crate dkregistry;
 extern crate mockito;
 extern crate tokio_core;
 
-use mockito::mock;
-use tokio_core::reactor::Core;
+use self::mockito::mock;
+use self::tokio_core::reactor::Core;
 
 #[test]
 fn test_blobs_has_layer() {

@@ -13,7 +13,7 @@ impl Client {
         let req = self.new_request(hyper::Method::Head, url);
         let freq = self.hclient.request(req);
         let fres = freq.and_then(|r| match r.status() {
-                                     &hyper::status::StatusCode::Ok => Ok(true),
+                                     hyper::status::StatusCode::Ok => Ok(true),
                                      _ => Ok(false),
                                  })
             .map_err(|e| e.into());

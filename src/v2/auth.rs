@@ -86,7 +86,7 @@ impl Client {
                 };
                 subclient.request(auth_req).map_err(|e| e.into())
             })
-            .and_then(|r| if r.status() != &hyper::status::StatusCode::Ok {
+            .and_then(|r| if r.status() != hyper::status::StatusCode::Ok {
                           Err(Error::from(hyper::Error::Status))
                       } else {
                           Ok(r)
@@ -117,8 +117,8 @@ impl Client {
 
         let freq = self.hclient.request(req);
         let fres = freq.and_then(move |r| match r.status() {
-                                     &hyper::status::StatusCode::Ok => Ok(true),
-                                     &hyper::status::StatusCode::Unauthorized => Ok(false),
+                                     hyper::status::StatusCode::Ok => Ok(true),
+                                     hyper::status::StatusCode::Unauthorized => Ok(false),
                                      _ => Err(hyper::error::Error::Status),
                                  })
             .map_err(|e| e.into());

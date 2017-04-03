@@ -65,8 +65,8 @@ impl Client {
         let freq = self.hclient.request(req);
         let fres =
             freq.and_then(move |r| match (r.status(), r.headers().get_raw(api_header)) {
-                              (&hyper::status::StatusCode::Ok, Some(x)) => Ok(x == api_version),
-                              (&hyper::status::StatusCode::Unauthorized, Some(x)) => {
+                              (hyper::status::StatusCode::Ok, Some(x)) => Ok(x == api_version),
+                              (hyper::status::StatusCode::Unauthorized, Some(x)) => {
                                   Ok(x == api_version)
                               }
                               (_, _) => Ok(false),
@@ -87,7 +87,7 @@ impl Client {
         let freq = self.hclient.request(req);
         let fres = freq.map_err(|e| e.into())
             .and_then(move |r| {
-                          if r.status() != &hyper::status::StatusCode::Ok {
+                          if r.status() != hyper::status::StatusCode::Ok {
                               return Err(hyper::Error::Status);
                           };
                           Ok(r)

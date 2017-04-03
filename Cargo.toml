@@ -17,11 +17,13 @@ hyper-tls = { git = "https://github.com/hyperium/hyper-tls" }
 futures = "0.1"
 tokio-core = "0.1"
 error-chain = "0.10"
-mockito = "0.2"
 serde = "0.9"
 serde_derive = "0.9"
 serde_json = "0.9"
 log = "0.3"
+
+[dev-dependencies]
+mockito = "0.3"
 
 [features]
 test-net = []

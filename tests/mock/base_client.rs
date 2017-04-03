@@ -90,7 +90,7 @@ fn test_base_custom_useragent() {
 #[test]
 fn test_base_no_useragent() {
     mock("GET", "/v2/")
-        .match_header("user-agent", dkregistry::USER_AGENT)
+        .match_header("user-agent", mockito::Matcher::Missing)
         .with_status(200)
         .with_header(API_VERSION_K, API_VERSION_V)
         .create();
@@ -108,7 +108,7 @@ fn test_base_no_useragent() {
     let futcheck = dclient.is_v2_supported().unwrap();
 
     let res = tcore.run(futcheck).unwrap();
-    assert_eq!(res, false);
+    assert_eq!(res, true);
 
     mockito::reset();
 }

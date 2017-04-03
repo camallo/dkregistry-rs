@@ -24,7 +24,7 @@ impl Client {
         let freq = self.hclient.request(req);
         let fres = freq.map_err(|e| e.into())
             .and_then(move |r| {
-                          if r.status() != &hyper::status::StatusCode::Ok {
+                          if r.status() != hyper::status::StatusCode::Ok {
                               return Err(hyper::Error::Status);
                           };
                           Ok(r)
@@ -61,8 +61,8 @@ impl Client {
         let req = self.new_request(hyper::Method::Head, url);
         let freq = self.hclient.request(req);
         let fres = freq.and_then(|r| match r.status() {
-                                     &hyper::status::StatusCode::Ok => Ok(true),
-                                     &hyper::status::StatusCode::NotFound => Ok(false),
+                                     hyper::status::StatusCode::Ok => Ok(true),
+                                     hyper::status::StatusCode::NotFound => Ok(false),
                                      _ => Err(hyper::Error::Status),
                                  })
             .map_err(|e| e.into());

@@ -21,7 +21,7 @@ impl Client {
         let freq = self.hclient.request(req);
         let fres = freq.map_err(|e| e.into())
             .and_then(move |r| {
-                          if r.status() != &hyper::status::StatusCode::Ok {
+                          if r.status() != hyper::status::StatusCode::Ok {
                               return Err(hyper::Error::Status);
                           };
                           Ok(r)

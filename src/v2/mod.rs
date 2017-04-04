@@ -23,13 +23,13 @@ mod manifest;
 pub use self::manifest::{Manifest, FutureManifest};
 
 mod tags;
-pub use self::tags::{Tags, FutureTags};
+pub use self::tags::{Tags, StreamTags};
 
 mod blobs;
 pub use self::blobs::FutureUuid;
 
 /// A Client to make outgoing API requests to a registry.
-#[derive(Debug)]
+#[derive(Clone,Debug)]
 pub struct Client {
     base_url: String,
     credentials: Option<(String, String)>,

@@ -1,8 +1,10 @@
 extern crate dkregistry;
 extern crate tokio_core;
+extern crate futures;
 
 use std::{error, boxed};
 use tokio_core::reactor::Core;
+use futures::stream::Stream;
 
 type Result<T> = std::result::Result<T, boxed::Box<error::Error>>;
 
@@ -61,8 +63,8 @@ fn run(host: &str, user: Option<String>, passwd: Option<String>, image: &str) ->
 
     dclient.set_token(Some(token_auth.token()));
 
-    let fut_tags = try!(dclient.get_tags(image, None));
-    let tags = try!(tcore.run(fut_tags));
+    let fut_tags = dclient.get_tags(image, Some(7))?;
+    let tags = tcore.run(fut_tags.collect());
 
     println!("{:?}", tags);
 

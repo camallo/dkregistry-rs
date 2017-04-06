@@ -1,4 +1,5 @@
 use v2::*;
+use futures::Stream;
 
 #[derive(Debug,Default,Deserialize,Serialize)]
 pub struct Tags {

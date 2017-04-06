@@ -1,6 +1,5 @@
 use v2::*;
-//use error_chain::ChainedError;
-//use std::ops::Deref;
+use futures::Stream;
 
 /// Convenience alias for future `TokenAuth` result.
 pub type FutureTokenAuth = Box<futures::Future<Item = TokenAuth, Error = Error> + 'static>;

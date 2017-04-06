@@ -8,10 +8,13 @@ use futures;
 use serde_json;
 
 use std::str::FromStr;
-use futures::{Future, Stream};
+use futures::Future;
 
 mod config;
 pub use self::config::Config;
+
+mod catalog;
+pub use self::catalog::{Catalog, StreamCatalog};
 
 mod auth;
 pub use self::auth::{TokenAuth, FutureTokenAuth};
@@ -74,46 +77,6 @@ impl Client {
                 .map_err(|e| e.into());
         return Ok(Box::new(fres));
     }
-
-    pub fn get_catalog(&self, limit: Option<u32>) -> Result<FutureCatalog> {
-        let url = {
-            let mut s = self.base_url.clone() + "/v2/_catalog";
-            if let Some(n) = limit {
-                s = s + &format!("?n={}", n);
-            };
-            try!(hyper::Uri::from_str(s.as_str()))
-        };
-        let req = self.new_request(hyper::Method::Get, url);
-        let freq = self.hclient.request(req);
-        let fres = freq.map_err(|e| e.into())
-            .and_then(move |r| {
-                          if r.status() != hyper::status::StatusCode::Ok {
-                              return Err(hyper::Error::Status);
-                          };
-                          Ok(r)
-                      })
-            .and_then(move |r| {
-                          r.body().fold(Vec::new(), |mut v, chunk| {
-                    v.extend(&chunk[..]);
-                    futures::future::ok::<_, hyper::Error>(v)
-                })
-                      })
-            .and_then(|chunks| {
-                          let s = String::from_utf8(chunks).unwrap();
-                          Ok(s)
-                      })
-            .and_then(move |body| {
-                          serde_json::from_slice(body.as_bytes()).map_err(|_| hyper::Error::Status)
-                      })
-            .map_err(|e| e.into());
-        return Ok(Box::new(fres));
-    }
-}
-
-pub type FutureCatalog = Box<futures::Future<Item = Catalog, Error = Error>>;
-#[derive(Debug,Default,Deserialize,Serialize)]
-pub struct Catalog {
-    pub repositories: Vec<String>,
 }
 
 #[derive(Debug,Default,Deserialize,Serialize)]

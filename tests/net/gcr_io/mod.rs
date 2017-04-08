@@ -1,7 +1,9 @@
 extern crate dkregistry;
 extern crate tokio_core;
+extern crate futures;
 
 use self::tokio_core::reactor::Core;
+use self::futures::stream::Stream;
 
 static REGISTRY: &'static str = "gcr.io";
 
@@ -59,4 +61,23 @@ fn test_gcrio_insecure() {
 
     let res = tcore.run(futcheck).unwrap();
     assert_eq!(res, false);
+}
+
+#[test]
+fn test_gcrio_get_tags() {
+    let mut tcore = Core::new().unwrap();
+    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+        .registry(REGISTRY)
+        .insecure_registry(false)
+        .username(None)
+        .password(None)
+        .build()
+        .unwrap();
+
+    let image = "google_containers/mounttest";
+    let fut_tags = dclient.get_tags(image, None).unwrap();
+    let tags = tcore.run(fut_tags.collect()).unwrap();
+    let has_version = tags.iter().any(|t| t == "0.2");
+
+    assert_eq!(has_version, true);
 }

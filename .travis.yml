@@ -6,4 +6,6 @@ rust:
 matrix:
   allow_failures:
     - rust: nightly
-script: cargo test -- --test-threads=1 
+script: 
+  - cargo test -- --test-threads=1
+  - cargo test --features test-net -- --color always --nocapture 

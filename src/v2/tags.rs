@@ -23,11 +23,18 @@ impl Client {
         let req = self.new_request(hyper::Method::Get, url);
         let freq = self.hclient.request(req);
         let fres = freq.and_then(|r| {
-                                     if r.status() != hyper::status::StatusCode::Ok {
-                                         return Err(hyper::Error::Status);
-                                     };
-                                     Ok(r)
-                                 })
+                if r.status() != hyper::status::StatusCode::Ok {
+                    return Err(hyper::Error::Status);
+                };
+                let ok = match r.headers().get_raw("Content-type") {
+                    None => false,
+                    Some(ct) => ct.iter().any(|v| v == b"application/json"),
+                };
+                if !ok {
+                    return Err(hyper::Error::Header);
+                }
+                Ok(r)
+            })
             .and_then(|r| {
                           r.body()
                               .fold(Vec::new(), |mut v, chunk| {
@@ -35,7 +42,7 @@ impl Client {
                     futures::future::ok::<_, hyper::Error>(v)
                 })
                       })
-            .map_err(|e| e.into())
+            .from_err()
             .and_then(|chunks| String::from_utf8(chunks).map_err(|e| e.into()))
             .and_then(|body| -> Result<Tags> {
                           serde_json::from_slice(body.as_bytes()).map_err(|e| e.into())

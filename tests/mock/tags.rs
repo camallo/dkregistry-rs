@@ -81,3 +81,57 @@ fn test_tags_paginate() {
 
     mockito::reset();
 }
+
+#[test]
+fn test_tags_404() {
+    let name = "repo";
+    let ep = format!("/v2/{}/tags/list", name);
+    mock("GET", ep.as_str())
+        .with_status(404)
+        .with_header("Content-Type", "application/json")
+        .create();
+
+    let mut tcore = Core::new().unwrap();
+    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+        .registry(mockito::SERVER_ADDRESS)
+        .insecure_registry(true)
+        .username(None)
+        .password(None)
+        .build()
+        .unwrap();
+
+    let futcheck = dclient.get_tags(name, None).unwrap();
+
+    let res = tcore.run(futcheck.collect());
+    assert!(res.is_err());
+
+    mockito::reset();
+}
+
+#[test]
+fn test_tags_missing_header() {
+    let name = "repo";
+    let tags = r#"{"name": "repo", "tags": [ "t1", "t2" ]}"#;
+    let ep = format!("/v2/{}/tags/list", name);
+
+    mock("GET", ep.as_str())
+        .with_status(200)
+        .with_body(tags)
+        .create();
+
+    let mut tcore = Core::new().unwrap();
+    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+        .registry(mockito::SERVER_ADDRESS)
+        .insecure_registry(true)
+        .username(None)
+        .password(None)
+        .build()
+        .unwrap();
+
+    let futcheck = dclient.get_tags(name, None).unwrap();
+
+    let res = tcore.run(futcheck.collect());
+    assert!(res.is_err());
+
+    mockito::reset();
+}

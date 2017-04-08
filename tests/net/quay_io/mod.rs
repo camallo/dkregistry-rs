@@ -5,22 +5,36 @@ use self::tokio_core::reactor::Core;
 
 static REGISTRY: &'static str = "quay.io";
 
-fn check_env() -> (String, String) {
-    let user = ::std::env::var("DKREG_QUAY_USER").expect("Missing $DKREG_QUAY_USER");
-    let password = ::std::env::var("DKREG_QUAY_PASSWD").expect("Missing DKREG_QUAY_PASSWD");
-    (user, password)
+fn get_env() -> Option<(String, String)> {
+    let user = ::std::env::var("DKREG_QUAY_USER");
+    let password = ::std::env::var("DKREG_QUAY_PASSWD");
+    match (user, password) {
+        (Ok(u), Ok(t)) => Some((u, t)),
+        _ => None,
+    }
+}
+
+#[test]
+fn test_dockerio_getenv() {
+    if get_env().is_none() {
+        println!("[WARN] {}: missing DKREG_QUAY_USER / DKREG_QUAY_PASSWD",
+                 REGISTRY);
+    }
 }
 
 #[test]
 fn test_quayio_base() {
-    check_env();
+    let (user, password) = match get_env() {
+        Some(t) => t,
+        None => return,
+    };
 
     let mut tcore = Core::new().unwrap();
     let dclient = dkregistry::v2::Client::configure(&tcore.handle())
         .registry(REGISTRY)
         .insecure_registry(false)
-        .username(None)
-        .password(None)
+        .username(Some(user))
+        .password(Some(password))
         .build()
         .unwrap();
 
@@ -32,8 +46,6 @@ fn test_quayio_base() {
 
 #[test]
 fn test_quayio_insecure() {
-    check_env();
-
     let mut tcore = Core::new().unwrap();
     let dclient = dkregistry::v2::Client::configure(&tcore.handle())
         .registry(REGISTRY)

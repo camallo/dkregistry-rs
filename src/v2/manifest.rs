@@ -11,7 +11,6 @@ pub struct Manifest {
 pub type FutureManifest = Box<futures::Future<Item = Manifest, Error = Error>>;
 
 impl Client {
-
     /// Fetch an image manifest.
     ///
     /// The name and reference parameters identify the image.
@@ -23,27 +22,24 @@ impl Client {
                                                      reference)));
         let req = self.new_request(hyper::Method::Get, url);
         let freq = self.hclient.request(req);
-        let fres = freq.map_err(|e| e.into())
-            .and_then(move |r| {
-                          if r.status() != hyper::status::StatusCode::Ok {
-                              return Err(hyper::Error::Status);
-                          };
-                          Ok(r)
-                      })
-            .and_then(move |r| {
-                          r.body().fold(Vec::new(), |mut v, chunk| {
-                    v.extend(&chunk[..]);
-                    futures::future::ok::<_, hyper::Error>(v)
-                })
-                      })
-            .and_then(|chunks| {
-                          let s = String::from_utf8(chunks).unwrap();
-                          Ok(s)
-                      })
-            .and_then(move |body| {
-                          serde_json::from_slice(body.as_bytes()).map_err(|_| hyper::Error::Status)
-                      })
-            .map_err(|e| e.into());
+        let fres =
+            freq.and_then(move |r| {
+                              if r.status() != hyper::status::StatusCode::Ok {
+                                  return Err(hyper::Error::Status);
+                              };
+                              Ok(r)
+                          })
+                .and_then(move |r| {
+                              r.body()
+                                  .fold(Vec::new(), |mut v, chunk| {
+                        v.extend(&chunk[..]);
+                        futures::future::ok::<_, hyper::Error>(v)
+                    })
+                          })
+                .from_err()
+                .and_then(|body| {
+                              serde_json::from_slice(body.as_slice()).chain_err(|| "decoding body")
+                          });
         return Ok(Box::new(fres));
     }
 
@@ -66,7 +62,7 @@ impl Client {
                                      hyper::status::StatusCode::NotFound => Ok(false),
                                      _ => Err(hyper::Error::Status),
                                  })
-            .map_err(|e| e.into());
+            .from_err();
         return Ok(Box::new(fres));
     }
 }

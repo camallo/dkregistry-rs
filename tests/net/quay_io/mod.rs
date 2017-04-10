@@ -81,3 +81,41 @@ fn test_quayio_get_tags() {
 
     assert_eq!(has_version, true);
 }
+
+#[test]
+fn test_quayio_has_manifest() {
+    let mut tcore = Core::new().unwrap();
+    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+        .registry(REGISTRY)
+        .insecure_registry(false)
+        .username(None)
+        .password(None)
+        .build()
+        .unwrap();
+
+    let image = "coreos/etcdlabs";
+    let reference = "master";
+    let fut = dclient.has_manifest(image, reference).unwrap();
+    let has_manifest = tcore.run(fut).unwrap();
+
+    assert_eq!(has_manifest, true);
+}
+
+#[test]
+fn test_quayio_has_no_manifest() {
+    let mut tcore = Core::new().unwrap();
+    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+        .registry(REGISTRY)
+        .insecure_registry(false)
+        .username(None)
+        .password(None)
+        .build()
+        .unwrap();
+
+    let image = "coreos/etcdlabs";
+    let reference = "clearly_bogus";
+    let fut = dclient.has_manifest(image, reference).unwrap();
+    let has_manifest = tcore.run(fut).unwrap();
+
+    assert_eq!(has_manifest, false);
+}

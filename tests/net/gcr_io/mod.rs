@@ -81,3 +81,23 @@ fn test_gcrio_get_tags() {
 
     assert_eq!(has_version, true);
 }
+
+#[test]
+fn test_gcrio_has_manifest() {
+    let mut tcore = Core::new().unwrap();
+    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+        .registry(REGISTRY)
+        .insecure_registry(false)
+        .username(None)
+        .password(None)
+        .build()
+        .unwrap();
+
+    let image = "google_containers/mounttest";
+    let tag = "0.2";
+    let fut = dclient.has_manifest(image, tag).unwrap();
+    let has_manifest = tcore.run(fut);
+
+    // 401
+    assert!(has_manifest.is_err());
+}

@@ -54,7 +54,7 @@ impl Client {
                                                                }));
         };
         if let Some(ref ua) = self.user_agent {
-            req.headers_mut().set(hyper::header::UserAgent(ua.to_owned()));
+            req.headers_mut().set(hyper::header::UserAgent::new(ua.to_owned()));
         };
         return req;
     }

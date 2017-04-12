@@ -13,8 +13,10 @@ extern crate serde_json;
 extern crate error_chain;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use(slog_trace, slog_log, slog_record, slog_record_static, slog_b, slog_kv)]
+extern crate slog;
 #[macro_use]
-extern crate log;
+extern crate slog_scope;
 
 mod errors;
 pub use errors::*;

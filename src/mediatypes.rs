@@ -12,8 +12,7 @@ pub static MANIFEST_V2S1_SIGNED: &'static str = "application/vnd.docker.distribu
 /// Manifest, version 2 schema 1.
 pub static MANIFEST_V2S2: &'static str = "application/vnd.docker.distribution.manifest.v2+json";
 /// Manifest List (aka "fat manifest").
-pub static MANIFEST_LIST: &'static str = "
-application/vnd.docker.distribution.manifest.list.v2+json";
+pub static MANIFEST_LIST: &'static str = "application/vnd.docker.distribution.manifest.list.v2+json";
 /// Image layer, as a gzip-compressed tar.
 pub static IMAGE_LAYER: &'static str = "application/vnd.docker.image.rootfs.diff.tar.gzip";
 /// Configuration object for a container.

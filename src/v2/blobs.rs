@@ -47,9 +47,12 @@ impl Client {
                     }
                 };
                 if let Some(u) = redirect {
-                    // TODO(lucab): get rid of this unwrap!
-                    let ur = hyper::Uri::from_str(u.as_str()).unwrap();
-                    let req = client::Request::new(hyper::Method::Get, ur);
+                    let new_url = match hyper::Uri::from_str(u.as_str()) {
+                        Ok(u) => u,
+                        Err(e) => return Either::A(future::result(Err(hyper::Error::Uri(e)))),
+                    };
+                    trace!("Following redirection to {}", new_url);
+                    let req = client::Request::new(hyper::Method::Get, new_url);
                     return Either::B(cl.hclient.request(req));
                 };
                 Either::A(future::ok(r))

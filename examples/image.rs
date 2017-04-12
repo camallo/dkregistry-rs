@@ -18,7 +18,7 @@ fn main() {
         None => "coreos/etcd".into(),
     };
 
-    let ver = match std::env::args().nth(2) {
+    let ver = match std::env::args().nth(3) {
         Some(x) => x,
         None => "latest".into(),
     };

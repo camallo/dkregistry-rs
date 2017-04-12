@@ -30,26 +30,36 @@ impl Client {
             let ep = format!("{}/v2/{}/blobs/{}", self.base_url.clone(), name, digest);
             try!(hyper::Uri::from_str(ep.as_str()))
         };
-        let req = self.new_request(hyper::Method::Get, url);
+        let req = self.new_request(hyper::Method::Get, url.clone());
         let freq = self.hclient.request(req);
-        let fres = freq.and_then(move |r| {
+        let fres = freq.map(move |r| {
+                                trace!("GET {:?}", url);
+                                r
+                            })
+            .and_then(move |r| {
                 match r.status() {
                     StatusCode::MovedPermanently |
-                    StatusCode::Found => {}
+                    StatusCode::Found => {
+                        trace!("Got moved status {:?}", r.status());
+                    }
                     _ => return Either::A(future::ok(r)),
                 };
                 let redirect: Option<String> = match r.headers().get_raw("Location") {
                     None => return Either::A(future::result(Err(hyper::error::Error::Status))),
                     Some(ct) => {
+                        trace!("Got Location header {:?}", ct);
                         ct.clone()
                             .one()
                             .and_then(|h| String::from_utf8(h.to_vec()).ok())
                     }
                 };
                 if let Some(u) = redirect {
-                    // TODO(lucab): get rid of this unwrap!
-                    let ur = hyper::Uri::from_str(u.as_str()).unwrap();
-                    let req = client::Request::new(hyper::Method::Get, ur);
+                    let new_url = match hyper::Uri::from_str(u.as_str()) {
+                        Ok(u) => u,
+                        Err(e) => return Either::A(future::result(Err(hyper::Error::Uri(e)))),
+                    };
+                    trace!("Following redirection to {}", new_url);
+                    let req = client::Request::new(hyper::Method::Get, new_url);
                     return Either::B(cl.hclient.request(req));
                 };
                 Either::A(future::ok(r))

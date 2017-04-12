@@ -26,7 +26,7 @@ mod tags;
 pub use self::tags::{Tags, StreamTags};
 
 mod blobs;
-pub use self::blobs::FutureUuid;
+pub use self::blobs::FutureBlob;
 
 /// A Client to make outgoing API requests to a registry.
 #[derive(Clone,Debug)]

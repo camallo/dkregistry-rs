@@ -30,17 +30,24 @@ impl Client {
             let ep = format!("{}/v2/{}/blobs/{}", self.base_url.clone(), name, digest);
             try!(hyper::Uri::from_str(ep.as_str()))
         };
-        let req = self.new_request(hyper::Method::Get, url);
+        let req = self.new_request(hyper::Method::Get, url.clone());
         let freq = self.hclient.request(req);
-        let fres = freq.and_then(move |r| {
+        let fres = freq.map(move |r| {
+                                trace!("GET {:?}", url);
+                                r
+                            })
+            .and_then(move |r| {
                 match r.status() {
                     StatusCode::MovedPermanently |
-                    StatusCode::Found => {}
+                    StatusCode::Found => {
+                        trace!("Got moved status {:?}", r.status());
+                    }
                     _ => return Either::A(future::ok(r)),
                 };
                 let redirect: Option<String> = match r.headers().get_raw("Location") {
                     None => return Either::A(future::result(Err(hyper::error::Error::Status))),
                     Some(ct) => {
+                        trace!("Got Location header {:?}", ct);
                         ct.clone()
                             .one()
                             .and_then(|h| String::from_utf8(h.to_vec()).ok())

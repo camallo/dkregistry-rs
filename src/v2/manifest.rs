@@ -1,11 +1,11 @@
 use v2::*;
 use futures::Stream;
 
-// XXX: Ver 2, Schema 1, Signed
 // TODO(lucab): add variants for other manifest schemas
-// TODO(lucab): convert json::Value to proper types
+pub type Manifest = ManifestSchema1Signed;
+
 #[derive(Debug,Default,Deserialize,Serialize)]
-pub struct Manifest {
+pub struct ManifestSchema1Signed {
     #[serde(rename = "schemaVersion")]
     schema_version: u16,
     pub name: String,
@@ -13,9 +13,25 @@ pub struct Manifest {
     pub architecture: String,
     #[serde(rename = "fsLayers")]
     fs_layers: Vec<Layer>,
-    history: Vec<serde_json::Value>,
-    signatures: Vec<serde_json::Value>,
+    history: Vec<V1Compat>,
+    signatures: Vec<Signature>,
 }
+
+#[derive(Debug,Default,Deserialize,Serialize)]
+pub struct Signature {
+    // TODO(lucab): switch to jsonwebtokens crate
+    // https://github.com/Keats/rust-jwt/pull/23
+    header: serde_json::Value,
+    signature: String,
+    protected: String,
+}
+
+#[derive(Debug,Deserialize,Serialize)]
+pub struct V1Compat {
+    #[serde(rename = "v1Compatibility")]
+    v1_compat: String,
+}
+
 pub type FutureManifest = Box<futures::Future<Item = Manifest, Error = Error>>;
 
 #[derive(Debug,Deserialize,Serialize)]
@@ -24,7 +40,7 @@ pub struct Layer {
     blob_sum: String,
 }
 
-impl Manifest {
+impl ManifestSchema1Signed {
     pub fn get_layers(&self) -> Vec<String> {
         self.fs_layers
             .iter()

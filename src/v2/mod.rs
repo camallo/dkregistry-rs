@@ -19,7 +19,7 @@ pub use self::catalog::{Catalog, StreamCatalog};
 mod auth;
 pub use self::auth::{TokenAuth, FutureTokenAuth};
 
-mod manifest;
+pub mod manifest;
 pub use self::manifest::{Manifest, FutureManifest};
 
 mod tags;

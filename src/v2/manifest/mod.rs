@@ -1,53 +1,15 @@
 use v2::*;
 use futures::Stream;
 
+mod manifest_schema1;
+pub use self::manifest_schema1::*;
+
+mod manifest_schema2;
+pub use self::manifest_schema2::*;
+
 // TODO(lucab): add variants for other manifest schemas
-pub type Manifest = ManifestSchema1Signed;
-
-#[derive(Debug,Default,Deserialize,Serialize)]
-pub struct ManifestSchema1Signed {
-    #[serde(rename = "schemaVersion")]
-    schema_version: u16,
-    pub name: String,
-    pub tag: String,
-    pub architecture: String,
-    #[serde(rename = "fsLayers")]
-    fs_layers: Vec<Layer>,
-    history: Vec<V1Compat>,
-    signatures: Vec<Signature>,
-}
-
-#[derive(Debug,Default,Deserialize,Serialize)]
-pub struct Signature {
-    // TODO(lucab): switch to jsonwebtokens crate
-    // https://github.com/Keats/rust-jwt/pull/23
-    header: serde_json::Value,
-    signature: String,
-    protected: String,
-}
-
-#[derive(Debug,Deserialize,Serialize)]
-pub struct V1Compat {
-    #[serde(rename = "v1Compatibility")]
-    v1_compat: String,
-}
-
+pub type Manifest = manifest_schema1::ManifestSchema1Signed;
 pub type FutureManifest = Box<futures::Future<Item = Manifest, Error = Error>>;
-
-#[derive(Debug,Deserialize,Serialize)]
-pub struct Layer {
-    #[serde(rename = "blobSum")]
-    blob_sum: String,
-}
-
-impl ManifestSchema1Signed {
-    pub fn get_layers(&self) -> Vec<String> {
-        self.fs_layers
-            .iter()
-            .map(|l| l.blob_sum.clone())
-            .collect()
-    }
-}
 
 impl Client {
     /// Fetch an image manifest.

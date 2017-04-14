@@ -43,10 +43,15 @@ impl Client {
                                                      self.base_url.clone(),
                                                      name,
                                                      reference)));
-        let req = self.new_request(hyper::Method::Get, url);
+        let req = self.new_request(hyper::Method::Get, url.clone());
         let freq = self.hclient.request(req);
         let fres =
-            freq.and_then(move |r| {
+            freq.map(move |r| {
+                         trace!("GET {:?}", url);
+                         r
+                     })
+                .and_then(move |r| {
+                              trace!("Got status: {:?}", r.status());
                               if r.status() != hyper::status::StatusCode::Ok {
                                   return Err(hyper::Error::Status);
                               };
@@ -60,8 +65,8 @@ impl Client {
                     })
                           })
                 .from_err()
-                .and_then(|body| {
-                              serde_json::from_slice(body.as_slice()).chain_err(|| "decoding body")
+            .and_then(|body| {
+                serde_json::from_slice(body.as_slice()).chain_err(|| "error decoding manifest")
                           });
         return Ok(Box::new(fres));
     }

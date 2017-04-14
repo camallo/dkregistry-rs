@@ -16,15 +16,15 @@ hyper = { git = "https://github.com/hyperium/hyper" }
 hyper-tls = { git = "https://github.com/hyperium/hyper-tls" }
 futures = "0.1"
 tokio-core = "0.1"
-error-chain = "0.10"
+error-chain = { version = "0.10", default-features = false }
 serde = "0.9"
 serde_derive = "0.9"
 serde_json = "0.9"
-slog = "2"
-slog-scope = "2"
+log = "0.3"
 
 [dev-dependencies]
 mockito = "0.3"
+env_logger = "0.4"
 
 [features]
 test-net = []

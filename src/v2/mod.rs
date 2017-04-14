@@ -49,12 +49,12 @@ impl Client {
     fn new_request(&self, method: hyper::Method, url: hyper::Uri) -> hyper::client::Request {
         let mut req = client::Request::new(method, url);
         if let Some(ref t) = self.token {
-            req.headers_mut().set(hyper::header::Authorization(hyper::header::Bearer {
-                                                                   token: t.to_owned(),
-                                                               }));
+            req.headers_mut()
+                .set(hyper::header::Authorization(hyper::header::Bearer { token: t.to_owned() }));
         };
         if let Some(ref ua) = self.user_agent {
-            req.headers_mut().set(hyper::header::UserAgent::new(ua.to_owned()));
+            req.headers_mut()
+                .set(hyper::header::UserAgent::new(ua.to_owned()));
         };
         return req;
     }
@@ -64,17 +64,27 @@ impl Client {
         let api_version = "registry/2.0";
 
         let url = try!(hyper::Uri::from_str((self.base_url.clone() + "/v2/").as_str()));
-        let req = self.new_request(hyper::Method::Get, url);
+        let req = self.new_request(hyper::Method::Get, url.clone());
         let freq = self.hclient.request(req);
-        let fres =
-            freq.and_then(move |r| match (r.status(), r.headers().get_raw(api_header)) {
-                              (hyper::status::StatusCode::Ok, Some(x)) => Ok(x == api_version),
-                              (hyper::status::StatusCode::Unauthorized, Some(x)) => {
-                                  Ok(x == api_version)
-                              }
-                              (_, _) => Ok(false),
-                          })
-                .map_err(|e| e.into());
+        let fres = freq.map(move |r| {
+                                trace!("GET {:?}", url);
+                                r
+                            })
+            .and_then(move |r| match (r.status(), r.headers().get_raw(api_header)) {
+                          (hyper::status::StatusCode::Ok, Some(x)) => Ok(x == api_version),
+                          (hyper::status::StatusCode::Unauthorized, Some(x)) => {
+                              Ok(x == api_version)
+                          }
+                          (s, v) => {
+                trace!("Got status {}, header version {:?}", s, v);
+                Ok(false)
+            }
+                      })
+            .and_then(|b| {
+                          trace!("v2 API supported: {}", b);
+                          Ok(b)
+                      })
+            .from_err();
         return Ok(Box::new(fres));
     }
 }

@@ -95,7 +95,7 @@ fn test_gcrio_has_manifest() {
 
     let image = "google_containers/mounttest";
     let tag = "0.2";
-    let fut = dclient.has_manifest(image, tag).unwrap();
+    let fut = dclient.has_manifest(image, tag, None).unwrap();
     let has_manifest = tcore.run(fut);
 
     // 401

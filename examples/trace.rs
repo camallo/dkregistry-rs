@@ -1,6 +1,8 @@
 extern crate dkregistry;
 extern crate tokio_core;
 extern crate futures;
+extern crate log;
+extern crate env_logger;
 
 use std::{error, boxed};
 use tokio_core::reactor::Core;
@@ -33,10 +35,11 @@ fn main() {
         println!("[{}] no $DKREG_PASSWD for login password", registry);
     }
 
+
     let res = run(&registry, user, password, &image, &ver);
 
     if let Err(e) = res {
-        println!("[{}] {}", registry, e);
+        println!("[{}] {:?}", registry, e);
         std::process::exit(1);
     };
 }
@@ -47,6 +50,11 @@ fn run(host: &str,
        image: &str,
        version: &str)
        -> Result<()> {
+    env_logger::LogBuilder::new()
+        .filter(Some("dkregistry"), log::LogLevelFilter::Trace)
+        .filter(Some("trace"), log::LogLevelFilter::Trace)
+        .init()?;
+
     let mut tcore = try!(Core::new());
     let mut dclient = try!(dkregistry::v2::Client::configure(&tcore.handle())
                                .registry(host)
@@ -75,29 +83,15 @@ fn run(host: &str,
     let manifest = tcore.run(fut_manif)?;
     let layers = manifest.get_layers();
 
-    println!("{} -> got {} layer(s), saving to directory {:?}", image, layers.len(), version);
-    std::fs::create_dir(version)?;
-
-    for (i, digest) in layers.iter().enumerate() {
-        let fname = version.to_owned() + "/" + &digest;
-        let fp = match std::fs::File::create(&fname) {
-            Ok(fp) => fp,
-            Err(_) => return Err(format!("file {} already exists", digest).into()),
-        };
-
+    for digest in layers {
         let fut_presence = dclient.has_blob(image, &digest)?;
         let has_blob = tcore.run(fut_presence)?;
         if !has_blob {
             return Err(format!("missing layer {}", digest).into());
         }
 
-        println!("Downloading layer {}...", digest);
         let fut_out = dclient.get_blob(image, &digest)?;
-        let out = tcore.run(fut_out)?;
-
-        println!("Layer {}/{}, got {} bytes. Writing to file {}.\n", i+1, layers.len(), out.len(), fname);
-        std::io::copy(std::io::BufReader::new(out.as_slice()).get_mut(),
-                      std::io::BufWriter::new(fp).get_mut())?;
+        let _out = tcore.run(fut_out)?;
     }
 
     return Ok(());

@@ -64,6 +64,7 @@ impl Config {
             false => "https://".to_string() + &self.index,
             true => "http://".to_string() + &self.index,
         };
+        trace!("Built client for {:?}: endpoint {:?} - user {:?}", self.index, base, self.username);
         let creds = match (self.username, self.password) {
             (None, None) => None,
             (u, p) => Some((u.unwrap_or("".into()), p.unwrap_or("".into()))),

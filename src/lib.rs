@@ -15,6 +15,8 @@ extern crate error_chain;
 extern crate serde_derive;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate mime;
 
 mod errors;
 pub use errors::*;

@@ -95,7 +95,7 @@ fn test_quayio_has_manifest() {
 
     let image = "coreos/etcdlabs";
     let reference = "master";
-    let fut = dclient.has_manifest(image, reference).unwrap();
+    let fut = dclient.has_manifest(image, reference, None).unwrap();
     let has_manifest = tcore.run(fut).unwrap();
 
     assert_eq!(has_manifest, true);
@@ -114,7 +114,7 @@ fn test_quayio_has_no_manifest() {
 
     let image = "coreos/etcdlabs";
     let reference = "clearly_bogus";
-    let fut = dclient.has_manifest(image, reference).unwrap();
+    let fut = dclient.has_manifest(image, reference, None).unwrap();
     let has_manifest = tcore.run(fut).unwrap();
 
     assert_eq!(has_manifest, false);

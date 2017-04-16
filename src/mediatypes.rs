@@ -1,19 +1,84 @@
 //! Media-types for API objects.
 
-// schema1 types, see https://docs.docker.com/registry/spec/manifest-v2-1/
+use hyper::{header, mime};
+use errors::*;
+use strum::EnumProperty;
 
-/// Manifest, version 2 schema 1.
-pub static MANIFEST_V2S1: &'static str = "application/vnd.docker.distribution.manifest.v1+json";
-/// Signed manifest, version 2 schema 1.
-pub static MANIFEST_V2S1_SIGNED: &'static str = "application/vnd.docker.distribution.manifest.v1+prettyjws";
+// For schema1 types, see https://docs.docker.com/registry/spec/manifest-v2-1/
+// For schema2 types, see https://docs.docker.com/registry/spec/manifest-v2-2/
 
-// schema2 types, see https://docs.docker.com/registry/spec/manifest-v2-2/
+#[derive(EnumProperty,EnumString,ToString,Debug)]
+pub enum MediaTypes {
+    /// Manifest, version 2 schema 1.
+    #[strum(serialize="application/vnd.docker.distribution.manifest.v1+json")]
+    #[strum(props(Sub="vnd.docker.distribution.manifest.v1+json"))]
+    ManifestV2S1,
+    /// Signed manifest, version 2 schema 1.
+    #[strum(serialize="application/vnd.docker.distribution.manifest.v1+prettyjws")]
+    #[strum(props(Sub="vnd.docker.distribution.manifest.v1+prettyjws"))]
+    ManifestV2S1Signed,
+    /// Manifest, version 2 schema 1.
+    #[strum(serialize="application/vnd.docker.distribution.manifest.v2+json")]
+    #[strum(props(Sub="vnd.docker.distribution.manifest.v2+json"))]
+    ManifestV2S2,
+    /// Manifest List (aka "fat manifest").
+    #[strum(serialize="application/vnd.docker.distribution.manifest.list.v2+json")]
+    #[strum(props(Sub="vnd.docker.distribution.manifest.list.v2+json"))]
+    ManifestList,
+    /// Image layer, as a gzip-compressed tar.
+    #[strum(serialize="application/vnd.docker.image.rootfs.diff.tar.gzip")]
+    #[strum(props(Sub="vnd.docker.image.rootfs.diff.tar.gzip"))]
+    ImageLayerTgz,
+    /// Configuration object for a container.
+    #[strum(serialize="application/vnd.docker.container.image.v1+json")]
+    #[strum(props(Sub="vnd.docker.container.image.v1+json"))]
+    ContainerConfigV1,
+    /// Generic JSON
+    #[strum(serialize="application/json")]
+    #[strum(props(Sub="json"))]
+    ApplicationJson,
+}
 
-/// Manifest, version 2 schema 1.
-pub static MANIFEST_V2S2: &'static str = "application/vnd.docker.distribution.manifest.v2+json";
-/// Manifest List (aka "fat manifest").
-pub static MANIFEST_LIST: &'static str = "application/vnd.docker.distribution.manifest.list.v2+json";
-/// Image layer, as a gzip-compressed tar.
-pub static IMAGE_LAYER: &'static str = "application/vnd.docker.image.rootfs.diff.tar.gzip";
-/// Configuration object for a container.
-pub static CONTAINER_CONFIG_V1: &'static str = "application/vnd.docker.container.image.v1+json";
+impl MediaTypes {
+    // TODO(lucab): proper error types
+    pub fn from_mime(mtype: &mime::Mime) -> Result<Self> {
+        match *mtype {
+            mime::Mime(mime::TopLevel::Application, mime::SubLevel::Json, _) => {
+                Ok(MediaTypes::ApplicationJson)
+            }
+            mime::Mime(mime::TopLevel::Application, mime::SubLevel::Ext(ref s), _) => {
+                match s.as_str() {
+                    "vnd.docker.distribution.manifest.v1+json" => Ok(MediaTypes::ManifestV2S1),
+                    "application/vnd.docker.distribution.manifest.v1+prettyjws" => {
+                        Ok(MediaTypes::ManifestV2S1Signed)
+                    }
+                    "application/vnd.docker.distribution.manifest.v2+json" => {
+                        Ok(MediaTypes::ManifestV2S2)
+                    }
+                    "vnd.docker.distribution.manifest.list.v2+json" => Ok(MediaTypes::ManifestList),
+                    "vnd.docker.image.rootfs.diff.tar.gzip" => Ok(MediaTypes::ImageLayerTgz),
+                    "vnd.docker.container.image.v1+json" => Ok(MediaTypes::ContainerConfigV1),
+                    _ => bail!("unknown sublevel in mediatype {:?}", mtype),
+                }
+            }
+            _ => bail!("unknown mediatype {:?}", mtype),
+        }
+    }
+    pub fn to_mime(&self) -> mime::Mime {
+        match self {
+            &MediaTypes::ApplicationJson => mime!(Application / Json),
+            ref m => {
+                if let Some(s) = m.get_str("Sub") {
+                    mime::Mime(mime::TopLevel::Application,
+                               mime::SubLevel::Ext(s.to_string()),
+                               vec![])
+                } else {
+                    mime!(Application / Star)
+                }
+            }
+        }
+    }
+    pub fn to_qitem(&self) -> header::QualityItem<mime::Mime> {
+        header::qitem(self.to_mime())
+    }
+}

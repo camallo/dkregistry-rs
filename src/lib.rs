@@ -17,6 +17,9 @@ extern crate serde_derive;
 extern crate log;
 #[macro_use]
 extern crate mime;
+extern crate strum;
+#[macro_use]
+extern crate strum_macros;
 
 mod errors;
 pub use errors::*;

@@ -1,4 +1,6 @@
 use v2::*;
+use mediatypes;
+
 use futures::Stream;
 use hyper::header::{QualityItem, Accept, qitem};
 use hyper::mime;
@@ -93,9 +95,9 @@ impl Client {
 fn to_mimes(v: &[&str]) -> Result<Vec<QualityItem<mime::Mime>>> {
     let res: Vec<QualityItem<mime::Mime>>;
     res = v.iter().filter_map(|x| {
-        let mtype = x.to_string().parse();
+        let mtype = mediatypes::MediaTypes::from_str(x);
         match mtype {
-            Ok(m) => Some(qitem(m)),
+            Ok(m) => Some(m.to_qitem()),
             _ => None,
         }
     }).collect();

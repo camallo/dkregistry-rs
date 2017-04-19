@@ -4,6 +4,7 @@ extern crate futures;
 
 use self::tokio_core::reactor::Core;
 use self::futures::stream::Stream;
+use self::dkregistry::mediatypes::MediaTypes;
 
 static REGISTRY: &'static str = "quay.io";
 
@@ -98,7 +99,7 @@ fn test_quayio_has_manifest() {
     let fut = dclient.has_manifest(image, reference, None).unwrap();
     let has_manifest = tcore.run(fut).unwrap();
 
-    assert_eq!(has_manifest, true);
+    assert_eq!(has_manifest, Some(MediaTypes::ManifestV2S1Signed));
 }
 
 #[test]
@@ -117,5 +118,5 @@ fn test_quayio_has_no_manifest() {
     let fut = dclient.has_manifest(image, reference, None).unwrap();
     let has_manifest = tcore.run(fut).unwrap();
 
-    assert_eq!(has_manifest, false);
+    assert_eq!(has_manifest, None);
 }

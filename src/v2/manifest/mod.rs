@@ -61,7 +61,7 @@ impl Client {
                         name: &str,
                         reference: &str,
                         mediatypes: Option<&[&str]>)
-                        -> Result<FutureBool> {
+                        -> Result<mediatypes::FutureMediaType> {
         let url = {
             let ep = format!("{}/v2/{}/manifests/{}",
                              self.base_url.clone(),
@@ -70,9 +70,7 @@ impl Client {
             try!(hyper::Uri::from_str(ep.as_str()))
         };
         let accept_types = match mediatypes {
-            None => Accept(vec![
-                qitem(mime!(Star/Star))
-            ]),
+            None => Accept(vec![qitem(mime!(Star / Star))]),
             Some(ref v) => Accept(try!(to_mimes(v))),
         };
         let req = {
@@ -81,25 +79,35 @@ impl Client {
             r
         };
         let freq = self.hclient.request(req);
-        let fres = freq.and_then(|r| match r.status() {
-                                     hyper::status::StatusCode::Ok => Ok(true),
-                                     hyper::status::StatusCode::NotFound => Ok(false),
-                                     _ => Err(hyper::Error::Status),
-                                 })
+        let fres = freq.and_then(|r| {
+                let mut ct = None;
+                let hdr = r.headers().get::<hyper::header::ContentType>();
+                if let Some(h) = hdr {
+                    ct = mediatypes::MediaTypes::from_mime(h).ok();
+                };
+                let res = match r.status() {
+                    hyper::status::StatusCode::Ok => ct,
+                    hyper::status::StatusCode::NotFound => None,
+                    _ => return Err(hyper::Error::Status),
+                };
+                trace!("Manifest check result: {:?}", res);
+                Ok(res)
+            })
             .from_err();
         return Ok(Box::new(fres));
     }
-
 }
 
 fn to_mimes(v: &[&str]) -> Result<Vec<QualityItem<mime::Mime>>> {
     let res: Vec<QualityItem<mime::Mime>>;
-    res = v.iter().filter_map(|x| {
-        let mtype = mediatypes::MediaTypes::from_str(x);
-        match mtype {
-            Ok(m) => Some(m.to_qitem()),
-            _ => None,
-        }
-    }).collect();
+    res = v.iter()
+        .filter_map(|x| {
+                        let mtype = mediatypes::MediaTypes::from_str(x);
+                        match mtype {
+                            Ok(m) => Some(m.to_qitem()),
+                            _ => None,
+                        }
+                    })
+        .collect();
     Ok(res)
 }

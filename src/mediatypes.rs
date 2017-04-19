@@ -49,10 +49,10 @@ impl MediaTypes {
             mime::Mime(mime::TopLevel::Application, mime::SubLevel::Ext(ref s), _) => {
                 match s.as_str() {
                     "vnd.docker.distribution.manifest.v1+json" => Ok(MediaTypes::ManifestV2S1),
-                    "application/vnd.docker.distribution.manifest.v1+prettyjws" => {
+                    "vnd.docker.distribution.manifest.v1+prettyjws" => {
                         Ok(MediaTypes::ManifestV2S1Signed)
                     }
-                    "application/vnd.docker.distribution.manifest.v2+json" => {
+                    "vnd.docker.distribution.manifest.v2+json" => {
                         Ok(MediaTypes::ManifestV2S2)
                     }
                     "vnd.docker.distribution.manifest.list.v2+json" => Ok(MediaTypes::ManifestList),

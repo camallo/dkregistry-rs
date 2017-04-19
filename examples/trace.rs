@@ -91,6 +91,12 @@ fn run(host: &str,
 
     dclient.set_token(Some(token_auth.token()));
 
+    let fut_hasmanif = dclient.has_manifest(image, version, None)?;
+    let has_manifest = try!(tcore.run(fut_hasmanif));
+    if has_manifest.is_none() {
+        return Err("no manifest found".into());
+    }
+
     let fut_manif = dclient.get_manifest(image, version)?;
     let manifest = tcore.run(fut_manif)?;
     let layers = manifest.get_layers();

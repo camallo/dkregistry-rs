@@ -1,13 +1,16 @@
 //! Media-types for API objects.
 
+use futures;
 use hyper::{header, mime};
 use errors::*;
 use strum::EnumProperty;
 
+pub type FutureMediaType = Box<futures::Future<Item = Option<MediaTypes>, Error = Error>>;
+
 // For schema1 types, see https://docs.docker.com/registry/spec/manifest-v2-1/
 // For schema2 types, see https://docs.docker.com/registry/spec/manifest-v2-2/
 
-#[derive(EnumProperty,EnumString,ToString,Debug)]
+#[derive(EnumProperty,EnumString,ToString,Debug,Hash,PartialEq)]
 pub enum MediaTypes {
     /// Manifest, version 2 schema 1.
     #[strum(serialize="application/vnd.docker.distribution.manifest.v1+json")]
@@ -49,10 +52,10 @@ impl MediaTypes {
             mime::Mime(mime::TopLevel::Application, mime::SubLevel::Ext(ref s), _) => {
                 match s.as_str() {
                     "vnd.docker.distribution.manifest.v1+json" => Ok(MediaTypes::ManifestV2S1),
-                    "application/vnd.docker.distribution.manifest.v1+prettyjws" => {
+                    "vnd.docker.distribution.manifest.v1+prettyjws" => {
                         Ok(MediaTypes::ManifestV2S1Signed)
                     }
-                    "application/vnd.docker.distribution.manifest.v2+json" => {
+                    "vnd.docker.distribution.manifest.v2+json" => {
                         Ok(MediaTypes::ManifestV2S2)
                     }
                     "vnd.docker.distribution.manifest.list.v2+json" => Ok(MediaTypes::ManifestList),

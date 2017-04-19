@@ -27,6 +27,7 @@ impl Config {
         }
     }
 
+    /// Set registry service to use (vhost or IP).
     pub fn registry(mut self, reg: &str) -> Self {
         self.index = reg.to_owned();
         self
@@ -57,6 +58,15 @@ impl Config {
         self
     }
 
+    /// Read credentials from a JSON config file
+    pub fn read_credentials<T: ::std::io::Read>(mut self, reader: T) -> Self {
+        if let Ok(creds) = ::get_credentials(reader, &self.index) {
+            self.username = creds.0;
+            self.password = creds.1;
+        };
+        self
+    }
+
     /// Return a `Client` to interact with a v2 registry.
     pub fn build(self) -> Result<Client> {
         let hclient = self.config.build(&self.handle);
@@ -64,7 +74,10 @@ impl Config {
             false => "https://".to_string() + &self.index,
             true => "http://".to_string() + &self.index,
         };
-        trace!("Built client for {:?}: endpoint {:?} - user {:?}", self.index, base, self.username);
+        trace!("Built client for {:?}: endpoint {:?} - user {:?}",
+               self.index,
+               base,
+               self.username);
         let creds = match (self.username, self.password) {
             (None, None) => None,
             (u, p) => Some((u.unwrap_or("".into()), p.unwrap_or("".into()))),

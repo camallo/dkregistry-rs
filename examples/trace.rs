@@ -4,7 +4,7 @@ extern crate futures;
 extern crate log;
 extern crate env_logger;
 
-use std::{error, boxed};
+use std::{boxed, env, error, fs, io};
 use tokio_core::reactor::Core;
 
 type Result<T> = std::result::Result<T, boxed::Box<error::Error>>;
@@ -26,15 +26,28 @@ fn main() {
     };
     println!("[{}] downloading image {} version {}", registry, image, ver);
 
-    let user = std::env::var("DKREG_USER").ok();
-    if user.is_none() {
-        println!("[{}] no $DKREG_USER for login user", registry);
-    }
-    let password = std::env::var("DKREG_PASSWD").ok();
-    if password.is_none() {
-        println!("[{}] no $DKREG_PASSWD for login password", registry);
-    }
-
+    let mut user = None;
+    let mut password = None;
+    let home = env::home_dir().unwrap_or("/root".into());
+    let cfg = fs::File::open(home.join(".docker/config.json"));
+    if let Ok(fp) = cfg {
+        let creds = dkregistry::get_credentials(io::BufReader::new(fp), &registry);
+        if let Ok(user_pass) = creds {
+            user = user_pass.0;
+            password = user_pass.1;
+        } else {
+            println!("[{}] no credentials found in config.json", registry);
+        }
+    } else {
+        user = env::var("DKREG_USER").ok();
+        if user.is_none() {
+            println!("[{}] no $DKREG_USER for login user", registry);
+        }
+        password = env::var("DKREG_PASSWD").ok();
+        if password.is_none() {
+            println!("[{}] no $DKREG_PASSWD for login password", registry);
+        }
+    };
 
     let res = run(&registry, user, password, &image, &ver);
 
@@ -50,8 +63,7 @@ fn run(host: &str,
        image: &str,
        version: &str)
        -> Result<()> {
-    env_logger::LogBuilder::new()
-        .filter(Some("dkregistry"), log::LogLevelFilter::Trace)
+    env_logger::LogBuilder::new().filter(Some("dkregistry"), log::LogLevelFilter::Trace)
         .filter(Some("trace"), log::LogLevelFilter::Trace)
         .init()?;
 

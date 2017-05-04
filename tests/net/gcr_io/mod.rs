@@ -95,9 +95,9 @@ fn test_gcrio_has_manifest() {
 
     let image = "google_containers/mounttest";
     let tag = "0.2";
-    let fut = dclient.has_manifest(image, tag, None).unwrap();
-    let has_manifest = tcore.run(fut);
+    let manifest_type = dkregistry::mediatypes::MediaTypes::ManifestV2S1Signed.to_string();
+    let fut = dclient.has_manifest(image, tag, Some(vec![manifest_type.as_str()].as_slice())).unwrap();
+    let has_manifest = tcore.run(fut).unwrap();
 
-    // 401
-    assert!(has_manifest.is_err());
+    assert_eq!(has_manifest, Some(dkregistry::mediatypes::MediaTypes::ManifestV2S1Signed));
 }

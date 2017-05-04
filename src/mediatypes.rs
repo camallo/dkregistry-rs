@@ -20,7 +20,7 @@ pub enum MediaTypes {
     #[strum(serialize="application/vnd.docker.distribution.manifest.v1+prettyjws")]
     #[strum(props(Sub="vnd.docker.distribution.manifest.v1+prettyjws"))]
     ManifestV2S1Signed,
-    /// Manifest, version 2 schema 1.
+    /// Manifest, version 2 schema 2.
     #[strum(serialize="application/vnd.docker.distribution.manifest.v2+json")]
     #[strum(props(Sub="vnd.docker.distribution.manifest.v2+json"))]
     ManifestV2S2,

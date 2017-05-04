@@ -48,6 +48,8 @@ impl Client {
 
     fn new_request(&self, method: hyper::Method, url: hyper::Uri) -> hyper::client::Request {
         let mut req = client::Request::new(method, url);
+        let host = hyper::header::Host::new(self.index.clone(), None);
+        req.headers_mut().set(host);
         if let Some(ref t) = self.token {
             req.headers_mut()
                 .set(hyper::header::Authorization(hyper::header::Bearer { token: t.to_owned() }));

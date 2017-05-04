@@ -2,7 +2,7 @@ use v2::*;
 use mediatypes;
 
 use futures::Stream;
-use hyper::header::{QualityItem, Accept, qitem};
+use hyper::header::{QualityItem, Accept};
 use hyper::mime;
 
 mod manifest_schema1;
@@ -25,7 +25,12 @@ impl Client {
                                                      self.base_url.clone(),
                                                      name,
                                                      reference)));
-        let req = self.new_request(hyper::Method::Get, url.clone());
+        let req = {
+            let accept_types = Accept(vec![mediatypes::MediaTypes::ManifestV2S2.to_qitem()]);
+            let mut r = self.new_request(hyper::Method::Get, url.clone());
+            r.headers_mut().set(accept_types);
+            r
+        };
         let freq = self.hclient.request(req);
         let fres =
             freq.map(move |r| {
@@ -70,27 +75,31 @@ impl Client {
             try!(hyper::Uri::from_str(ep.as_str()))
         };
         let accept_types = match mediatypes {
-            None => Accept(vec![qitem(mime!(Star / Star))]),
+            None => Accept(vec![mediatypes::MediaTypes::ManifestV2S2.to_qitem()]),
             Some(ref v) => Accept(try!(to_mimes(v))),
         };
         let req = {
-            let mut r = self.new_request(hyper::Method::Head, url);
+            let mut r = self.new_request(hyper::Method::Head, url.clone());
             r.headers_mut().set(accept_types);
             r
         };
         let freq = self.hclient.request(req);
-        let fres = freq.and_then(|r| {
+        let fres = freq.map(move |r| {
+                                trace!("HEAD {:?}", url);
+                                r
+                            })
+            .and_then(|r| {
                 let mut ct = None;
                 let hdr = r.headers().get::<hyper::header::ContentType>();
                 if let Some(h) = hdr {
                     ct = mediatypes::MediaTypes::from_mime(h).ok();
                 };
+                trace!("Manfest check result: {:?}", r.status());
                 let res = match r.status() {
                     hyper::status::StatusCode::Ok => ct,
                     hyper::status::StatusCode::NotFound => None,
                     _ => return Err(hyper::Error::Status),
                 };
-                trace!("Manifest check result: {:?}", res);
                 Ok(res)
             })
             .from_err();

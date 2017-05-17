@@ -13,8 +13,7 @@ mod manifest_schema2;
 pub use self::manifest_schema2::*;
 
 // TODO(lucab): add variants for other manifest schemas
-pub type Manifest = manifest_schema1::ManifestSchema1Signed;
-pub type FutureManifest = Box<futures::Future<Item = Manifest, Error = Error>>;
+pub type FutureManifest = Box<futures::Future<Item = serde_json::Value, Error = Error>>;
 
 impl Client {
     /// Fetch an image manifest.

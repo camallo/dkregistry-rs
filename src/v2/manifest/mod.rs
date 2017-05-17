@@ -4,6 +4,7 @@ use mediatypes;
 use futures::Stream;
 use hyper::header::{QualityItem, Accept};
 use hyper::mime;
+use hyper::status::StatusCode;
 
 mod manifest_schema1;
 pub use self::manifest_schema1::*;
@@ -12,8 +13,7 @@ mod manifest_schema2;
 pub use self::manifest_schema2::*;
 
 // TODO(lucab): add variants for other manifest schemas
-pub type Manifest = manifest_schema1::ManifestSchema1Signed;
-pub type FutureManifest = Box<futures::Future<Item = Manifest, Error = Error>>;
+pub type FutureManifest = Box<futures::Future<Item = serde_json::Value, Error = Error>>;
 
 impl Client {
     /// Fetch an image manifest.
@@ -94,10 +94,13 @@ impl Client {
                 if let Some(h) = hdr {
                     ct = mediatypes::MediaTypes::from_mime(h).ok();
                 };
-                trace!("Manfest check result: {:?}", r.status());
+                trace!("Manifest check result: {:?}", r.status());
                 let res = match r.status() {
-                    hyper::status::StatusCode::Ok => ct,
-                    hyper::status::StatusCode::NotFound => None,
+                    StatusCode::MovedPermanently |
+                    StatusCode::TemporaryRedirect |
+                    StatusCode::Found |
+                    StatusCode::Ok => ct,
+                    StatusCode::NotFound => None,
                     _ => return Err(hyper::Error::Status),
                 };
                 Ok(res)

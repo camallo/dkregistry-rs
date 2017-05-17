@@ -20,7 +20,7 @@ mod auth;
 pub use self::auth::{TokenAuth, FutureTokenAuth};
 
 pub mod manifest;
-pub use self::manifest::{Manifest, FutureManifest};
+pub use self::manifest::{FutureManifest};
 
 mod tags;
 pub use self::tags::{Tags, StreamTags};

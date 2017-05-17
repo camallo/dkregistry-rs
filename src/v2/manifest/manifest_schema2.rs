@@ -56,3 +56,12 @@ pub struct Platform {
     variant: Option<String>,
     features: Option<Vec<String>>,
 }
+
+impl ManifestSchema2 {
+    pub fn get_layers(&self) -> Vec<String> {
+        self.layers
+            .iter()
+            .map(|l| l.digest.clone())
+            .collect()
+    }
+}

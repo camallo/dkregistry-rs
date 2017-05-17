@@ -3,6 +3,7 @@ extern crate tokio_core;
 extern crate futures;
 extern crate log;
 extern crate env_logger;
+extern crate serde_json;
 
 use std::{boxed, env, error, fs, io};
 use tokio_core::reactor::Core;
@@ -92,14 +93,22 @@ fn run(host: &str,
     dclient.set_token(Some(token_auth.token()));
 
     let fut_hasmanif = dclient.has_manifest(image, version, None)?;
-    let has_manifest = try!(tcore.run(fut_hasmanif));
-    if has_manifest.is_none() {
-        return Err("no manifest found".into());
-    }
+    let manifest_kind = try!(tcore.run(fut_hasmanif)?.ok_or("no manifest found"));
 
     let fut_manif = dclient.get_manifest(image, version)?;
-    let manifest = tcore.run(fut_manif)?;
-    let layers = manifest.get_layers();
+    let json = tcore.run(fut_manif)?;
+
+    let layers = match manifest_kind {
+        dkregistry::mediatypes::MediaTypes::ManifestV2S1Signed => {
+            let m: dkregistry::v2::manifest::ManifestSchema1Signed = try!(serde_json::from_value(json));
+            m.get_layers()
+        }
+        dkregistry::mediatypes::MediaTypes::ManifestV2S2 => {
+            let m: dkregistry::v2::manifest::ManifestSchema2 = try!(serde_json::from_value(json));
+            m.get_layers()
+        }
+        _ => return Err("unknown format".into()),
+    };
 
     for digest in layers {
         let fut_presence = dclient.has_blob(image, &digest)?;

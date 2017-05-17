@@ -1,6 +1,7 @@
 extern crate dkregistry;
 extern crate tokio_core;
 extern crate futures;
+extern crate serde_json;
 
 use std::{error, boxed};
 use tokio_core::reactor::Core;
@@ -71,11 +72,28 @@ fn run(host: &str,
 
     dclient.set_token(Some(token_auth.token()));
 
-    let fut_manif = dclient.get_manifest(image, version)?;
-    let manifest = tcore.run(fut_manif)?;
-    let layers = manifest.get_layers();
+    let fut_hasmanif = dclient.has_manifest(image, version, None)?;
+    let manifest_kind = try!(tcore.run(fut_hasmanif)?.ok_or("no manifest found"));
 
-    println!("{} -> got {} layer(s), saving to directory {:?}", image, layers.len(), version);
+    let fut_manif = dclient.get_manifest(image, version)?;
+    let json = tcore.run(fut_manif)?;
+
+    let layers = match manifest_kind {
+        dkregistry::mediatypes::MediaTypes::ManifestV2S1Signed => {
+            let m: dkregistry::v2::manifest::ManifestSchema1Signed = try!(serde_json::from_value(json));
+            m.get_layers()
+        }
+        dkregistry::mediatypes::MediaTypes::ManifestV2S2 => {
+            let m: dkregistry::v2::manifest::ManifestSchema2 = try!(serde_json::from_value(json));
+            m.get_layers()
+        }
+        _ => return Err("unknown format".into()),
+    };
+
+    println!("{} -> got {} layer(s), saving to directory {:?}",
+             image,
+             layers.len(),
+             version);
     std::fs::create_dir(version)?;
 
     for (i, digest) in layers.iter().enumerate() {
@@ -95,7 +113,11 @@ fn run(host: &str,
         let fut_out = dclient.get_blob(image, &digest)?;
         let out = tcore.run(fut_out)?;
 
-        println!("Layer {}/{}, got {} bytes. Writing to file {}.\n", i+1, layers.len(), out.len(), fname);
+        println!("Layer {}/{}, got {} bytes. Writing to file {}.\n",
+                 i + 1,
+                 layers.len(),
+                 out.len(),
+                 fname);
         std::io::copy(std::io::BufReader::new(out.as_slice()).get_mut(),
                       std::io::BufWriter::new(fp).get_mut())?;
     }

@@ -13,12 +13,22 @@ impl Client {
             let ep = format!("{}/v2/{}/blobs/{}", self.base_url.clone(), name, digest);
             try!(hyper::Uri::from_str(ep.as_str()))
         };
-        let req = self.new_request(hyper::Method::Head, url);
+        let req = self.new_request(hyper::Method::Head, url.clone());
         let freq = self.hclient.request(req);
-        let fres = freq.and_then(|r| match r.status() {
-                                     hyper::status::StatusCode::Ok => Ok(true),
-                                     _ => Ok(false),
-                                 })
+        let fres = freq.map(move |r| {
+                                trace!("HEAD {:?}", url);
+                                r
+                            })
+            .and_then(|r| {
+                trace!("Blob check result: {:?}", r.status());
+                match r.status() {
+                    StatusCode::MovedPermanently |
+                    StatusCode::TemporaryRedirect |
+                    StatusCode::Found |
+                    StatusCode::Ok => Ok(true),
+                    _ => Ok(false),
+                }
+            })
             .map_err(|e| e.into());
         return Ok(Box::new(fres));
     }
@@ -39,6 +49,7 @@ impl Client {
             .and_then(move |r| {
                 match r.status() {
                     StatusCode::MovedPermanently |
+                    StatusCode::TemporaryRedirect |
                     StatusCode::Found => {
                         trace!("Got moved status {:?}", r.status());
                     }

@@ -4,6 +4,7 @@ use mediatypes;
 use futures::Stream;
 use hyper::header::{QualityItem, Accept};
 use hyper::mime;
+use hyper::status::StatusCode;
 
 mod manifest_schema1;
 pub use self::manifest_schema1::*;
@@ -94,10 +95,13 @@ impl Client {
                 if let Some(h) = hdr {
                     ct = mediatypes::MediaTypes::from_mime(h).ok();
                 };
-                trace!("Manfest check result: {:?}", r.status());
+                trace!("Manifest check result: {:?}", r.status());
                 let res = match r.status() {
-                    hyper::status::StatusCode::Ok => ct,
-                    hyper::status::StatusCode::NotFound => None,
+                    StatusCode::MovedPermanently |
+                    StatusCode::TemporaryRedirect |
+                    StatusCode::Found |
+                    StatusCode::Ok => ct,
+                    StatusCode::NotFound => None,
                     _ => return Err(hyper::Error::Status),
                 };
                 Ok(res)

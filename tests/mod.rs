@@ -1,5 +1,5 @@
 #[cfg(feature = "test-net")]
 mod net;
 
-#[cfg(not(feature = "test-net"))]
+#[cfg(feature = "test-mock")]
 mod mock;

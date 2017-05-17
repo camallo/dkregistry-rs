@@ -3,7 +3,7 @@ use v2::*;
 /// Configuration for a `Client`.
 #[derive(Debug)]
 pub struct Config {
-    config: client::Config<hyper_tls::HttpsConnector, hyper::Body>,
+    config: client::Config<hyper_rustls::HttpsConnector, hyper::Body>,
     handle: reactor::Handle,
     index: String,
     insecure_registry: bool,
@@ -17,7 +17,7 @@ impl Config {
     pub fn default(handle: &reactor::Handle) -> Self {
         Self {
             config: hyper::client::Client::configure()
-                .connector(hyper_tls::HttpsConnector::new(4, handle)),
+                .connector(hyper_rustls::HttpsConnector::new(4, handle)),
             handle: handle.clone(),
             index: "registry-1.docker.io".into(),
             insecure_registry: false,

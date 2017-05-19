@@ -10,6 +10,6 @@ error_chain! {
         Json(serde_json::Error);
         Io(io::Error);
         Utf8Parse(string::FromUtf8Error);
-        Base64Decode(base64::Base64Error);
+        Base64Decode(base64::DecodeError);
     }
 }

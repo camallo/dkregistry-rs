@@ -24,7 +24,7 @@ log = "0.3"
 mime = "0.2"
 strum = "0.6"
 strum_macros = "0.6"
-base64 = "0.4"
+base64 = "0.5"
 
 [dev-dependencies]
 mockito = "0.3"

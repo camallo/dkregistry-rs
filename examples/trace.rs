@@ -96,15 +96,15 @@ fn run(host: &str,
     let manifest_kind = try!(tcore.run(fut_hasmanif)?.ok_or("no manifest found"));
 
     let fut_manif = dclient.get_manifest(image, version)?;
-    let json = tcore.run(fut_manif)?;
+    let body = tcore.run(fut_manif)?;
 
     let layers = match manifest_kind {
         dkregistry::mediatypes::MediaTypes::ManifestV2S1Signed => {
-            let m: dkregistry::v2::manifest::ManifestSchema1Signed = try!(serde_json::from_value(json));
+            let m: dkregistry::v2::manifest::ManifestSchema1Signed = try!(serde_json::from_slice(body.as_slice()));
             m.get_layers()
         }
         dkregistry::mediatypes::MediaTypes::ManifestV2S2 => {
-            let m: dkregistry::v2::manifest::ManifestSchema2 = try!(serde_json::from_value(json));
+            let m: dkregistry::v2::manifest::ManifestSchema2 = try!(serde_json::from_slice(body.as_slice()));
             m.get_layers()
         }
         _ => return Err("unknown format".into()),

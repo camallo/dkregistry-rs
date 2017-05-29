@@ -27,7 +27,7 @@ strum_macros = "0.6"
 base64 = "0.5"
 
 [dev-dependencies]
-mockito = "0.3"
+mockito = "0.5"
 env_logger = "0.4"
 
 [features]

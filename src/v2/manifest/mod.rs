@@ -13,7 +13,7 @@ mod manifest_schema2;
 pub use self::manifest_schema2::*;
 
 // TODO(lucab): add variants for other manifest schemas
-pub type FutureManifest = Box<futures::Future<Item = serde_json::Value, Error = Error>>;
+pub type FutureManifest = Box<futures::Future<Item = Vec<u8>, Error = Error>>;
 
 impl Client {
     /// Fetch an image manifest.
@@ -32,29 +32,25 @@ impl Client {
             r
         };
         let freq = self.hclient.request(req);
-        let fres =
-            freq.map(move |r| {
-                         trace!("GET {:?}", url);
-                         r
-                     })
-                .and_then(move |r| {
-                              trace!("Got status: {:?}", r.status());
-                              if r.status() != hyper::status::StatusCode::Ok {
-                                  return Err(hyper::Error::Status);
-                              };
-                              Ok(r)
-                          })
-                .and_then(move |r| {
-                              r.body()
-                                  .fold(Vec::new(), |mut v, chunk| {
-                        v.extend(&chunk[..]);
-                        futures::future::ok::<_, hyper::Error>(v)
-                    })
-                          })
-                .from_err()
-            .and_then(|body| {
-                serde_json::from_slice(body.as_slice()).chain_err(|| "error decoding manifest")
-                          });
+        let fres = freq.map(move |r| {
+                                trace!("GET {:?}", url);
+                                r
+                            })
+            .and_then(move |r| {
+                          trace!("Got status: {:?}", r.status());
+                          if r.status() != hyper::status::StatusCode::Ok {
+                              return Err(hyper::Error::Status);
+                          };
+                          Ok(r)
+                      })
+            .and_then(move |r| {
+                          r.body()
+                              .fold(Vec::new(), |mut v, chunk| {
+                    v.extend(&chunk[..]);
+                    futures::future::ok::<_, hyper::Error>(v)
+                })
+                      })
+            .from_err();
         return Ok(Box::new(fres));
     }
 

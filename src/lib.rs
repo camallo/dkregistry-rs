@@ -27,6 +27,7 @@ pub use errors::*;
 
 pub mod mediatypes;
 pub mod v2;
+pub mod reference;
 
 /// Default User-Agent client identity.
 pub static USER_AGENT: &'static str = "camallo-dkregistry/0.0";

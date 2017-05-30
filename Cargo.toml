@@ -29,6 +29,7 @@ base64 = "0.5"
 [dev-dependencies]
 mockito = "0.5"
 env_logger = "0.4"
+spectral = "0.6"
 
 [features]
 test-net = []

@@ -7,25 +7,20 @@ extern crate serde_json;
 
 use std::{boxed, env, error, fs, io};
 use tokio_core::reactor::Core;
+use dkregistry::reference;
+
+use std::str::FromStr;
 
 type Result<T> = std::result::Result<T, boxed::Box<error::Error>>;
 
 fn main() {
-    let registry = match std::env::args().nth(1) {
-        Some(x) => x,
-        None => "quay.io".into(),
-    };
+    let dkr_ref = match std::env::args().nth(1) {
+        Some(ref x) => reference::Reference::from_str(x),
+        None => reference::Reference::from_str("quay.io/coreos/etcd"),
+    }.unwrap();
+    let registry = dkr_ref.registry();
 
-    let image = match std::env::args().nth(2) {
-        Some(x) => x,
-        None => "coreos/etcd".into(),
-    };
-
-    let ver = match std::env::args().nth(3) {
-        Some(x) => x,
-        None => "latest".into(),
-    };
-    println!("[{}] downloading image {} version {}", registry, image, ver);
+    println!("[{}] downloading image {}", registry, dkr_ref);
 
     let mut user = None;
     let mut password = None;
@@ -50,7 +45,7 @@ fn main() {
         }
     };
 
-    let res = run(&registry, user, password, &image, &ver);
+    let res = run(&dkr_ref, user, password);
 
     if let Err(e) = res {
         println!("[{}] {:?}", registry, e);
@@ -58,19 +53,19 @@ fn main() {
     };
 }
 
-fn run(host: &str,
+fn run(dkr_ref: &reference::Reference,
        user: Option<String>,
-       passwd: Option<String>,
-       image: &str,
-       version: &str)
+       passwd: Option<String>)
        -> Result<()> {
     env_logger::LogBuilder::new().filter(Some("dkregistry"), log::LogLevelFilter::Trace)
         .filter(Some("trace"), log::LogLevelFilter::Trace)
         .init()?;
+    let image = dkr_ref.image();
+    let version = dkr_ref.version();
 
     let mut tcore = try!(Core::new());
     let mut dclient = try!(dkregistry::v2::Client::configure(&tcore.handle())
-                               .registry(host)
+                               .registry(&dkr_ref.registry())
                                .insecure_registry(false)
                                .username(user)
                                .password(passwd)
@@ -92,10 +87,10 @@ fn run(host: &str,
 
     dclient.set_token(Some(token_auth.token()));
 
-    let fut_hasmanif = dclient.has_manifest(image, version, None)?;
+    let fut_hasmanif = dclient.has_manifest(&image, &version, None)?;
     let manifest_kind = try!(tcore.run(fut_hasmanif)?.ok_or("no manifest found"));
 
-    let fut_manif = dclient.get_manifest(image, version)?;
+    let fut_manif = dclient.get_manifest(&image, &version)?;
     let body = tcore.run(fut_manif)?;
 
     let layers = match manifest_kind {
@@ -111,13 +106,13 @@ fn run(host: &str,
     };
 
     for digest in layers {
-        let fut_presence = dclient.has_blob(image, &digest)?;
+        let fut_presence = dclient.has_blob(&image, &digest)?;
         let has_blob = tcore.run(fut_presence)?;
         if !has_blob {
             return Err(format!("missing layer {}", digest).into());
         }
 
-        let fut_out = dclient.get_blob(image, &digest)?;
+        let fut_out = dclient.get_blob(&image, &digest)?;
         let _out = tcore.run(fut_out)?;
     }
 

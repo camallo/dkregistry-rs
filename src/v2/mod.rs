@@ -1,7 +1,7 @@
 //! Docker Registry API v2.
 
 use hyper::{self, client};
-use hyper_tls;
+use hyper_rustls;
 use tokio_core::reactor;
 use super::errors::*;
 use futures;
@@ -33,7 +33,7 @@ pub use self::blobs::FutureBlob;
 pub struct Client {
     base_url: String,
     credentials: Option<(String, String)>,
-    hclient: client::Client<hyper_tls::HttpsConnector>,
+    hclient: client::Client<hyper_rustls::HttpsConnector>,
     index: String,
     user_agent: Option<String>,
     token: Option<String>,

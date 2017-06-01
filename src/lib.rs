@@ -6,7 +6,7 @@
 extern crate base64;
 extern crate futures;
 extern crate hyper;
-extern crate hyper_tls;
+extern crate hyper_rustls;
 extern crate tokio_core;
 extern crate serde;
 extern crate serde_json;

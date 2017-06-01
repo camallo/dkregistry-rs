@@ -97,7 +97,7 @@ fn run(host: &str,
     std::fs::create_dir(version)?;
 
     for (i, digest) in layers.iter().enumerate() {
-        let fname = version.to_owned() + "/" + &digest;
+        let fname = version.to_owned() + "/" + &i.to_string() + "_" + &digest + ".tgz";
         let fp = match std::fs::File::create(&fname) {
             Ok(fp) => fp,
             Err(_) => return Err(format!("file {} already exists", digest).into()),

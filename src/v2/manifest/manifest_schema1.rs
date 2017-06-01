@@ -38,6 +38,7 @@ impl ManifestSchema1Signed {
     pub fn get_layers(&self) -> Vec<String> {
         self.fs_layers
             .iter()
+            .rev()
             .map(|l| l.blob_sum.clone())
             .collect()
     }

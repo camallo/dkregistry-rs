@@ -27,11 +27,6 @@ strum_macros = "0.6"
 base64 = "0.5"
 # See https://github.com/lipanski/mockito/issues/19
 mockito = { version = "0.5", optional = true }
-ring = "0.9.7"
-
-[replace]
-# See https://github.com/briansmith/ring/pull/549
-"ring:0.9.7" = { git = 'https://github.com/lucab/ring', branch = "wip/musl-fix" }
 
 [dev-dependencies]
 env_logger = "0.4"

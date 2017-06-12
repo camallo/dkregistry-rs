@@ -3,38 +3,49 @@ extern crate tokio_core;
 extern crate futures;
 extern crate serde_json;
 
-use std::{error, boxed};
+use std::{io, fs, env, error, boxed};
+use dkregistry::{reference, render};
 use tokio_core::reactor::Core;
+
+use std::str::FromStr;
 
 type Result<T> = std::result::Result<T, boxed::Box<error::Error>>;
 
 fn main() {
-    let registry = match std::env::args().nth(1) {
-        Some(x) => x,
-        None => "quay.io".into(),
+
+    let dkr_ref = match std::env::args().nth(1) {
+            Some(ref x) => reference::Reference::from_str(x),
+            None => reference::Reference::from_str("quay.io/coreos/etcd"),
+        }
+        .unwrap();
+    let registry = dkr_ref.registry();
+
+    println!("[{}] downloading image {}", registry, dkr_ref);
+
+    let mut user = None;
+    let mut password = None;
+    let home = env::home_dir().unwrap_or("/root".into());
+    let cfg = fs::File::open(home.join(".docker/config.json"));
+    if let Ok(fp) = cfg {
+        let creds = dkregistry::get_credentials(io::BufReader::new(fp), &registry);
+        if let Ok(user_pass) = creds {
+            user = user_pass.0;
+            password = user_pass.1;
+        } else {
+            println!("[{}] no credentials found in config.json", registry);
+        }
+    } else {
+        user = env::var("DKREG_USER").ok();
+        if user.is_none() {
+            println!("[{}] no $DKREG_USER for login user", registry);
+        }
+        password = env::var("DKREG_PASSWD").ok();
+        if password.is_none() {
+            println!("[{}] no $DKREG_PASSWD for login password", registry);
+        }
     };
 
-    let image = match std::env::args().nth(2) {
-        Some(x) => x,
-        None => "coreos/etcd".into(),
-    };
-
-    let ver = match std::env::args().nth(3) {
-        Some(x) => x,
-        None => "latest".into(),
-    };
-    println!("[{}] downloading image {} version {}", registry, image, ver);
-
-    let user = std::env::var("DKREG_USER").ok();
-    if user.is_none() {
-        println!("[{}] no $DKREG_USER for login user", registry);
-    }
-    let password = std::env::var("DKREG_PASSWD").ok();
-    if password.is_none() {
-        println!("[{}] no $DKREG_PASSWD for login password", registry);
-    }
-
-    let res = run(&registry, user, password, &image, &ver);
+    let res = run(&dkr_ref, user, password);
 
     if let Err(e) = res {
         println!("[{}] {}", registry, e);
@@ -42,15 +53,13 @@ fn main() {
     };
 }
 
-fn run(host: &str,
-       user: Option<String>,
-       passwd: Option<String>,
-       image: &str,
-       version: &str)
-       -> Result<()> {
+fn run(dkr_ref: &reference::Reference, user: Option<String>, passwd: Option<String>) -> Result<()> {
+    let image = dkr_ref.image();
+    let version = dkr_ref.version();
+
     let mut tcore = try!(Core::new());
     let mut dclient = try!(dkregistry::v2::Client::configure(&tcore.handle())
-                               .registry(host)
+                               .registry(&dkr_ref.registry())
                                .insecure_registry(false)
                                .username(user)
                                .password(passwd)
@@ -72,19 +81,21 @@ fn run(host: &str,
 
     dclient.set_token(Some(token_auth.token()));
 
-    let fut_hasmanif = dclient.has_manifest(image, version, None)?;
+    let fut_hasmanif = dclient.has_manifest(&image, &version, None)?;
     let manifest_kind = try!(tcore.run(fut_hasmanif)?.ok_or("no manifest found"));
 
-    let fut_manif = dclient.get_manifest(image, version)?;
+    let fut_manif = dclient.get_manifest(&image, &version)?;
     let body = tcore.run(fut_manif)?;
 
     let layers = match manifest_kind {
         dkregistry::mediatypes::MediaTypes::ManifestV2S1Signed => {
-            let m: dkregistry::v2::manifest::ManifestSchema1Signed = try!(serde_json::from_slice(body.as_slice()));
+            let m: dkregistry::v2::manifest::ManifestSchema1Signed =
+                try!(serde_json::from_slice(body.as_slice()));
             m.get_layers()
         }
         dkregistry::mediatypes::MediaTypes::ManifestV2S2 => {
-            let m: dkregistry::v2::manifest::ManifestSchema2 = try!(serde_json::from_slice(body.as_slice()));
+            let m: dkregistry::v2::manifest::ManifestSchema2 =
+                try!(serde_json::from_slice(body.as_slice()));
             m.get_layers()
         }
         _ => return Err("unknown format".into()),
@@ -94,33 +105,29 @@ fn run(host: &str,
              image,
              layers.len(),
              version);
-    std::fs::create_dir(version)?;
+    std::fs::create_dir(&version)?;
+    let mut blobs: Vec<Vec<u8>> = vec![];
 
     for (i, digest) in layers.iter().enumerate() {
-        let fname = version.to_owned() + "/" + &i.to_string() + "_" + &digest + ".tgz";
-        let fp = match std::fs::File::create(&fname) {
-            Ok(fp) => fp,
-            Err(_) => return Err(format!("file {} already exists", digest).into()),
-        };
-
-        let fut_presence = dclient.has_blob(image, &digest)?;
+        let fut_presence = dclient.has_blob(&image, &digest)?;
         let has_blob = tcore.run(fut_presence)?;
         if !has_blob {
             return Err(format!("missing layer {}", digest).into());
         }
 
         println!("Downloading layer {}...", digest);
-        let fut_out = dclient.get_blob(image, &digest)?;
+        let fut_out = dclient.get_blob(&image, &digest)?;
         let out = tcore.run(fut_out)?;
-
-        println!("Layer {}/{}, got {} bytes. Writing to file {}.\n",
+        println!("Layer {}/{}, got {} bytes.\n",
                  i + 1,
                  layers.len(),
-                 out.len(),
-                 fname);
-        std::io::copy(std::io::BufReader::new(out.as_slice()).get_mut(),
-                      std::io::BufWriter::new(fp).get_mut())?;
+                 out.len());
+        blobs.push(out);
     }
 
-    return Ok(());
+    let can_path = std::fs::canonicalize(&version)?;
+    let r = render::unpack(&blobs, &can_path);
+    println!("{:?}", r);
+    r?;
+    Ok(())
 }

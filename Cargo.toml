@@ -25,6 +25,8 @@ mime = "0.2"
 strum = "0.6"
 strum_macros = "0.6"
 base64 = "0.5"
+tar = "0.4"
+libflate = "0.1"
 # See https://github.com/lipanski/mockito/issues/19
 mockito = { version = "0.5", optional = true }
 

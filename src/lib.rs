@@ -18,6 +18,8 @@ extern crate serde_derive;
 extern crate log;
 #[macro_use]
 extern crate mime;
+extern crate libflate;
+extern crate tar;
 extern crate strum;
 #[macro_use]
 extern crate strum_macros;
@@ -28,6 +30,7 @@ pub use errors::*;
 pub mod mediatypes;
 pub mod v2;
 pub mod reference;
+pub mod render;
 
 /// Default User-Agent client identity.
 pub static USER_AGENT: &'static str = "camallo-dkregistry/0.0";

@@ -45,23 +45,21 @@ pub enum MediaTypes {
 impl MediaTypes {
     // TODO(lucab): proper error types
     pub fn from_mime(mtype: &mime::Mime) -> Result<Self> {
-        match *mtype {
-            mime::Mime(mime::TopLevel::Application, mime::SubLevel::Json, _) => {
-                Ok(MediaTypes::ApplicationJson)
-            }
-            mime::Mime(mime::TopLevel::Application, mime::SubLevel::Ext(ref s), _) => {
-                match s.as_str() {
-                    "vnd.docker.distribution.manifest.v1+json" => Ok(MediaTypes::ManifestV2S1),
-                    "vnd.docker.distribution.manifest.v1+prettyjws" => {
+        match (mtype.type_(), mtype.subtype(), mtype.suffix()) {
+            (mime::APPLICATION, mime::JSON, _) => Ok(MediaTypes::ApplicationJson),
+            (mime::APPLICATION, subt, Some(suff)) => {
+                match (subt.to_string().as_str(), suff.to_string().as_str()) {
+                    ("vnd.docker.distribution.manifest.v1", "json") => Ok(MediaTypes::ManifestV2S1),
+                    ("vnd.docker.distribution.manifest.v1", "prettyjws") => {
                         Ok(MediaTypes::ManifestV2S1Signed)
                     }
-                    "vnd.docker.distribution.manifest.v2+json" => {
-                        Ok(MediaTypes::ManifestV2S2)
+                    ("vnd.docker.distribution.manifest.v2", "json") => Ok(MediaTypes::ManifestV2S2),
+                    ("vnd.docker.distribution.manifest.list.v2", "json") => {
+                        Ok(MediaTypes::ManifestList)
                     }
-                    "vnd.docker.distribution.manifest.list.v2+json" => Ok(MediaTypes::ManifestList),
-                    "vnd.docker.image.rootfs.diff.tar.gzip" => Ok(MediaTypes::ImageLayerTgz),
-                    "vnd.docker.container.image.v1+json" => Ok(MediaTypes::ContainerConfigV1),
-                    _ => bail!("unknown sublevel in mediatype {:?}", mtype),
+                    ("vnd.docker.image.rootfs.diff.tar.gzip", _) => Ok(MediaTypes::ImageLayerTgz),
+                    ("vnd.docker.container.image.v1", "json") => Ok(MediaTypes::ContainerConfigV1),
+                    _ => bail!("unknown mediatype {:?}", mtype),
                 }
             }
             _ => bail!("unknown mediatype {:?}", mtype),
@@ -69,14 +67,12 @@ impl MediaTypes {
     }
     pub fn to_mime(&self) -> mime::Mime {
         match self {
-            &MediaTypes::ApplicationJson => mime!(Application / Json),
+            &MediaTypes::ApplicationJson => mime::APPLICATION_JSON,
             ref m => {
                 if let Some(s) = m.get_str("Sub") {
-                    mime::Mime(mime::TopLevel::Application,
-                               mime::SubLevel::Ext(s.to_string()),
-                               vec![])
+                    ("application/".to_string() + s).parse().unwrap()
                 } else {
-                    mime!(Application / Star)
+                    "application/star".parse().unwrap()
                 }
             }
         }

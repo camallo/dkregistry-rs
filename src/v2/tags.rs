@@ -23,7 +23,7 @@ impl Client {
         let req = self.new_request(hyper::Method::Get, url);
         let freq = self.hclient.request(req);
         let fres = freq.and_then(|r| {
-                if r.status() != hyper::status::StatusCode::Ok {
+                if r.status() != hyper::StatusCode::Ok {
                     return Err(hyper::Error::Status);
                 };
                 let ok = match r.headers().get_raw("Content-type") {

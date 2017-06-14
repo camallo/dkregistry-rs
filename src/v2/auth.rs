@@ -90,7 +90,7 @@ impl Client {
             })
             .and_then(|r| {
                           trace!("Got status {}", r.status());
-                          if r.status() != hyper::status::StatusCode::Ok {
+                          if r.status() != hyper::StatusCode::Ok {
                               Err(Error::from(hyper::Error::Status))
                           } else {
                               Ok(r)
@@ -131,8 +131,8 @@ impl Client {
             .and_then(move |r| {
                 trace!("Got status {}", r.status());
                 match r.status() {
-                    hyper::status::StatusCode::Ok => Ok(true),
-                    hyper::status::StatusCode::Unauthorized => Ok(false),
+                    hyper::StatusCode::Ok => Ok(true),
+                    hyper::StatusCode::Unauthorized => Ok(false),
                     _ => Err(hyper::error::Error::Status),
                 }
             })

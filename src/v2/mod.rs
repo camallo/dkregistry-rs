@@ -73,8 +73,8 @@ impl Client {
                                 r
                             })
             .and_then(move |r| match (r.status(), r.headers().get_raw(api_header)) {
-                          (hyper::status::StatusCode::Ok, Some(x)) => Ok(x == api_version),
-                          (hyper::status::StatusCode::Unauthorized, Some(x)) => {
+                          (hyper::StatusCode::Ok, Some(x)) => Ok(x == api_version),
+                          (hyper::StatusCode::Unauthorized, Some(x)) => {
                               Ok(x == api_version)
                           }
                           (s, v) => {

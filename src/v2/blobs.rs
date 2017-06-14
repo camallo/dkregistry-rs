@@ -1,5 +1,5 @@
 use v2::*;
-use hyper::status::StatusCode;
+use hyper::StatusCode;
 use futures::future::{self, Either};
 use futures::Stream;
 

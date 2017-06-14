@@ -4,7 +4,7 @@ use mediatypes;
 use futures::Stream;
 use hyper::header::{QualityItem, Accept};
 use hyper::mime;
-use hyper::status::StatusCode;
+use hyper::StatusCode;
 
 mod manifest_schema1;
 pub use self::manifest_schema1::*;
@@ -38,7 +38,7 @@ impl Client {
                             })
             .and_then(move |r| {
                           trace!("Got status: {:?}", r.status());
-                          if r.status() != hyper::status::StatusCode::Ok {
+                          if r.status() != hyper::StatusCode::Ok {
                               return Err(hyper::Error::Status);
                           };
                           Ok(r)

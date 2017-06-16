@@ -1,7 +1,38 @@
 //! A pure-Rust asynchronous library for Docker Registry API.
 //!
-//! It provides support for asynchronous interaction with
+//! This library provides support for asynchronous interaction with
 //! container registries conformant to the Docker Registry HTTP API V2.
+//!
+//! ## Example
+//!
+//! ```rust
+//! # extern crate dkregistry;
+//! # extern crate tokio_core;
+//! # fn main() {
+//! # fn run() -> dkregistry::Result<()> {
+//! #
+//! use tokio_core::reactor::Core;
+//! use dkregistry::v2::Client;
+//!
+//! // Check whether a registry supports API v2.
+//! let host = "quay.io";
+//! let mut tcore = Core::new()?;
+//! let dclient = Client::configure(&tcore.handle())
+//!                      .insecure_registry(false)
+//!                      .registry(host)
+//!                      .build()?;
+//! let check = dclient.is_v2_supported()?;
+//! match tcore.run(check)? {
+//!     false => println!("{} does NOT support v2", host),
+//!     true => println!("{} supports v2", host),
+//! };
+//! #
+//! # Ok(())
+//! # };
+//! # run().unwrap();
+//! # }
+//! ```
+
 
 extern crate base64;
 extern crate futures;

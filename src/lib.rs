@@ -9,7 +9,7 @@
 //! # extern crate dkregistry;
 //! # extern crate tokio_core;
 //! # fn main() {
-//! # fn run() -> dkregistry::Result<()> {
+//! # fn run() -> dkregistry::errors::Result<()> {
 //! #
 //! use tokio_core::reactor::Core;
 //! use dkregistry::v2::Client;
@@ -33,7 +33,6 @@
 //! # }
 //! ```
 
-
 extern crate base64;
 extern crate futures;
 extern crate hyper;
@@ -53,13 +52,15 @@ extern crate strum;
 #[macro_use]
 extern crate strum_macros;
 
-mod errors;
-pub use errors::*;
-
+pub mod errors;
 pub mod mediatypes;
-pub mod v2;
 pub mod reference;
 pub mod render;
+pub mod v2;
+
+use std::collections::HashMap;
+use std::io::Read;
+use errors::Result;
 
 /// Default User-Agent client identity.
 pub static USER_AGENT: &'static str = "camallo-dkregistry/0.0";
@@ -68,9 +69,10 @@ pub static USER_AGENT: &'static str = "camallo-dkregistry/0.0";
 ///
 /// This is a convenience decoder for docker-client credentials
 /// typically stored under `~/.docker/config.json`.
-pub fn get_credentials<T: ::std::io::Read>(reader: T,
-                                           index: &str)
-                                           -> Result<(Option<String>, Option<String>)> {
+pub fn get_credentials<T: Read>(
+    reader: T,
+    index: &str,
+) -> Result<(Option<String>, Option<String>)> {
     let map: Auths = try!(serde_json::from_reader(reader));
     let real_index = match index {
         // docker.io has some special casing in config.json
@@ -79,7 +81,7 @@ pub fn get_credentials<T: ::std::io::Read>(reader: T,
         other => other,
     };
     let auth = match map.auths.get(real_index) {
-        Some(x) => try!(::base64::decode(x.auth.as_str())),
+        Some(x) => try!(base64::decode(x.auth.as_str())),
         None => bail!("no auth for index"),
     };
     let s = try!(String::from_utf8(auth));
@@ -94,12 +96,12 @@ pub fn get_credentials<T: ::std::io::Read>(reader: T,
     Ok(up)
 }
 
-#[derive(Debug,Deserialize,Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct Auths {
-    auths: ::std::collections::HashMap<String, AuthObj>,
+    auths: HashMap<String, AuthObj>,
 }
 
-#[derive(Debug,Default,Deserialize,Serialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 struct AuthObj {
     auth: String,
 }

@@ -60,7 +60,7 @@ fn run(dkr_ref: &reference::Reference,
     env_logger::LogBuilder::new().filter(Some("dkregistry"), log::LogLevelFilter::Trace)
         .filter(Some("trace"), log::LogLevelFilter::Trace)
         .init()?;
-    let image = dkr_ref.image();
+    let image = dkr_ref.repository();
     let version = dkr_ref.version();
 
     let mut tcore = try!(Core::new());

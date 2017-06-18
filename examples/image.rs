@@ -54,7 +54,7 @@ fn main() {
 }
 
 fn run(dkr_ref: &reference::Reference, user: Option<String>, passwd: Option<String>) -> Result<()> {
-    let image = dkr_ref.image();
+    let image = dkr_ref.repository();
     let version = dkr_ref.version();
 
     let mut tcore = try!(Core::new());

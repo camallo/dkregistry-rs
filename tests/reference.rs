@@ -18,7 +18,7 @@ fn test_reference_repo() {
     for t in tcases {
         let r = Reference::from_str(t);
         asserting(t).that(&r).is_ok();
-        let repo = r.unwrap().image();
+        let repo = r.unwrap().repository();
         asserting(t).that(&repo.as_str()).is_equal_to("library/busybox");
     };
 }

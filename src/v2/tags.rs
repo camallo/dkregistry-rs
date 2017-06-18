@@ -5,7 +5,7 @@ use futures::Stream;
 pub type StreamTags = Box<futures::Stream<Item = String, Error = Error>>;
 
 #[derive(Debug,Default,Deserialize,Serialize)]
-pub struct Tags {
+struct Tags {
     name: String,
     tags: Vec<String>,
 }

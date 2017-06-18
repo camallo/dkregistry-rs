@@ -1,4 +1,30 @@
 //! Parser for `docker://` URLs.
+//!
+//! This module provides support for parsing image references.
+//!
+//! ## Example
+//!
+//! ```rust
+//! # extern crate dkregistry;
+//! # fn main() {
+//! # fn run() -> dkregistry::errors::Result<()> {
+//! #
+//! use std::str::FromStr;
+//! use dkregistry::reference::Reference;
+//!
+//! // Parse an image reference
+//! let dkref = Reference::from_str("docker://busybox")?;
+//! assert_eq!(dkref.registry(), "registry-1.docker.io");
+//! assert_eq!(dkref.repository(), "library/busybox");
+//! assert_eq!(dkref.version(), "latest");
+//! #
+//! # Ok(())
+//! # };
+//! # run().unwrap();
+//! # }
+//! ```
+//!
+//!
 
 // The `docker://` schema is not officially documented, but has a reference implementation:
 // https://github.com/docker/distribution/blob/v2.6.1/reference/reference.go
@@ -6,6 +32,7 @@
 use std::{fmt, str};
 use std::str::FromStr;
 
+/// Image version, either a tag or a digest.
 #[derive(Clone)]
 pub enum Version {
     Tag(String),
@@ -57,31 +84,25 @@ impl fmt::Display for Version {
     }
 }
 
+/// A registry image reference.
 #[derive(Clone, Debug, Default)]
 pub struct Reference {
     has_schema: bool,
     raw_input: String,
     registry: String,
     repository: String,
-    image: String,
     version: Version,
 }
 
 impl Reference {
-    pub fn new(registry: Option<String>,
-               repository: Option<String>,
-               image: String,
-               version: Option<Version>)
-               -> Self {
+    pub fn new(registry: Option<String>, repository: String, version: Option<Version>) -> Self {
         let reg = registry.unwrap_or("registry-1.docker.io".to_string());
-        let repo = repository.unwrap_or("library".to_string());
         let ver = version.unwrap_or(Version::Tag("latest".to_string()));
         Self {
             has_schema: false,
             raw_input: "".into(),
             registry: reg,
-            repository: repo,
-            image: image,
+            repository: repository,
             version: ver,
         }
     }
@@ -90,8 +111,8 @@ impl Reference {
         self.registry.clone()
     }
 
-    pub fn image(&self) -> String {
-        self.repository.clone() + "/" + self.image.as_str()
+    pub fn repository(&self) -> String {
+        self.repository.clone()
     }
 
     pub fn version(&self) -> String {
@@ -104,22 +125,18 @@ impl Reference {
 
     //TODO(lucab): move this to a real URL type
     pub fn to_url(&self) -> String {
-        format!("docker://{}/{}/{}{:?}",
-                self.registry,
-                self.repository,
-                self.image,
-                self.version)
+        format!(
+            "docker://{}/{}{:?}",
+            self.registry,
+            self.repository,
+            self.version
+        )
     }
 }
 
 impl fmt::Display for Reference {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f,
-               "{}/{}/{}{:?}",
-               self.registry,
-               self.repository,
-               self.image,
-               self.version)
+        write!(f, "{}/{}{:?}", self.registry, self.repository, self.version)
     }
 }
 
@@ -144,33 +161,27 @@ fn parse_url(s: &str) -> Result<Reference, ::errors::Error> {
         }
         (None, None) => (rest, Version::default()),
     };
-    let mut reg = "registry-1.docker.io";
-    let mut repo = "library";
-    let rest: Vec<&str> = rest.rsplitn(3, '/').collect();
-    let image = match rest.len() {
-        1 => rest[0],
-        2 => {
-            repo = rest[1];
-            rest[0]
-        }
-        _ => {
-            reg = rest[2];
-            repo = rest[1];
-            rest[0]
-        }
-    };
-    if image.len() < 1 {
+    if rest.len() < 1 {
         bail!("name too short");
     }
+    let mut reg = "registry-1.docker.io";
+    let split: Vec<&str> = rest.rsplitn(3, '/').collect();
+    let image = match split.len() {
+        1 => "library/".to_string() + rest,
+        2 => rest.to_string(),
+        _ => {
+            reg = split[2];
+            split[1].to_string() + "/" + split[0]
+        }
+    };
     if image.len() > 127 {
         bail!("name too long");
     }
     Ok(Reference {
-           has_schema: has_schema,
-           raw_input: s.to_string(),
-           registry: reg.to_string(),
-           repository: repo.to_string(),
-           image: image.to_string(),
-           version: ver,
-       })
+        has_schema: has_schema,
+        raw_input: s.to_string(),
+        registry: reg.to_string(),
+        repository: image,
+        version: ver,
+    })
 }

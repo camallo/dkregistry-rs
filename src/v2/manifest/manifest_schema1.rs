@@ -1,5 +1,6 @@
 use v2::*;
 
+/// Manifest version 2 schema 1, signed.
 #[derive(Debug,Default,Deserialize,Serialize)]
 pub struct ManifestSchema1Signed {
     #[serde(rename = "schemaVersion")]
@@ -8,13 +9,13 @@ pub struct ManifestSchema1Signed {
     pub tag: String,
     pub architecture: String,
     #[serde(rename = "fsLayers")]
-    fs_layers: Vec<Layer>,
+    fs_layers: Vec<S1Layer>,
     history: Vec<V1Compat>,
     signatures: Vec<Signature>,
 }
 
 #[derive(Debug,Default,Deserialize,Serialize)]
-pub struct Signature {
+struct Signature {
     // TODO(lucab): switch to jsonwebtokens crate
     // https://github.com/Keats/rust-jwt/pull/23
     header: serde_json::Value,
@@ -22,14 +23,15 @@ pub struct Signature {
     protected: String,
 }
 
+/// Compatibility entry for version 1 manifest interoperability.
 #[derive(Debug,Deserialize,Serialize)]
-pub struct V1Compat {
+struct V1Compat {
     #[serde(rename = "v1Compatibility")]
     v1_compat: String,
 }
 
 #[derive(Debug,Deserialize,Serialize)]
-pub struct Layer {
+struct S1Layer {
     #[serde(rename = "blobSum")]
     blob_sum: String,
 }

@@ -5,7 +5,7 @@ use futures::Stream;
 pub type StreamCatalog = Box<futures::Stream<Item = String, Error = Error>>;
 
 #[derive(Debug,Default,Deserialize,Serialize)]
-pub struct Catalog {
+struct Catalog {
     pub repositories: Vec<String>,
 }
 

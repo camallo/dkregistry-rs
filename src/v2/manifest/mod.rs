@@ -1,3 +1,4 @@
+//! Manifest types.
 use v2::*;
 use mediatypes;
 
@@ -11,9 +12,6 @@ pub use self::manifest_schema1::*;
 
 mod manifest_schema2;
 pub use self::manifest_schema2::*;
-
-// TODO(lucab): add variants for other manifest schemas
-pub type FutureManifest = Box<futures::Future<Item = Vec<u8>, Error = Error>>;
 
 impl Client {
     /// Fetch an image manifest.

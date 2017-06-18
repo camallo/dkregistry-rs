@@ -1,4 +1,4 @@
-/// Manifest version 2 schema 2
+/// Manifest version 2 schema 2.
 #[derive(Debug,Default,Deserialize,Serialize)]
 pub struct ManifestSchema2 {
     #[serde(rename = "schemaVersion")]
@@ -6,7 +6,7 @@ pub struct ManifestSchema2 {
     #[serde(rename = "mediaType")]
     media_type: String,
     config: Config,
-    layers: Vec<Layer>,
+    layers: Vec<S2Layer>,
 }
 
 #[derive(Debug,Default,Deserialize,Serialize)]
@@ -18,7 +18,7 @@ pub struct Config {
 }
 
 #[derive(Debug,Default,Deserialize,Serialize)]
-pub struct Layer {
+struct S2Layer {
     #[serde(rename = "mediaType")]
     media_type: String,
     size: u64,
@@ -26,42 +26,50 @@ pub struct Layer {
     urls: Option<Vec<String>>,
 }
 
-/// Manifest List
+/// Manifest List.
 #[derive(Debug,Default,Deserialize,Serialize)]
 pub struct ManifestList {
     #[serde(rename = "schemaVersion")]
     schema_version: u16,
     #[serde(rename = "mediaType")]
     media_type: String,
-    manifests: Vec<ManifestObj>,
+    pub manifests: Vec<ManifestObj>,
 }
 
+/// Manifest object.
 #[derive(Debug,Default,Deserialize,Serialize)]
 pub struct ManifestObj {
     #[serde(rename = "mediaType")]
     media_type: String,
     size: u64,
-    digest: String,
-    platform: Platform,
+    pub digest: String,
+    pub platform: Platform,
 }
 
+/// Platform-related manifest entries.
 #[derive(Debug,Default,Deserialize,Serialize)]
 pub struct Platform {
-    architecture: String,
-    os: String,
+    pub architecture: String,
+    pub os: String,
     #[serde(rename = "os.version")]
-    os_version: Option<String>,
+    pub os_version: Option<String>,
     #[serde(rename = "os.features")]
-    os_features: Option<Vec<String>>,
-    variant: Option<String>,
-    features: Option<Vec<String>>,
+    pub os_features: Option<Vec<String>>,
+    pub variant: Option<String>,
+    pub features: Option<Vec<String>>,
 }
 
 impl ManifestSchema2 {
+    /// List digests of all layer referenced by this manifest.
     pub fn get_layers(&self) -> Vec<String> {
         self.layers
             .iter()
             .map(|l| l.digest.clone())
             .collect()
+    }
+
+    /// Get digest of the configuration object referenced by this manifest.
+    pub fn config(&self) -> String {
+        self.config.digest.clone()
     }
 }

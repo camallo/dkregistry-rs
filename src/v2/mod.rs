@@ -1,4 +1,33 @@
-//! Docker Registry API v2.
+//! Client library for Docker Registry API v2.
+//!
+//! This module provides a `Client` which can be used to list
+//! images and tags, to check for the presence of blobs (manifests,
+//! layers and other objects) by digest, and to retrieve them.
+//!
+//! ## Example
+//!
+//! ```rust
+//! # extern crate dkregistry;
+//! # extern crate tokio_core;
+//! # fn main() {
+//! # fn run() -> dkregistry::errors::Result<()> {
+//! #
+//! use tokio_core::reactor::Core;
+//! use dkregistry::v2::Client;
+//!
+//! // Retrieve an image manifest.
+//! let mut tcore = Core::new()?;
+//! let dclient = Client::configure(&tcore.handle())
+//!                      .registry("quay.io")
+//!                      .build()?;
+//! let fetch = dclient.get_manifest("coreos/etcd", "v3.1.0")?;
+//! let manifest = tcore.run(fetch)?;
+//! #
+//! # Ok(())
+//! # };
+//! # run().unwrap();
+//! # }
+//! ```
 
 use hyper::{self, client};
 use hyper_rustls;
@@ -14,16 +43,15 @@ mod config;
 pub use self::config::Config;
 
 mod catalog;
-pub use self::catalog::{Catalog, StreamCatalog};
+pub use self::catalog::StreamCatalog;
 
 mod auth;
 pub use self::auth::{TokenAuth, FutureTokenAuth};
 
 pub mod manifest;
-pub use self::manifest::{FutureManifest};
 
 mod tags;
-pub use self::tags::{Tags, StreamTags};
+pub use self::tags::StreamTags;
 
 mod blobs;
 pub use self::blobs::FutureBlob;
@@ -39,7 +67,11 @@ pub struct Client {
     token: Option<String>,
 }
 
+/// Convenience alias for future boolean result.
 pub type FutureBool = Box<futures::Future<Item = bool, Error = Error>>;
+
+/// Convenience alias for future manifest blob.
+pub type FutureManifest = Box<futures::Future<Item = Vec<u8>, Error = Error>>;
 
 impl Client {
     pub fn configure(handle: &reactor::Handle) -> Config {
@@ -92,13 +124,13 @@ impl Client {
 }
 
 #[derive(Debug,Default,Deserialize,Serialize)]
-pub struct ApiError {
+struct ApiError {
     code: String,
     message: String,
     detail: String,
 }
 
 #[derive(Debug,Default,Deserialize,Serialize)]
-pub struct Errors {
+struct Errors {
     errors: Vec<ApiError>,
 }

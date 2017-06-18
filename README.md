@@ -3,6 +3,7 @@
 
 [![Build Status](https://travis-ci.org/camallo/dkregistry-rs.svg?branch=master)](https://travis-ci.org/camallo/dkregistry-rs)
 [![LoC](https://tokei.rs/b1/github/camallo/dkregistry-rs?category=code)](https://github.com/camallo/dkregistry-rs)
+[![Documentation](https://docs.rs/dkregistry/badge.svg)](https://docs.rs/dkregistry)
 
 A pure-Rust asynchronous library for Docker Registry API.
 

@@ -58,6 +58,7 @@ impl Client {
         return Ok(Box::new(www_auth));
     }
 
+    /// Set the token to be used for further registry requests.
     pub fn set_token(&mut self, token: Option<&str>) -> &Self {
         if let Some(ref t) = token {
             self.token = Some(t.to_string());
@@ -65,6 +66,9 @@ impl Client {
         self
     }
 
+    /// Perform registry authentication and return an authenticated token.
+    ///
+    /// On success, the returned token will be valid for all requested scopes.
     pub fn login(&self, scopes: Vec<&str>) -> Result<FutureTokenAuth> {
         let subclient = self.hclient.clone();
         let creds = self.credentials.clone();
@@ -115,6 +119,7 @@ impl Client {
         return Ok(Box::new(auth));
     }
 
+    /// Check whether the client is authenticated with the registry.
     pub fn is_auth(&self, token: Option<&str>) -> Result<FutureBool> {
         let url = try!(hyper::Uri::from_str((self.base_url.clone() + "/v2/").as_str()));
         let mut req = self.new_request(hyper::Method::Get, url.clone());

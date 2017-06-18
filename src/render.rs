@@ -8,6 +8,10 @@ use libflate::gzip;
 use std::{fs, path};
 use tar;
 
+/// Unpack an ordered list of layers to a target directory.
+///
+/// Layers must be provided as gzip-compressed tar archives, with lower layers
+/// coming first. Target directory must be an existing absolute path.
 pub fn unpack(layers: &[Vec<u8>], target_dir: &path::Path) -> Result<()> {
     if !target_dir.is_absolute() || !target_dir.exists() || !target_dir.is_dir() {
         bail!("wrong target path");

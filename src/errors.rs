@@ -1,3 +1,5 @@
+//! Error chains, types and traits.
+
 use hyper;
 use serde_json;
 use std::{io, string};

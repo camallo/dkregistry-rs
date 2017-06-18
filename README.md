@@ -19,7 +19,7 @@ This library relies on the [mockito][mockito-gh] framework for mocking. At this 
 
 As such, tests should be run serially via:
 ```
-cargo test -- --test-threads=1
+cargo test --features test-mock -- --test-threads=1
 ```
 
 [mockito-gh]: https://github.com/lipanski/mockito

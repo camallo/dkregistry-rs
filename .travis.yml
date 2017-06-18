@@ -8,5 +8,5 @@ matrix:
     - rust: nightly
 script: 
   - cargo build -v
-  - cargo test -- --test-threads=1
+  - cargo test --features test-mock -- --test-threads=1
   - cargo test --features test-net -- --color always --nocapture 

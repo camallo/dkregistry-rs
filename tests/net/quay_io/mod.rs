@@ -75,10 +75,10 @@ fn test_quayio_get_tags() {
         .build()
         .unwrap();
 
-    let image = "coreos/etcdlabs";
+    let image = "coreos/alpine-sh";
     let fut_tags = dclient.get_tags(image, None).unwrap();
     let tags = tcore.run(fut_tags.collect()).unwrap();
-    let has_version = tags.iter().any(|t| t == "master");
+    let has_version = tags.iter().any(|t| t == "latest");
 
     assert_eq!(has_version, true);
 }
@@ -94,8 +94,8 @@ fn test_quayio_has_manifest() {
         .build()
         .unwrap();
 
-    let image = "coreos/etcdlabs";
-    let reference = "master";
+    let image = "coreos/alpine-sh";
+    let reference = "latest";
     let fut = dclient.has_manifest(image, reference, None).unwrap();
     let has_manifest = tcore.run(fut).unwrap();
 
@@ -113,7 +113,7 @@ fn test_quayio_has_no_manifest() {
         .build()
         .unwrap();
 
-    let image = "coreos/etcdlabs";
+    let image = "coreos/alpine-sh";
     let reference = "clearly_bogus";
     let fut = dclient.has_manifest(image, reference, None).unwrap();
     let has_manifest = tcore.run(fut).unwrap();

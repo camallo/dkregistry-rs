@@ -33,7 +33,9 @@ pub fn unpack(layers: &[Vec<u8>], target_dir: &path::Path) -> Result<()> {
             let parent = path.parent().unwrap_or(path::Path::new("/"));
             if let Some(fname) = path.file_name() {
                 let wh_name = fname.to_string_lossy();
-                if wh_name.starts_with(".wh.") {
+                if wh_name == ".wh..wh..opq" {
+                    //TODO(lucab): opaque whiteout, dir removal
+                } else if wh_name.starts_with(".wh.") {
                     let rel_parent = path::PathBuf::from("./".to_string() + &parent.to_string_lossy());
 
                     // Remove real file behind whiteout

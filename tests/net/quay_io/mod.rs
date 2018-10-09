@@ -1,10 +1,10 @@
 extern crate dkregistry;
-extern crate tokio_core;
 extern crate futures;
+extern crate tokio_core;
 
-use self::tokio_core::reactor::Core;
-use self::futures::stream::Stream;
 use self::dkregistry::mediatypes::MediaTypes;
+use self::futures::stream::Stream;
+use self::tokio_core::reactor::Core;
 
 static REGISTRY: &'static str = "quay.io";
 
@@ -20,8 +20,10 @@ fn get_env() -> Option<(String, String)> {
 #[test]
 fn test_dockerio_getenv() {
     if get_env().is_none() {
-        println!("[WARN] {}: missing DKREG_QUAY_USER / DKREG_QUAY_PASSWD",
-                 REGISTRY);
+        println!(
+            "[WARN] {}: missing DKREG_QUAY_USER / DKREG_QUAY_PASSWD",
+            REGISTRY
+        );
     }
 }
 

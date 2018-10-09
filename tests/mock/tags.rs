@@ -1,11 +1,11 @@
 extern crate dkregistry;
+extern crate futures;
 extern crate mockito;
 extern crate tokio_core;
-extern crate futures;
 
+use self::futures::Stream;
 use self::mockito::mock;
 use self::tokio_core::reactor::Core;
-use self::futures::Stream;
 
 #[test]
 fn test_tags_simple() {
@@ -48,10 +48,13 @@ fn test_tags_paginate() {
     let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
     let _m1 = mock("GET", ep1.as_str())
         .with_status(200)
-        .with_header("Link",
-                     &format!(r#"<{}/v2/_tags?n=1&last=t1>; rel="next""#,
-                              mockito::SERVER_URL))
-        .with_header("Content-Type", "application/json")
+        .with_header(
+            "Link",
+            &format!(
+                r#"<{}/v2/_tags?n=1&last=t1>; rel="next""#,
+                mockito::SERVER_URL
+            ),
+        ).with_header("Content-Type", "application/json")
         .with_body(tags_p1)
         .create();
     let _m2 = mock("GET", ep2.as_str())

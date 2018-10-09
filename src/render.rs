@@ -36,7 +36,8 @@ pub fn unpack(layers: &[Vec<u8>], target_dir: &path::Path) -> Result<()> {
                 if wh_name == ".wh..wh..opq" {
                     //TODO(lucab): opaque whiteout, dir removal
                 } else if wh_name.starts_with(".wh.") {
-                    let rel_parent = path::PathBuf::from("./".to_string() + &parent.to_string_lossy());
+                    let rel_parent =
+                        path::PathBuf::from("./".to_string() + &parent.to_string_lossy());
 
                     // Remove real file behind whiteout
                     let real_name = wh_name.trim_left_matches(".wh.");
@@ -48,7 +49,7 @@ pub fn unpack(layers: &[Vec<u8>], target_dir: &path::Path) -> Result<()> {
                     fs::remove_dir_all(abs_wh_path)?;
                 };
             }
-        };
-    };
+        }
+    }
     Ok(())
 }

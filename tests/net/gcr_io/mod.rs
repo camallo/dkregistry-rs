@@ -1,9 +1,9 @@
 extern crate dkregistry;
-extern crate tokio_core;
 extern crate futures;
+extern crate tokio_core;
 
-use self::tokio_core::reactor::Core;
 use self::futures::stream::Stream;
+use self::tokio_core::reactor::Core;
 
 static REGISTRY: &'static str = "gcr.io";
 
@@ -19,8 +19,10 @@ fn get_env() -> Option<(String, String)> {
 #[test]
 fn test_dockerio_getenv() {
     if get_env().is_none() {
-        println!("[WARN] {}: missing DKREG_GCR_USER / DKREG_GCR_PASSWD",
-                 REGISTRY);
+        println!(
+            "[WARN] {}: missing DKREG_GCR_USER / DKREG_GCR_PASSWD",
+            REGISTRY
+        );
     }
 }
 
@@ -96,8 +98,13 @@ fn test_gcrio_has_manifest() {
     let image = "google_containers/mounttest";
     let tag = "0.2";
     let manifest_type = dkregistry::mediatypes::MediaTypes::ManifestV2S1Signed.to_string();
-    let fut = dclient.has_manifest(image, tag, Some(vec![manifest_type.as_str()].as_slice())).unwrap();
+    let fut = dclient
+        .has_manifest(image, tag, Some(vec![manifest_type.as_str()].as_slice()))
+        .unwrap();
     let has_manifest = tcore.run(fut).unwrap();
 
-    assert_eq!(has_manifest, Some(dkregistry::mediatypes::MediaTypes::ManifestV2S1Signed));
+    assert_eq!(
+        has_manifest,
+        Some(dkregistry::mediatypes::MediaTypes::ManifestV2S1Signed)
+    );
 }

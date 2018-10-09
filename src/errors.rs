@@ -1,9 +1,9 @@
 //! Error chains, types and traits.
 
+use base64;
 use hyper;
 use serde_json;
 use std::{io, string};
-use base64;
 
 error_chain! {
     foreign_links {

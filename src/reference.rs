@@ -29,8 +29,8 @@
 // The `docker://` schema is not officially documented, but has a reference implementation:
 // https://github.com/docker/distribution/blob/v2.6.1/reference/reference.go
 
-use std::{fmt, str};
 use std::str::FromStr;
+use std::{fmt, str};
 
 /// Image version, either a tag or a digest.
 #[derive(Clone)]
@@ -127,9 +127,7 @@ impl Reference {
     pub fn to_url(&self) -> String {
         format!(
             "docker://{}/{}{:?}",
-            self.registry,
-            self.repository,
-            self.version
+            self.registry, self.repository, self.version
         )
     }
 }

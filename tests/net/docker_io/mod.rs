@@ -17,8 +17,10 @@ fn get_env() -> Option<(String, String)> {
 #[test]
 fn test_dockerio_getenv() {
     if get_env().is_none() {
-        println!("[WARN] {}: missing DKREG_DOCKER_USER / DKREG_DOCKER_PASSWD",
-                 REGISTRY);
+        println!(
+            "[WARN] {}: missing DKREG_DOCKER_USER / DKREG_DOCKER_PASSWD",
+            REGISTRY
+        );
     }
 }
 

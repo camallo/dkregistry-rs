@@ -1,10 +1,10 @@
-use v2::*;
 use futures::Stream;
+use v2::*;
 
 /// Convenience alias for future `TokenAuth` result.
 pub type FutureTokenAuth = Box<futures::Future<Item = TokenAuth, Error = Error> + 'static>;
 
-#[derive(Debug,Default,Deserialize,Serialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct TokenAuth {
     token: String,
     expires_in: Option<u32>,
@@ -22,20 +22,23 @@ type FutureString = Box<futures::Future<Item = String, Error = self::Error>>;
 
 impl Client {
     fn get_token_provider(&self) -> Result<FutureString> {
-        let url = try!(hyper::Uri::from_str((self.base_url.clone() + "/v2/").as_str()));
+        let url = try!(hyper::Uri::from_str(
+            (self.base_url.clone() + "/v2/").as_str()
+        ));
         let req = self.new_request(hyper::Method::Get, url);
         let freq = self.hclient.request(req);
-        let www_auth = freq.and_then(|r| Ok(r))
+        let www_auth = freq
+            .and_then(|r| Ok(r))
             .and_then(|r| {
-                let a = r.headers()
+                let a = r
+                    .headers()
                     .get_raw("www-authenticate")
                     .ok_or(hyper::Error::Header)?
                     .one()
                     .ok_or(hyper::Error::Header)?;
                 let chal = try!(String::from_utf8(a.to_vec()));
                 Ok(chal)
-            })
-            .from_err::<Error>()
+            }).from_err::<Error>()
             .and_then(move |hdr| {
                 let mut auth_ep = "".to_owned();
                 let mut service = None;
@@ -75,73 +78,72 @@ impl Client {
         let scope = scopes
             .iter()
             .fold("".to_string(), |acc, &s| acc + "&scope=" + s);
-        let auth = self.get_token_provider()?
+        let auth = self
+            .get_token_provider()?
             .and_then(move |token_ep| {
-                          let auth_ep = token_ep + scope.as_str();
-                          trace!("Token endpoint: {}", auth_ep);
-                          hyper::Uri::from_str(auth_ep.as_str()).map_err(|e| e.into())
-                      })
-            .and_then(move |u| {
+                let auth_ep = token_ep + scope.as_str();
+                trace!("Token endpoint: {}", auth_ep);
+                hyper::Uri::from_str(auth_ep.as_str()).map_err(|e| e.into())
+            }).and_then(move |u| {
                 let mut auth_req = client::Request::new(hyper::Method::Get, u);
                 if let Some(c) = creds {
                     let hdr = hyper::header::Authorization(hyper::header::Basic {
-                                                               username: c.0,
-                                                               password: Some(c.1),
-                                                           });
+                        username: c.0,
+                        password: Some(c.1),
+                    });
                     auth_req.headers_mut().set(hdr);
                 };
                 subclient.request(auth_req).map_err(|e| e.into())
-            })
-            .and_then(|r| {
-                          trace!("Got status {}", r.status());
-                          if r.status() != hyper::StatusCode::Ok {
-                              Err(Error::from(hyper::Error::Status))
-                          } else {
-                              Ok(r)
-                          }
-                      })
-            .and_then(|r| {
-                          r.body()
-                              .fold(Vec::new(), |mut v, chunk| {
-                    v.extend(&chunk[..]);
-                    futures::future::ok::<_, hyper::Error>(v)
-                })
-                              .map_err(|e| e.into())
-                      })
-            .and_then(|body| {
-                          let s = String::from_utf8(body)?;
-                          let ta = serde_json::from_slice(s.as_bytes()).map_err(|e| e.into());
-                          if let Ok(_) = ta {
-                              trace!("Got token");
-                          };
-                          ta
-                      });
+            }).and_then(|r| {
+                trace!("Got status {}", r.status());
+                if r.status() != hyper::StatusCode::Ok {
+                    Err(Error::from(hyper::Error::Status))
+                } else {
+                    Ok(r)
+                }
+            }).and_then(|r| {
+                r.body()
+                    .fold(Vec::new(), |mut v, chunk| {
+                        v.extend(&chunk[..]);
+                        futures::future::ok::<_, hyper::Error>(v)
+                    }).map_err(|e| e.into())
+            }).and_then(|body| {
+                let s = String::from_utf8(body)?;
+                let ta = serde_json::from_slice(s.as_bytes()).map_err(|e| e.into());
+                if let Ok(_) = ta {
+                    trace!("Got token");
+                };
+                ta
+            });
         return Ok(Box::new(auth));
     }
 
     /// Check whether the client is authenticated with the registry.
     pub fn is_auth(&self, token: Option<&str>) -> Result<FutureBool> {
-        let url = try!(hyper::Uri::from_str((self.base_url.clone() + "/v2/").as_str()));
+        let url = try!(hyper::Uri::from_str(
+            (self.base_url.clone() + "/v2/").as_str()
+        ));
         let mut req = self.new_request(hyper::Method::Get, url.clone());
         if let Some(t) = token {
             req.headers_mut()
-                .set(hyper::header::Authorization(hyper::header::Bearer { token: t.to_owned() }));
+                .set(hyper::header::Authorization(hyper::header::Bearer {
+                    token: t.to_owned(),
+                }));
         };
 
         let freq = self.hclient.request(req);
-        let fres = freq.map(move |r| {
-                                trace!("GET {:?}", url);
-                                r
-                            })
-            .and_then(move |r| {
+        let fres = freq
+            .map(move |r| {
+                trace!("GET {:?}", url);
+                r
+            }).and_then(move |r| {
                 trace!("Got status {}", r.status());
                 match r.status() {
                     hyper::StatusCode::Ok => Ok(true),
                     hyper::StatusCode::Unauthorized => Ok(false),
                     _ => Err(hyper::error::Error::Status),
                 }
-            })
-            .from_err();
+            }).from_err();
         return Ok(Box::new(fres));
     }
 }

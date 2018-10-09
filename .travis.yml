@@ -7,6 +7,6 @@ matrix:
   allow_failures:
     - rust: nightly
 script: 
-  - cargo build -v
-  - cargo test --features test-mock -- --test-threads=1
+  - cargo clean && cargo update && cargo build
+  - cargo test --features test-mock
   - cargo test --features test-net -- --color always --nocapture 

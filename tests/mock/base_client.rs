@@ -8,17 +8,17 @@ use self::tokio_core::reactor::Core;
 static API_VERSION_K: &'static str = "Docker-Distribution-API-Version";
 static API_VERSION_V: &'static str = "registry/2.0";
 
-fn mock_version_ep() {
-    mock("GET", "/v2/").with_status(200).with_header(API_VERSION_K, API_VERSION_V).create();
-}
-
 #[test]
 fn test_base_no_insecure() {
-    mock_version_ep();
+    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let _m = mock("GET", "/v2/")
+        .with_status(200)
+        .with_header(API_VERSION_K, API_VERSION_V)
+        .create();
 
     let mut tcore = Core::new().unwrap();
     let dclient = dkregistry::v2::Client::configure(&tcore.handle())
-        .registry(mockito::SERVER_ADDRESS)
+        .registry(&addr)
         .insecure_registry(false)
         .username(None)
         .password(None)
@@ -36,7 +36,8 @@ fn test_base_no_insecure() {
 
 #[test]
 fn test_base_useragent() {
-    mock("GET", "/v2/")
+    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let _m = mock("GET", "/v2/")
         .match_header("user-agent", dkregistry::USER_AGENT)
         .with_status(200)
         .with_header(API_VERSION_K, API_VERSION_V)
@@ -44,7 +45,7 @@ fn test_base_useragent() {
 
     let mut tcore = Core::new().unwrap();
     let dclient = dkregistry::v2::Client::configure(&tcore.handle())
-        .registry(mockito::SERVER_ADDRESS)
+        .registry(&addr)
         .insecure_registry(true)
         .username(None)
         .password(None)
@@ -63,7 +64,8 @@ fn test_base_useragent() {
 fn test_base_custom_useragent() {
     let ua = "custom-ua/1.0";
 
-    mock("GET", "/v2/")
+    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let _m = mock("GET", "/v2/")
         .match_header("user-agent", ua)
         .with_status(200)
         .with_header(API_VERSION_K, API_VERSION_V)
@@ -71,7 +73,7 @@ fn test_base_custom_useragent() {
 
     let mut tcore = Core::new().unwrap();
     let dclient = dkregistry::v2::Client::configure(&tcore.handle())
-        .registry(mockito::SERVER_ADDRESS)
+        .registry(&addr)
         .insecure_registry(true)
         .user_agent(Some(ua.to_string()))
         .username(None)
@@ -89,7 +91,8 @@ fn test_base_custom_useragent() {
 
 #[test]
 fn test_base_no_useragent() {
-    mock("GET", "/v2/")
+    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let _m = mock("GET", "/v2/")
         .match_header("user-agent", mockito::Matcher::Missing)
         .with_status(200)
         .with_header(API_VERSION_K, API_VERSION_V)
@@ -97,7 +100,7 @@ fn test_base_no_useragent() {
 
     let mut tcore = Core::new().unwrap();
     let dclient = dkregistry::v2::Client::configure(&tcore.handle())
-        .registry(mockito::SERVER_ADDRESS)
+        .registry(&addr)
         .insecure_registry(true)
         .user_agent(None)
         .username(None)

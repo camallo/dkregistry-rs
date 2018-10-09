@@ -8,20 +8,17 @@ use self::tokio_core::reactor::Core;
 static API_VERSION_K: &'static str = "Docker-Distribution-API-Version";
 static API_VERSION_V: &'static str = "registry/2.0";
 
-fn mock_version_ep() {
-    mock("GET", "/v2/")
+#[test]
+fn test_version_check_status_ok() {
+    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let _m = mock("GET", "/v2/")
         .with_status(200)
         .with_header(API_VERSION_K, API_VERSION_V)
         .create();
-}
-
-#[test]
-fn test_version_check_status_ok() {
-    mock_version_ep();
 
     let mut tcore = Core::new().unwrap();
     let dclient = dkregistry::v2::Client::configure(&tcore.handle())
-        .registry(mockito::SERVER_ADDRESS)
+        .registry(&addr)
         .insecure_registry(true)
         .username(None)
         .password(None)
@@ -38,14 +35,15 @@ fn test_version_check_status_ok() {
 
 #[test]
 fn test_version_check_status_unauth() {
-    mock("GET", "/v2/")
+    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let _m = mock("GET", "/v2/")
         .with_status(401)
         .with_header(API_VERSION_K, API_VERSION_V)
         .create();
 
     let mut tcore = Core::new().unwrap();
     let dclient = dkregistry::v2::Client::configure(&tcore.handle())
-        .registry(mockito::SERVER_ADDRESS)
+        .registry(&addr)
         .insecure_registry(true)
         .username(None)
         .password(None)
@@ -62,14 +60,15 @@ fn test_version_check_status_unauth() {
 
 #[test]
 fn test_version_check_status_notfound() {
-    mock("GET", "/v2/")
+    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let _m = mock("GET", "/v2/")
         .with_status(404)
         .with_header(API_VERSION_K, API_VERSION_V)
         .create();
 
     let mut tcore = Core::new().unwrap();
     let dclient = dkregistry::v2::Client::configure(&tcore.handle())
-        .registry(mockito::SERVER_ADDRESS)
+        .registry(&addr)
         .insecure_registry(true)
         .username(None)
         .password(None)
@@ -86,14 +85,15 @@ fn test_version_check_status_notfound() {
 
 #[test]
 fn test_version_check_status_forbidden() {
-    mock("GET", "/v2/")
+    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let _m = mock("GET", "/v2/")
         .with_status(403)
         .with_header(API_VERSION_K, API_VERSION_V)
         .create();
 
     let mut tcore = Core::new().unwrap();
     let dclient = dkregistry::v2::Client::configure(&tcore.handle())
-        .registry(mockito::SERVER_ADDRESS)
+        .registry(&addr)
         .insecure_registry(true)
         .username(None)
         .password(None)
@@ -110,13 +110,14 @@ fn test_version_check_status_forbidden() {
 
 #[test]
 fn test_version_check_noheader() {
-    mock("GET", "/v2/")
+    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let _m = mock("GET", "/v2/")
         .with_status(403)
         .create();
 
     let mut tcore = Core::new().unwrap();
     let dclient = dkregistry::v2::Client::configure(&tcore.handle())
-        .registry(mockito::SERVER_ADDRESS)
+        .registry(&addr)
         .insecure_registry(true)
         .username(None)
         .password(None)
@@ -133,14 +134,15 @@ fn test_version_check_noheader() {
 
 #[test]
 fn test_version_check_trailing_slash() {
-    mock("GET", "/v2")
+    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let _m = mock("GET", "/v2")
         .with_status(200)
         .with_header(API_VERSION_K, API_VERSION_V)
         .create();
 
     let mut tcore = Core::new().unwrap();
     let dclient = dkregistry::v2::Client::configure(&tcore.handle())
-        .registry(mockito::SERVER_ADDRESS)
+        .registry(&addr)
         .insecure_registry(true)
         .username(None)
         .password(None)

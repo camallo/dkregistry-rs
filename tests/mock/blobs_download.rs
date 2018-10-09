@@ -12,7 +12,8 @@ fn test_blobs_has_layer() {
     let binary_digest = "binarydigest";
 
     let ep = format!("/v2/{}/blobs/{}", name, digest);
-    mock("HEAD", ep.as_str())
+    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let _m = mock("HEAD", ep.as_str())
         .with_status(200)
         .with_header("Content-Length", "0")
         .with_header("Docker-Content-Digest", binary_digest)
@@ -20,7 +21,7 @@ fn test_blobs_has_layer() {
 
     let mut tcore = Core::new().unwrap();
     let dclient = dkregistry::v2::Client::configure(&tcore.handle())
-        .registry(mockito::SERVER_ADDRESS)
+        .registry(&addr)
         .insecure_registry(true)
         .username(None)
         .password(None)
@@ -41,11 +42,12 @@ fn test_blobs_hasnot_layer() {
     let digest = "fakedigest";
 
     let ep = format!("/v2/{}/blobs/{}", name, digest);
-    mock("HEAD", ep.as_str()).with_status(404).create();
+    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let _m = mock("HEAD", ep.as_str()).with_status(404).create();
 
     let mut tcore = Core::new().unwrap();
     let dclient = dkregistry::v2::Client::configure(&tcore.handle())
-        .registry(mockito::SERVER_ADDRESS)
+        .registry(&addr)
         .insecure_registry(true)
         .username(None)
         .password(None)

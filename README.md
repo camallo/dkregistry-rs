@@ -16,11 +16,11 @@ conformant to the [Docker Registry HTTP API V2][registry-v2] specification.
 
 ### Integration tests
 
-This library relies on the [mockito][mockito-gh] framework for mocking. At this time, it is not multi-thread aware.
+This library relies on the [mockito][mockito-gh] framework for mocking.
 
-As such, tests should be run serially via:
+Mock tests can be enabled via the `test-mock` feature:
 ```
-cargo test --features test-mock -- --test-threads=1
+cargo test --features test-mock
 ```
 
 [mockito-gh]: https://github.com/lipanski/mockito

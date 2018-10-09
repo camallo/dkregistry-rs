@@ -1,5 +1,5 @@
 /// Manifest version 2 schema 2.
-#[derive(Debug,Default,Deserialize,Serialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct ManifestSchema2 {
     #[serde(rename = "schemaVersion")]
     schema_version: u16,
@@ -9,7 +9,7 @@ pub struct ManifestSchema2 {
     layers: Vec<S2Layer>,
 }
 
-#[derive(Debug,Default,Deserialize,Serialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Config {
     #[serde(rename = "mediaType")]
     media_type: String,
@@ -17,7 +17,7 @@ pub struct Config {
     digest: String,
 }
 
-#[derive(Debug,Default,Deserialize,Serialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 struct S2Layer {
     #[serde(rename = "mediaType")]
     media_type: String,
@@ -27,7 +27,7 @@ struct S2Layer {
 }
 
 /// Manifest List.
-#[derive(Debug,Default,Deserialize,Serialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct ManifestList {
     #[serde(rename = "schemaVersion")]
     schema_version: u16,
@@ -37,7 +37,7 @@ pub struct ManifestList {
 }
 
 /// Manifest object.
-#[derive(Debug,Default,Deserialize,Serialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct ManifestObj {
     #[serde(rename = "mediaType")]
     media_type: String,
@@ -47,7 +47,7 @@ pub struct ManifestObj {
 }
 
 /// Platform-related manifest entries.
-#[derive(Debug,Default,Deserialize,Serialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Platform {
     pub architecture: String,
     pub os: String,
@@ -62,10 +62,7 @@ pub struct Platform {
 impl ManifestSchema2 {
     /// List digests of all layer referenced by this manifest.
     pub fn get_layers(&self) -> Vec<String> {
-        self.layers
-            .iter()
-            .map(|l| l.digest.clone())
-            .collect()
+        self.layers.iter().map(|l| l.digest.clone()).collect()
     }
 
     /// Get digest of the configuration object referenced by this manifest.

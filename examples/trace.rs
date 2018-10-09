@@ -1,13 +1,13 @@
 extern crate dkregistry;
-extern crate tokio_core;
+extern crate env_logger;
 extern crate futures;
 extern crate log;
-extern crate env_logger;
 extern crate serde_json;
+extern crate tokio_core;
 
+use dkregistry::reference;
 use std::{boxed, env, error, fs, io};
 use tokio_core::reactor::Core;
-use dkregistry::reference;
 
 use std::str::FromStr;
 
@@ -53,23 +53,23 @@ fn main() {
     };
 }
 
-fn run(dkr_ref: &reference::Reference,
-       user: Option<String>,
-       passwd: Option<String>)
-       -> Result<()> {
-    env_logger::Builder::new().filter(Some("dkregistry"), log::LevelFilter::Trace)
+fn run(dkr_ref: &reference::Reference, user: Option<String>, passwd: Option<String>) -> Result<()> {
+    env_logger::Builder::new()
+        .filter(Some("dkregistry"), log::LevelFilter::Trace)
         .filter(Some("trace"), log::LevelFilter::Trace)
         .try_init()?;
     let image = dkr_ref.repository();
     let version = dkr_ref.version();
 
     let mut tcore = try!(Core::new());
-    let mut dclient = try!(dkregistry::v2::Client::configure(&tcore.handle())
-                               .registry(&dkr_ref.registry())
-                               .insecure_registry(false)
-                               .username(user)
-                               .password(passwd)
-                               .build());
+    let mut dclient = try!(
+        dkregistry::v2::Client::configure(&tcore.handle())
+            .registry(&dkr_ref.registry())
+            .insecure_registry(false)
+            .username(user)
+            .password(passwd)
+            .build()
+    );
 
     let futcheck = try!(dclient.is_v2_supported());
     let supported = try!(tcore.run(futcheck));
@@ -95,11 +95,13 @@ fn run(dkr_ref: &reference::Reference,
 
     let layers = match manifest_kind {
         dkregistry::mediatypes::MediaTypes::ManifestV2S1Signed => {
-            let m: dkregistry::v2::manifest::ManifestSchema1Signed = try!(serde_json::from_slice(body.as_slice()));
+            let m: dkregistry::v2::manifest::ManifestSchema1Signed =
+                try!(serde_json::from_slice(body.as_slice()));
             m.get_layers()
         }
         dkregistry::mediatypes::MediaTypes::ManifestV2S2 => {
-            let m: dkregistry::v2::manifest::ManifestSchema2 = try!(serde_json::from_slice(body.as_slice()));
+            let m: dkregistry::v2::manifest::ManifestSchema2 =
+                try!(serde_json::from_slice(body.as_slice()));
             m.get_layers()
         }
         _ => return Err("unknown format".into()),

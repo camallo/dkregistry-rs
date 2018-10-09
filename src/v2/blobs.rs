@@ -1,7 +1,7 @@
-use v2::*;
-use hyper::StatusCode;
 use futures::future::{self, Either};
 use futures::Stream;
+use hyper::StatusCode;
+use v2::*;
 
 /// Convenience alias for future binary blob.
 pub type FutureBlob = Box<futures::Future<Item = Vec<u8>, Error = Error>>;
@@ -15,21 +15,20 @@ impl Client {
         };
         let req = self.new_request(hyper::Method::Head, url.clone());
         let freq = self.hclient.request(req);
-        let fres = freq.map(move |r| {
-                                trace!("HEAD {:?}", url);
-                                r
-                            })
-            .and_then(|r| {
+        let fres = freq
+            .map(move |r| {
+                trace!("HEAD {:?}", url);
+                r
+            }).and_then(|r| {
                 trace!("Blob check result: {:?}", r.status());
                 match r.status() {
-                    StatusCode::MovedPermanently |
-                    StatusCode::TemporaryRedirect |
-                    StatusCode::Found |
-                    StatusCode::Ok => Ok(true),
+                    StatusCode::MovedPermanently
+                    | StatusCode::TemporaryRedirect
+                    | StatusCode::Found
+                    | StatusCode::Ok => Ok(true),
                     _ => Ok(false),
                 }
-            })
-            .map_err(|e| e.into());
+            }).map_err(|e| e.into());
         return Ok(Box::new(fres));
     }
 
@@ -42,15 +41,15 @@ impl Client {
         };
         let req = self.new_request(hyper::Method::Get, url.clone());
         let freq = self.hclient.request(req);
-        let fres = freq.map(move |r| {
-                                trace!("GET {:?}", url);
-                                r
-                            })
-            .and_then(move |r| {
+        let fres = freq
+            .map(move |r| {
+                trace!("GET {:?}", url);
+                r
+            }).and_then(move |r| {
                 match r.status() {
-                    StatusCode::MovedPermanently |
-                    StatusCode::TemporaryRedirect |
-                    StatusCode::Found => {
+                    StatusCode::MovedPermanently
+                    | StatusCode::TemporaryRedirect
+                    | StatusCode::Found => {
                         trace!("Got moved status {:?}", r.status());
                     }
                     _ => return Either::A(future::ok(r)),
@@ -74,15 +73,12 @@ impl Client {
                     return Either::B(cl.hclient.request(req));
                 };
                 Either::A(future::ok(r))
-            })
-            .and_then(|r| {
-                          r.body()
-                              .fold(Vec::new(), |mut v, chunk| {
+            }).and_then(|r| {
+                r.body().fold(Vec::new(), |mut v, chunk| {
                     v.extend(&chunk[..]);
                     futures::future::ok::<_, hyper::Error>(v)
                 })
-                      })
-            .from_err();
+            }).from_err();
         return Ok(Box::new(fres));
     }
 }

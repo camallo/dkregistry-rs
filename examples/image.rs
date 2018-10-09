@@ -1,10 +1,10 @@
 extern crate dkregistry;
-extern crate tokio_core;
 extern crate futures;
 extern crate serde_json;
+extern crate tokio_core;
 
-use std::{io, fs, env, error, boxed};
 use dkregistry::{reference, render};
+use std::{boxed, env, error, fs, io};
 use tokio_core::reactor::Core;
 
 use std::str::FromStr;
@@ -12,12 +12,10 @@ use std::str::FromStr;
 type Result<T> = std::result::Result<T, boxed::Box<error::Error>>;
 
 fn main() {
-
     let dkr_ref = match std::env::args().nth(1) {
-            Some(ref x) => reference::Reference::from_str(x),
-            None => reference::Reference::from_str("quay.io/coreos/etcd"),
-        }
-        .unwrap();
+        Some(ref x) => reference::Reference::from_str(x),
+        None => reference::Reference::from_str("quay.io/coreos/etcd"),
+    }.unwrap();
     let registry = dkr_ref.registry();
 
     println!("[{}] downloading image {}", registry, dkr_ref);
@@ -58,12 +56,14 @@ fn run(dkr_ref: &reference::Reference, user: Option<String>, passwd: Option<Stri
     let version = dkr_ref.version();
 
     let mut tcore = try!(Core::new());
-    let mut dclient = try!(dkregistry::v2::Client::configure(&tcore.handle())
-                               .registry(&dkr_ref.registry())
-                               .insecure_registry(false)
-                               .username(user)
-                               .password(passwd)
-                               .build());
+    let mut dclient = try!(
+        dkregistry::v2::Client::configure(&tcore.handle())
+            .registry(&dkr_ref.registry())
+            .insecure_registry(false)
+            .username(user)
+            .password(passwd)
+            .build()
+    );
 
     let futcheck = try!(dclient.is_v2_supported());
     let supported = try!(tcore.run(futcheck));
@@ -101,10 +101,12 @@ fn run(dkr_ref: &reference::Reference, user: Option<String>, passwd: Option<Stri
         _ => return Err("unknown format".into()),
     };
 
-    println!("{} -> got {} layer(s), saving to directory {:?}",
-             image,
-             layers.len(),
-             version);
+    println!(
+        "{} -> got {} layer(s), saving to directory {:?}",
+        image,
+        layers.len(),
+        version
+    );
     std::fs::create_dir(&version)?;
     let mut blobs: Vec<Vec<u8>> = vec![];
 
@@ -118,10 +120,12 @@ fn run(dkr_ref: &reference::Reference, user: Option<String>, passwd: Option<Stri
         println!("Downloading layer {}...", digest);
         let fut_out = dclient.get_blob(&image, &digest)?;
         let out = tcore.run(fut_out)?;
-        println!("Layer {}/{}, got {} bytes.\n",
-                 i + 1,
-                 layers.len(),
-                 out.len());
+        println!(
+            "Layer {}/{}, got {} bytes.\n",
+            i + 1,
+            layers.len(),
+            out.len()
+        );
         blobs.push(out);
     }
 

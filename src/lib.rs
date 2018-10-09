@@ -37,9 +37,9 @@ extern crate base64;
 extern crate futures;
 extern crate hyper;
 extern crate hyper_rustls;
-extern crate tokio_core;
 extern crate serde;
 extern crate serde_json;
+extern crate tokio_core;
 #[macro_use]
 extern crate error_chain;
 #[macro_use]
@@ -47,8 +47,8 @@ extern crate serde_derive;
 #[macro_use]
 extern crate log;
 extern crate libflate;
-extern crate tar;
 extern crate strum;
+extern crate tar;
 #[macro_use]
 extern crate strum_macros;
 
@@ -58,9 +58,9 @@ pub mod reference;
 pub mod render;
 pub mod v2;
 
+use errors::Result;
 use std::collections::HashMap;
 use std::io::Read;
-use errors::Result;
 
 /// Default User-Agent client identity.
 pub static USER_AGENT: &'static str = "camallo-dkregistry/0.0";
@@ -76,8 +76,7 @@ pub fn get_credentials<T: Read>(
     let map: Auths = try!(serde_json::from_reader(reader));
     let real_index = match index {
         // docker.io has some special casing in config.json
-        "docker.io" |
-        "registry-1.docker.io" => "https://index.docker.io/v1/",
+        "docker.io" | "registry-1.docker.io" => "https://index.docker.io/v1/",
         other => other,
     };
     let auth = match map.auths.get(real_index) {

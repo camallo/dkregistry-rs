@@ -1,10 +1,10 @@
 extern crate dkregistry;
-extern crate tokio_core;
 extern crate futures;
+extern crate tokio_core;
 
-use std::{error, boxed};
-use tokio_core::reactor::Core;
 use futures::stream::Stream;
+use std::{boxed, error};
+use tokio_core::reactor::Core;
 
 type Result<T> = std::result::Result<T, boxed::Box<error::Error>>;
 
@@ -39,12 +39,14 @@ fn main() {
 
 fn run(host: &str, user: Option<String>, passwd: Option<String>, image: &str) -> Result<()> {
     let mut tcore = try!(Core::new());
-    let mut dclient = try!(dkregistry::v2::Client::configure(&tcore.handle())
-        .registry(host)
-        .insecure_registry(false)
-        .username(user)
-        .password(passwd)
-        .build());
+    let mut dclient = try!(
+        dkregistry::v2::Client::configure(&tcore.handle())
+            .registry(host)
+            .insecure_registry(false)
+            .username(user)
+            .password(passwd)
+            .build()
+    );
 
     let futcheck = try!(dclient.is_v2_supported());
     let supported = try!(tcore.run(futcheck));

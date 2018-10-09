@@ -111,9 +111,7 @@ fn test_version_check_status_forbidden() {
 #[test]
 fn test_version_check_noheader() {
     let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
-    let _m = mock("GET", "/v2/")
-        .with_status(403)
-        .create();
+    let _m = mock("GET", "/v2/").with_status(403).create();
 
     let mut tcore = Core::new().unwrap();
     let dclient = dkregistry::v2::Client::configure(&tcore.handle())

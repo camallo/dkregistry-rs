@@ -15,20 +15,20 @@ exclude = [
 [dependencies]
 base64 = "0.9"
 error-chain = { version = "0.12", default-features = false }
-hyper = "0.11"
-hyper-rustls = "0.8"
 futures = "0.1"
-tokio-core = "0.1"
+hyper = "0.11"
+hyper-rustls = "0.12"
+libflate = "0.1"
+log = "0.3"
+# See https://github.com/lipanski/mockito/issues/19
+mockito = { version = "0.5", optional = true }
 serde = "1"
 serde_derive = "1"
 serde_json = "1"
-log = "0.3"
 strum = "0.6"
 strum_macros = "0.6"
 tar = "0.4"
-libflate = "0.1"
-# See https://github.com/lipanski/mockito/issues/19
-mockito = { version = "0.5", optional = true }
+tokio-core = "0.1"
 
 [dev-dependencies]
 env_logger = "0.4"

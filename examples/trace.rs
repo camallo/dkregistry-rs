@@ -57,9 +57,9 @@ fn run(dkr_ref: &reference::Reference,
        user: Option<String>,
        passwd: Option<String>)
        -> Result<()> {
-    env_logger::LogBuilder::new().filter(Some("dkregistry"), log::LogLevelFilter::Trace)
-        .filter(Some("trace"), log::LogLevelFilter::Trace)
-        .init()?;
+    env_logger::Builder::new().filter(Some("dkregistry"), log::LevelFilter::Trace)
+        .filter(Some("trace"), log::LevelFilter::Trace)
+        .try_init()?;
     let image = dkr_ref.repository();
     let version = dkr_ref.version();
 

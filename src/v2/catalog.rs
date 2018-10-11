@@ -1,5 +1,9 @@
-use futures::Stream;
-use v2::*;
+use errors::{Error, Result};
+use futures::{self, Future, Stream};
+use hyper;
+use serde_json;
+use std::str::FromStr;
+use v2;
 
 /// Convenience alias for a stream of `String` repos.
 pub type StreamCatalog = Box<futures::Stream<Item = String, Error = Error>>;
@@ -9,7 +13,7 @@ struct Catalog {
     pub repositories: Vec<String>,
 }
 
-impl Client {
+impl v2::Client {
     pub fn get_catalog(&self, paginate: Option<u32>) -> Result<StreamCatalog> {
         let url = {
             let mut s = self.base_url.clone() + "/v2/_catalog";
@@ -18,27 +22,25 @@ impl Client {
             };
             try!(hyper::Uri::from_str(s.as_str()))
         };
-        let req = self.new_request(hyper::Method::Get, url);
+        let req = self.new_request(hyper::Method::GET, url);
         let freq = self.hclient.request(req);
         let fres = freq
-            .and_then(|resp| {
-                if resp.status() != hyper::StatusCode::Ok {
-                    return Err(hyper::Error::Status);
-                };
-                Ok(resp)
+            .from_err()
+            .and_then(|r| {
+                let status = r.status();
+                trace!("Got status: {:?}", status);
+                match status {
+                    hyper::StatusCode::OK => Ok(r),
+                    _ => Err(format!("get_catalog: wrong HTTP status '{}'", status).into()),
+                }
             }).and_then(|r| {
-                r.body().fold(Vec::new(), |mut v, chunk| {
-                    v.extend(&chunk[..]);
-                    futures::future::ok::<_, hyper::Error>(v)
+                r.into_body().concat2().map_err(|e| {
+                    format!("get_catalog: failed to fetch the whole body: {}", e).into()
                 })
-            }).map_err(|e| e.into())
-            .and_then(|chunks| String::from_utf8(chunks).map_err(|e| e.into()))
-            .and_then(|body| -> Result<Catalog> {
-                serde_json::from_slice(body.as_bytes()).map_err(|e| e.into())
-            }).map(|cat| -> Vec<Result<String>> {
-                cat.repositories.into_iter().map(|r| Ok(r)).collect()
-            }).map(|rs| futures::stream::iter(rs.into_iter()))
+            }).and_then(|body| -> Result<Catalog> {
+                serde_json::from_slice(&body.into_bytes()).map_err(|e| e.into())
+            }).map(|cat| futures::stream::iter_ok(cat.repositories.into_iter()))
             .flatten_stream();
-        return Ok(Box::new(fres));
+        Ok(Box::new(fres))
     }
 }

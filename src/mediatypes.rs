@@ -2,7 +2,7 @@
 
 use errors::*;
 use futures;
-use hyper::{header, mime};
+use mime;
 use strum::EnumProperty;
 
 pub type FutureMediaType = Box<futures::Future<Item = Option<MediaTypes>, Error = Error>>;
@@ -76,8 +76,5 @@ impl MediaTypes {
                 }
             }
         }
-    }
-    pub fn to_qitem(&self) -> header::QualityItem<mime::Mime> {
-        header::qitem(self.to_mime())
     }
 }

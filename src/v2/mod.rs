@@ -53,7 +53,8 @@ pub mod manifest;
 mod tags;
 pub use self::tags::StreamTags;
 
-mod blobs;
+pub mod blobs;
+pub use self::blobs::Blob;
 pub use self::blobs::FutureBlob;
 
 /// A Client to make outgoing API requests to a registry.

@@ -3,8 +3,11 @@ use futures::Stream;
 use hyper::StatusCode;
 use v2::*;
 
+/// Convenience alias for the binary blob.
+pub type Blob = Vec<u8>;
+
 /// Convenience alias for future binary blob.
-pub type FutureBlob = Box<futures::Future<Item = Vec<u8>, Error = Error>>;
+pub type FutureBlob = Box<futures::Future<Item = Blob, Error = Error>>;
 
 impl Client {
     /// Check if a blob exists.

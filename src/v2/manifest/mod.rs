@@ -3,9 +3,9 @@ use mediatypes;
 use v2::*;
 
 use futures::Stream;
-use hyper::header::{Accept, QualityItem};
-use hyper::mime;
+use hyper::header;
 use hyper::StatusCode;
+use mime;
 
 mod manifest_schema1;
 pub use self::manifest_schema1::*;
@@ -26,29 +26,30 @@ impl Client {
             reference
         )));
         let req = {
-            let accept_types = Accept(vec![mediatypes::MediaTypes::ManifestV2S2.to_qitem()]);
-            let mut r = self.new_request(hyper::Method::Get, url.clone());
-            r.headers_mut().set(accept_types);
+            let mut r = self.new_request(hyper::Method::GET, url.clone());
+            let mtype = mediatypes::MediaTypes::ManifestV2S2.to_string();
+            r.headers_mut()
+                .append(header::ACCEPT, header::HeaderValue::from_str(&mtype)?);
             r
         };
         let freq = self.hclient.request(req);
         let fres = freq
-            .map(move |r| {
+            .from_err()
+            .inspect(move |_| {
                 trace!("GET {:?}", url);
-                r
-            }).and_then(move |r| {
-                trace!("Got status: {:?}", r.status());
-                if r.status() != hyper::StatusCode::Ok {
-                    return Err(hyper::Error::Status);
-                };
-                Ok(r)
-            }).and_then(move |r| {
-                r.body().fold(Vec::new(), |mut v, chunk| {
-                    v.extend(&chunk[..]);
-                    futures::future::ok::<_, hyper::Error>(v)
+            }).and_then(|r| {
+                let status = r.status();
+                trace!("Got status: {:?}", status);
+                match status {
+                    hyper::StatusCode::OK => Ok(r),
+                    _ => Err(format!("get_manifest: wrong HTTP status '{}'", status).into()),
+                }
+            }).and_then(|r| {
+                r.into_body().concat2().map_err(|e| {
+                    format!("get_manifest: failed to fetch the whole body: {}", e).into()
                 })
-            }).from_err();
-        return Ok(Box::new(fres));
+            }).and_then(|body| Ok(body.into_bytes().to_vec()));
+        Ok(Box::new(fres))
     }
 
     /// Check if an image manifest exists.
@@ -71,48 +72,52 @@ impl Client {
             try!(hyper::Uri::from_str(ep.as_str()))
         };
         let accept_types = match mediatypes {
-            None => Accept(vec![mediatypes::MediaTypes::ManifestV2S2.to_qitem()]),
-            Some(ref v) => Accept(try!(to_mimes(v))),
+            None => vec![mediatypes::MediaTypes::ManifestV2S2.to_mime()],
+            Some(ref v) => try!(to_mimes(v)),
         };
         let req = {
-            let mut r = self.new_request(hyper::Method::Head, url.clone());
-            r.headers_mut().set(accept_types);
+            let mut r = self.new_request(hyper::Method::HEAD, url.clone());
+            for v in accept_types {
+                let _ = header::HeaderValue::from_str(&v.to_string())
+                    .map(|hval| r.headers_mut().append(hyper::header::ACCEPT, hval));
+            }
             r
         };
         let freq = self.hclient.request(req);
         let fres = freq
-            .map(move |r| {
+            .from_err()
+            .inspect(move |_| {
                 trace!("HEAD {:?}", url);
-                r
             }).and_then(|r| {
+                let status = r.status();
                 let mut ct = None;
-                let hdr = r.headers().get::<hyper::header::ContentType>();
-                if let Some(h) = hdr {
-                    ct = mediatypes::MediaTypes::from_mime(h).ok();
-                };
+                if let Some(h) = r.headers().get(header::CONTENT_TYPE) {
+                    if let Ok(s) = h.to_str() {
+                        ct = mediatypes::MediaTypes::from_str(s).ok();
+                    }
+                }
                 trace!("Manifest check result: {:?}", r.status());
-                let res = match r.status() {
-                    StatusCode::MovedPermanently
-                    | StatusCode::TemporaryRedirect
-                    | StatusCode::Found
-                    | StatusCode::Ok => ct,
-                    StatusCode::NotFound => None,
-                    _ => return Err(hyper::Error::Status),
+                let res = match status {
+                    StatusCode::MOVED_PERMANENTLY
+                    | StatusCode::TEMPORARY_REDIRECT
+                    | StatusCode::FOUND
+                    | StatusCode::OK => ct,
+                    StatusCode::NOT_FOUND => None,
+                    _ => return Err(format!("has_manifest: wrong HTTP status '{}'", status).into()),
                 };
                 Ok(res)
-            }).from_err();
-        return Ok(Box::new(fres));
+            });
+        Ok(Box::new(fres))
     }
 }
 
-fn to_mimes(v: &[&str]) -> Result<Vec<QualityItem<mime::Mime>>> {
-    let res: Vec<QualityItem<mime::Mime>>;
-    res = v
+fn to_mimes(v: &[&str]) -> Result<Vec<mime::Mime>> {
+    let res = v
         .iter()
         .filter_map(|x| {
             let mtype = mediatypes::MediaTypes::from_str(x);
             match mtype {
-                Ok(m) => Some(m.to_qitem()),
+                Ok(m) => Some(m.to_mime()),
                 _ => None,
             }
         }).collect();

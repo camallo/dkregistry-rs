@@ -1,9 +1,10 @@
+use hyper::client;
 use v2::*;
 
 /// Configuration for a `Client`.
 #[derive(Debug)]
 pub struct Config {
-    config: client::Config<hyper_rustls::HttpsConnector, hyper::Body>,
+    config: client::Client<hyper_rustls::HttpsConnector<client::HttpConnector>, hyper::Body>,
     handle: reactor::Handle,
     index: String,
     insecure_registry: bool,
@@ -15,9 +16,10 @@ pub struct Config {
 impl Config {
     /// Initialize `Config` with default values.
     pub fn default(handle: &reactor::Handle) -> Self {
+        let dns_threads = 4;
         Self {
-            config: hyper::client::Client::configure()
-                .connector(hyper_rustls::HttpsConnector::new(4, handle)),
+            config: hyper::client::Client::builder()
+                .build(hyper_rustls::HttpsConnector::new(dns_threads)),
             handle: handle.clone(),
             index: "registry-1.docker.io".into(),
             insecure_registry: false,
@@ -68,7 +70,6 @@ impl Config {
 
     /// Return a `Client` to interact with a v2 registry.
     pub fn build(self) -> Result<Client> {
-        let hclient = self.config.build(&self.handle);
         let base = match self.insecure_registry {
             false => "https://".to_string() + &self.index,
             true => "http://".to_string() + &self.index,
@@ -86,11 +87,11 @@ impl Config {
         let c = Client {
             base_url: base,
             credentials: creds,
-            hclient: hclient,
+            hclient: self.config,
             index: self.index,
             user_agent: self.user_agent,
             token: None,
         };
-        return Ok(c);
+        Ok(c)
     }
 }

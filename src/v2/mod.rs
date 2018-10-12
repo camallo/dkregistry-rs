@@ -31,7 +31,7 @@
 
 use super::errors::*;
 use futures;
-use hyper::{self, client};
+use hyper::{self, client, header};
 use hyper_rustls;
 use serde_json;
 use tokio_core::reactor;
@@ -61,16 +61,16 @@ pub use self::blobs::FutureBlob;
 pub struct Client {
     base_url: String,
     credentials: Option<(String, String)>,
-    hclient: client::Client<hyper_rustls::HttpsConnector>,
+    hclient: client::Client<hyper_rustls::HttpsConnector<client::HttpConnector>>,
     index: String,
     user_agent: Option<String>,
     token: Option<String>,
 }
 
-/// Convenience alias for future boolean result.
+/// Convenience alias for a future boolean result.
 pub type FutureBool = Box<futures::Future<Item = bool, Error = Error>>;
 
-/// Convenience alias for future manifest blob.
+/// Convenience alias for a future manifest blob.
 pub type FutureManifest = Box<futures::Future<Item = Vec<u8>, Error = Error>>;
 
 impl Client {
@@ -78,21 +78,29 @@ impl Client {
         Config::default(handle)
     }
 
-    fn new_request(&self, method: hyper::Method, url: hyper::Uri) -> hyper::client::Request {
-        let mut req = client::Request::new(method, url);
-        let host = hyper::header::Host::new(self.index.clone(), None);
-        req.headers_mut().set(host);
+    fn new_request(&self, method: hyper::Method, url: hyper::Uri) -> hyper::Request<hyper::Body> {
+        // TODO(lucab): get rid of all unwraps here.
+        let mut req = hyper::Request::default();
+        *req.method_mut() = method;
+        *req.uri_mut() = url;
+        req.headers_mut().append(
+            header::HOST,
+            header::HeaderValue::from_str(&self.index).unwrap(),
+        );
         if let Some(ref t) = self.token {
-            req.headers_mut()
-                .set(hyper::header::Authorization(hyper::header::Bearer {
-                    token: t.to_owned(),
-                }));
+            let bearer = format!("Bearer {}", t);
+            req.headers_mut().append(
+                header::AUTHORIZATION,
+                header::HeaderValue::from_str(&bearer).unwrap(),
+            );
         };
         if let Some(ref ua) = self.user_agent {
-            req.headers_mut()
-                .set(hyper::header::UserAgent::new(ua.to_owned()));
+            req.headers_mut().append(
+                header::USER_AGENT,
+                header::HeaderValue::from_str(ua).unwrap(),
+            );
         };
-        return req;
+        req
     }
 
     pub fn is_v2_supported(&self) -> Result<FutureBool> {
@@ -102,26 +110,23 @@ impl Client {
         let url = try!(hyper::Uri::from_str(
             (self.base_url.clone() + "/v2/").as_str()
         ));
-        let req = self.new_request(hyper::Method::Get, url.clone());
+        let req = self.new_request(hyper::Method::GET, url.clone());
         let freq = self.hclient.request(req);
         let fres = freq
-            .map(move |r| {
+            .from_err()
+            .inspect(move |_| {
                 trace!("GET {:?}", url);
-                r
-            }).and_then(
-                move |r| match (r.status(), r.headers().get_raw(api_header)) {
-                    (hyper::StatusCode::Ok, Some(x)) => Ok(x == api_version),
-                    (hyper::StatusCode::Unauthorized, Some(x)) => Ok(x == api_version),
-                    (s, v) => {
-                        trace!("Got status {}, header version {:?}", s, v);
-                        Ok(false)
-                    }
-                },
-            ).and_then(|b| {
+            }).and_then(move |r| match (r.status(), r.headers().get(api_header)) {
+                (hyper::StatusCode::OK, Some(x)) => Ok(x == api_version),
+                (hyper::StatusCode::UNAUTHORIZED, Some(x)) => Ok(x == api_version),
+                (s, v) => {
+                    trace!("Got status {}, header version {:?}", s, v);
+                    Ok(false)
+                }
+            }).inspect(|b| {
                 trace!("v2 API supported: {}", b);
-                Ok(b)
-            }).from_err();
-        return Ok(Box::new(fres));
+            });
+        Ok(Box::new(fres))
     }
 }
 

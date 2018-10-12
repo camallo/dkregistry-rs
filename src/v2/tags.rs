@@ -1,4 +1,5 @@
-use futures::Stream;
+use futures::{self, Stream};
+use hyper::{self, header};
 use v2::*;
 
 /// Convenience alias for a stream of `String` tags.
@@ -20,32 +21,33 @@ impl Client {
             };
             try!(hyper::Uri::from_str(s.as_str()))
         };
-        let req = self.new_request(hyper::Method::Get, url);
+        let req = self.new_request(hyper::Method::GET, url);
         let freq = self.hclient.request(req);
         let fres = freq
+            .from_err()
             .and_then(|r| {
-                if r.status() != hyper::StatusCode::Ok {
-                    return Err(hyper::Error::Status);
+                let status = r.status();
+                if status != hyper::StatusCode::OK {
+                    return Err(format!("get_tags: wrong HTTP status '{}", status).into());
                 };
-                let ok = match r.headers().get_raw("Content-type") {
-                    None => false,
-                    Some(ct) => ct.iter().any(|v| v == b"application/json"),
-                };
-                if !ok {
-                    return Err(hyper::Error::Header);
+                {
+                    let ct_hdr = r.headers().get(header::CONTENT_TYPE);
+                    let ok = match ct_hdr {
+                        None => false,
+                        Some(ct) => ct.to_str()?.starts_with("application/json"),
+                    };
+                    if !ok {
+                        return Err(format!("get_tags: wrong content type '{:?}'", ct_hdr).into());
+                    }
                 }
                 Ok(r)
             }).and_then(|r| {
-                r.body().fold(Vec::new(), |mut v, chunk| {
-                    v.extend(&chunk[..]);
-                    futures::future::ok::<_, hyper::Error>(v)
-                })
-            }).from_err()
-            .and_then(|chunks| String::from_utf8(chunks).map_err(|e| e.into()))
-            .and_then(|body| -> Result<Tags> {
-                serde_json::from_slice(body.as_bytes()).map_err(|e| e.into())
-            }).map(|ts| -> Vec<Result<String>> { ts.tags.into_iter().map(|r| Ok(r)).collect() })
-            .map(|rs| futures::stream::iter(rs.into_iter()))
+                r.into_body()
+                    .concat2()
+                    .map_err(|e| format!("get_tags: failed to fetch the whole body: {}", e).into())
+            }).and_then(|body| -> Result<Tags> {
+                serde_json::from_slice(&body.into_bytes()).map_err(|e| e.into())
+            }).map(|ts| futures::stream::iter_ok(ts.tags.into_iter()))
             .flatten_stream();
         Ok(Box::new(fres))
     }

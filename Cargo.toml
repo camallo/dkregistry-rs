@@ -16,10 +16,12 @@ exclude = [
 base64 = "0.9"
 error-chain = { version = "0.12", default-features = false }
 futures = "0.1"
-hyper = "0.11"
-hyper-rustls = "0.12"
+hyper = "0.12"
+hyper-rustls = "0.14"
+http = "0.1"
 libflate = "0.1"
 log = "0.4"
+mime = "0.3"
 mockito = { version = "0.13", optional = true }
 serde = "1"
 serde_derive = "1"

@@ -1,4 +1,6 @@
+use base64;
 use futures::Stream;
+use hyper::header;
 use v2::*;
 
 /// Convenience alias for future `TokenAuth` result.
@@ -25,21 +27,18 @@ impl Client {
         let url = try!(hyper::Uri::from_str(
             (self.base_url.clone() + "/v2/").as_str()
         ));
-        let req = self.new_request(hyper::Method::Get, url);
+        let req = self.new_request(hyper::Method::GET, url);
         let freq = self.hclient.request(req);
         let www_auth = freq
-            .and_then(|r| Ok(r))
+            .from_err()
             .and_then(|r| {
                 let a = r
                     .headers()
-                    .get_raw("www-authenticate")
-                    .ok_or(hyper::Error::Header)?
-                    .one()
-                    .ok_or(hyper::Error::Header)?;
-                let chal = try!(String::from_utf8(a.to_vec()));
+                    .get(hyper::header::WWW_AUTHENTICATE)
+                    .ok_or(Error::from("get_token: missing Auth header"))?;
+                let chal = String::from_utf8(a.as_bytes().to_vec())?;
                 Ok(chal)
-            }).from_err::<Error>()
-            .and_then(move |hdr| {
+            }).and_then(move |hdr| {
                 let mut auth_ep = "".to_owned();
                 let mut service = None;
                 for item in hdr.trim_left_matches("Bearer ").split(',') {
@@ -58,7 +57,7 @@ impl Client {
                 }
                 Ok(auth_ep)
             });
-        return Ok(Box::new(www_auth));
+        Ok(Box::new(www_auth))
     }
 
     /// Set the token to be used for further registry requests.
@@ -85,37 +84,36 @@ impl Client {
                 trace!("Token endpoint: {}", auth_ep);
                 hyper::Uri::from_str(auth_ep.as_str()).map_err(|e| e.into())
             }).and_then(move |u| {
-                let mut auth_req = client::Request::new(hyper::Method::Get, u);
+                let mut auth_req = hyper::Request::default();
+                *auth_req.method_mut() = hyper::Method::GET;
+                *auth_req.uri_mut() = u;
                 if let Some(c) = creds {
-                    let hdr = hyper::header::Authorization(hyper::header::Basic {
-                        username: c.0,
-                        password: Some(c.1),
-                    });
-                    auth_req.headers_mut().set(hdr);
+                    let plain = format!("{}:{}", c.0, c.1);
+                    let basic = format!("Basic {}", base64::encode(&plain));
+                    auth_req.headers_mut().append(
+                        header::AUTHORIZATION,
+                        header::HeaderValue::from_str(&basic).unwrap(),
+                    );
                 };
                 subclient.request(auth_req).map_err(|e| e.into())
             }).and_then(|r| {
-                trace!("Got status {}", r.status());
-                if r.status() != hyper::StatusCode::Ok {
-                    Err(Error::from(hyper::Error::Status))
-                } else {
-                    Ok(r)
+                let status = r.status();
+                trace!("Got status {}", status);
+                match status {
+                    hyper::StatusCode::OK => Ok(r),
+                    _ => Err(format!("login: wrong HTTP status '{}'", status).into()),
                 }
             }).and_then(|r| {
-                r.body()
-                    .fold(Vec::new(), |mut v, chunk| {
-                        v.extend(&chunk[..]);
-                        futures::future::ok::<_, hyper::Error>(v)
-                    }).map_err(|e| e.into())
+                r.into_body()
+                    .concat2()
+                    .map_err(|e| format!("login: failed to fetch the whole body: {}", e).into())
             }).and_then(|body| {
-                let s = String::from_utf8(body)?;
-                let ta = serde_json::from_slice(s.as_bytes()).map_err(|e| e.into());
-                if let Ok(_) = ta {
-                    trace!("Got token");
-                };
-                ta
+                let s = String::from_utf8(body.into_bytes().to_vec())?;
+                serde_json::from_slice(s.as_bytes()).map_err(|e| e.into())
+            }).inspect(|_| {
+                trace!("Got token");
             });
-        return Ok(Box::new(auth));
+        Ok(Box::new(auth))
     }
 
     /// Check whether the client is authenticated with the registry.
@@ -123,27 +121,29 @@ impl Client {
         let url = try!(hyper::Uri::from_str(
             (self.base_url.clone() + "/v2/").as_str()
         ));
-        let mut req = self.new_request(hyper::Method::Get, url.clone());
+        let mut req = self.new_request(hyper::Method::GET, url.clone());
         if let Some(t) = token {
-            req.headers_mut()
-                .set(hyper::header::Authorization(hyper::header::Bearer {
-                    token: t.to_owned(),
-                }));
+            let bearer = format!("Bearer {}", t);
+            req.headers_mut().append(
+                header::AUTHORIZATION,
+                header::HeaderValue::from_str(&bearer).unwrap(),
+            );
         };
 
         let freq = self.hclient.request(req);
         let fres = freq
-            .map(move |r| {
+            .from_err()
+            .inspect(move |_| {
                 trace!("GET {:?}", url);
-                r
             }).and_then(move |r| {
-                trace!("Got status {}", r.status());
-                match r.status() {
-                    hyper::StatusCode::Ok => Ok(true),
-                    hyper::StatusCode::Unauthorized => Ok(false),
-                    _ => Err(hyper::error::Error::Status),
+                let status = r.status();
+                trace!("Got status {}", status);
+                match status {
+                    hyper::StatusCode::OK => Ok(true),
+                    hyper::StatusCode::UNAUTHORIZED => Ok(false),
+                    _ => Err(format!("is_auth: wrong HTTP status '{}'", status).into()),
                 }
-            }).from_err();
-        return Ok(Box::new(fres));
+            });
+        Ok(Box::new(fres))
     }
 }

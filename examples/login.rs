@@ -52,7 +52,7 @@ fn run(host: &str, user: Option<String>, passwd: Option<String>) -> Result<()> {
         return Err("no login performed, but already authenticated".into());
     }
 
-    let fut_token = try!(dclient.login(vec![]));
+    let fut_token = try!(dclient.login(&[]));
     let token = try!(tcore.run(fut_token));
 
     let futauth = try!(dclient.is_auth(Some(token.token())));

@@ -70,9 +70,10 @@ impl Config {
 
     /// Return a `Client` to interact with a v2 registry.
     pub fn build(self) -> Result<Client> {
-        let base = match self.insecure_registry {
-            false => "https://".to_string() + &self.index,
-            true => "http://".to_string() + &self.index,
+        let base = if self.insecure_registry {
+            "http://".to_string() + &self.index
+        } else {
+            "https://".to_string() + &self.index
         };
         trace!(
             "Built client for {:?}: endpoint {:?} - user {:?}",
@@ -82,7 +83,10 @@ impl Config {
         );
         let creds = match (self.username, self.password) {
             (None, None) => None,
-            (u, p) => Some((u.unwrap_or("".into()), p.unwrap_or("".into()))),
+            (u, p) => Some((
+                u.unwrap_or_else(|| "".into()),
+                p.unwrap_or_else(|| "".into()),
+            )),
         };
         let c = Client {
             base_url: base,

@@ -54,7 +54,7 @@ fn run(host: &str, user: Option<String>, passwd: Option<String>, image: &str) ->
         return Err("API v2 not supported".into());
     }
 
-    let fut_token = try!(dclient.login(vec![&format!("repository:{}:pull", image)]));
+    let fut_token = try!(dclient.login(&[&format!("repository:{}:pull", image)]));
     let token_auth = try!(tcore.run(fut_token));
 
     let futauth = try!(dclient.is_auth(Some(token_auth.token())));

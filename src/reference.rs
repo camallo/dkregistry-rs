@@ -66,9 +66,9 @@ impl Default for Version {
 
 impl fmt::Debug for Version {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let v = match self {
-            &Version::Tag(ref s) => ":".to_string() + s,
-            &Version::Digest(ref t, ref d) => "@".to_string() + t + ":" + d,
+        let v = match *self {
+            Version::Tag(ref s) => ":".to_string() + s,
+            Version::Digest(ref t, ref d) => "@".to_string() + t + ":" + d,
         };
         write!(f, "{}", v)
     }
@@ -76,9 +76,9 @@ impl fmt::Debug for Version {
 
 impl fmt::Display for Version {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let v = match self {
-            &Version::Tag(ref s) => s.to_string(),
-            &Version::Digest(ref t, ref d) => t.to_string() + ":" + d,
+        let v = match *self {
+            Version::Tag(ref s) => s.to_string(),
+            Version::Digest(ref t, ref d) => t.to_string() + ":" + d,
         };
         write!(f, "{}", v)
     }
@@ -96,13 +96,13 @@ pub struct Reference {
 
 impl Reference {
     pub fn new(registry: Option<String>, repository: String, version: Option<Version>) -> Self {
-        let reg = registry.unwrap_or("registry-1.docker.io".to_string());
-        let ver = version.unwrap_or(Version::Tag("latest".to_string()));
+        let reg = registry.unwrap_or_else(|| "registry-1.docker.io".to_string());
+        let ver = version.unwrap_or_else(|| Version::Tag("latest".to_string()));
         Self {
             has_schema: false,
             raw_input: "".into(),
             registry: reg,
-            repository: repository,
+            repository,
             version: ver,
         }
     }
@@ -152,19 +152,19 @@ fn parse_url(s: &str) -> Result<Reference, ::errors::Error> {
     if has_schema {
         rest = s.trim_left_matches("docker://");
     };
-    let (rest, ver) = match (rest.rfind('@'), rest.rfind(':')) {
+    let (rest, version) = match (rest.rfind('@'), rest.rfind(':')) {
         (Some(i), _) | (None, Some(i)) => {
             let s = rest.split_at(i);
             (s.0, Version::from_str(s.1)?)
         }
         (None, None) => (rest, Version::default()),
     };
-    if rest.len() < 1 {
+    if rest.is_empty() {
         bail!("name too short");
     }
     let mut reg = "registry-1.docker.io";
     let split: Vec<&str> = rest.rsplitn(3, '/').collect();
-    let image = match split.len() {
+    let repository = match split.len() {
         1 => "library/".to_string() + rest,
         2 => rest.to_string(),
         _ => {
@@ -172,14 +172,14 @@ fn parse_url(s: &str) -> Result<Reference, ::errors::Error> {
             split[1].to_string() + "/" + split[0]
         }
     };
-    if image.len() > 127 {
+    if repository.len() > 127 {
         bail!("name too long");
     }
     Ok(Reference {
-        has_schema: has_schema,
+        has_schema,
         raw_input: s.to_string(),
         registry: reg.to_string(),
-        repository: image,
-        version: ver,
+        repository,
+        version,
     })
 }

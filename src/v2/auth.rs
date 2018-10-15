@@ -35,7 +35,7 @@ impl Client {
                 let a = r
                     .headers()
                     .get(hyper::header::WWW_AUTHENTICATE)
-                    .ok_or(Error::from("get_token: missing Auth header"))?;
+                    .ok_or_else(|| Error::from("get_token: missing Auth header"))?;
                 let chal = String::from_utf8(a.as_bytes().to_vec())?;
                 Ok(chal)
             }).and_then(move |hdr| {
@@ -45,7 +45,7 @@ impl Client {
                     let kv: Vec<&str> = item.split('=').collect();
                     match (kv.get(0), kv.get(1)) {
                         (Some(&"realm"), Some(v)) => auth_ep = v.trim_matches('"').to_owned(),
-                        (Some(&"service"), Some(v)) => service = Some(v.trim_matches('"').clone()),
+                        (Some(&"service"), Some(v)) => service = Some(v.trim_matches('"')),
                         (Some(&"scope"), _) => {}
                         (_, _) => return Err("unsupported key".to_owned().into()),
                     };
@@ -71,7 +71,7 @@ impl Client {
     /// Perform registry authentication and return an authenticated token.
     ///
     /// On success, the returned token will be valid for all requested scopes.
-    pub fn login(&self, scopes: Vec<&str>) -> Result<FutureTokenAuth> {
+    pub fn login(&self, scopes: &[&str]) -> Result<FutureTokenAuth> {
         let subclient = self.hclient.clone();
         let creds = self.credentials.clone();
         let scope = scopes

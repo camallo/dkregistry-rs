@@ -30,7 +30,7 @@ pub fn unpack(layers: &[Vec<u8>], target_dir: &path::Path) -> Result<()> {
         for entry in archive.entries()? {
             let file = entry?;
             let path = file.path()?;
-            let parent = path.parent().unwrap_or(path::Path::new("/"));
+            let parent = path.parent().unwrap_or_else(|| path::Path::new("/"));
             if let Some(fname) = path.file_name() {
                 let wh_name = fname.to_string_lossy();
                 if wh_name == ".wh..wh..opq" {

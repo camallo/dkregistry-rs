@@ -1,4 +1,6 @@
 /// Manifest version 2 schema 2.
+///
+/// Specification is at https://docs.docker.com/registry/spec/manifest-v2-2/.
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct ManifestSchema2 {
     #[serde(rename = "schemaVersion")]
@@ -60,7 +62,9 @@ pub struct Platform {
 }
 
 impl ManifestSchema2 {
-    /// List digests of all layer referenced by this manifest.
+    /// List digests of all layers referenced by this manifest.
+    ///
+    /// The returned layers list is ordered starting with the base image first.
     pub fn get_layers(&self) -> Vec<String> {
         self.layers.iter().map(|l| l.digest.clone()).collect()
     }

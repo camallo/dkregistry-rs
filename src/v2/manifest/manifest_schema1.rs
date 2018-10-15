@@ -1,6 +1,8 @@
 use v2::*;
 
 /// Manifest version 2 schema 1, signed.
+///
+/// Specification is at https://docs.docker.com/registry/spec/manifest-v2-1/.
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct ManifestSchema1Signed {
     #[serde(rename = "schemaVersion")]
@@ -37,6 +39,9 @@ struct S1Layer {
 }
 
 impl ManifestSchema1Signed {
+    /// List digests of all layers referenced by this manifest.
+    ///
+    /// The returned layers list is ordered starting with the base image first.
     pub fn get_layers(&self) -> Vec<String> {
         self.fs_layers
             .iter()

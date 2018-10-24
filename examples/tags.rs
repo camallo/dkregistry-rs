@@ -2,11 +2,12 @@ extern crate dkregistry;
 extern crate futures;
 extern crate tokio_core;
 
-use futures::stream::Stream;
+mod common;
+
+use futures::prelude::*;
+use std::result::Result;
 use std::{boxed, error};
 use tokio_core::reactor::Core;
-
-type Result<T> = std::result::Result<T, boxed::Box<error::Error>>;
 
 fn main() {
     let registry = match std::env::args().nth(1) {
@@ -37,37 +38,30 @@ fn main() {
     };
 }
 
-fn run(host: &str, user: Option<String>, passwd: Option<String>, image: &str) -> Result<()> {
-    let mut tcore = try!(Core::new());
-    let mut dclient = try!(
-        dkregistry::v2::Client::configure(&tcore.handle())
-            .registry(host)
-            .insecure_registry(false)
-            .username(user)
-            .password(passwd)
-            .build()
-    );
+fn run(
+    host: &str,
+    user: Option<String>,
+    passwd: Option<String>,
+    image: &str,
+) -> Result<(), boxed::Box<error::Error>> {
+    let mut tcore = Core::new()?;
+    let mut client = dkregistry::v2::Client::configure(&tcore.handle())
+        .registry(host)
+        .insecure_registry(false)
+        .username(user)
+        .password(passwd)
+        .build()?;
 
-    let futcheck = try!(dclient.is_v2_supported());
-    let supported = try!(tcore.run(futcheck));
-    if !supported {
-        return Err("API v2 not supported".into());
+    let login_scope = format!("repository:{}:pull", image);
+
+    let futures = common::authenticate_client(&mut client, &login_scope)
+        .and_then(|dclient| dclient.get_tags(&image, Some(7)).collect());
+
+    match tcore.run(futures) {
+        Ok(tags) => {
+            println!("{:?}", tags);
+            Ok(())
+        }
+        Err(e) => Err(Box::new(e)),
     }
-
-    let fut_token = try!(dclient.login(&[&format!("repository:{}:pull", image)]));
-    let token_auth = try!(tcore.run(fut_token));
-
-    let futauth = try!(dclient.is_auth(Some(token_auth.token())));
-    if !try!(tcore.run(futauth)) {
-        return Err("login failed".into());
-    }
-
-    dclient.set_token(Some(token_auth.token()));
-
-    let fut_tags = dclient.get_tags(image, Some(7))?;
-    let tags = tcore.run(fut_tags.collect());
-
-    println!("{:?}", tags);
-
-    return Ok(());
 }

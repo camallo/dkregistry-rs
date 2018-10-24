@@ -1,3 +1,4 @@
+extern crate dirs;
 extern crate dkregistry;
 extern crate env_logger;
 extern crate futures;
@@ -5,13 +6,13 @@ extern crate log;
 extern crate serde_json;
 extern crate tokio_core;
 
+mod common;
+
 use dkregistry::reference;
+use futures::prelude::*;
+use std::str::FromStr;
 use std::{boxed, env, error, fs, io};
 use tokio_core::reactor::Core;
-
-use std::str::FromStr;
-
-type Result<T> = std::result::Result<T, boxed::Box<error::Error>>;
 
 fn main() {
     let dkr_ref = match std::env::args().nth(1) {
@@ -24,7 +25,7 @@ fn main() {
 
     let mut user = None;
     let mut password = None;
-    let home = env::home_dir().unwrap_or("/root".into());
+    let home = dirs::home_dir().unwrap();
     let cfg = fs::File::open(home.join(".docker/config.json"));
     if let Ok(fp) = cfg {
         let creds = dkregistry::get_credentials(io::BufReader::new(fp), &registry);
@@ -53,70 +54,83 @@ fn main() {
     };
 }
 
-fn run(dkr_ref: &reference::Reference, user: Option<String>, passwd: Option<String>) -> Result<()> {
+fn run(
+    dkr_ref: &reference::Reference,
+    user: Option<String>,
+    passwd: Option<String>,
+) -> Result<(), boxed::Box<error::Error>> {
     env_logger::Builder::new()
         .filter(Some("dkregistry"), log::LevelFilter::Trace)
         .filter(Some("trace"), log::LevelFilter::Trace)
         .try_init()?;
+
     let image = dkr_ref.repository();
     let version = dkr_ref.version();
+    let mut tcore = Core::new()?;
 
-    let mut tcore = try!(Core::new());
-    let mut dclient = try!(
-        dkregistry::v2::Client::configure(&tcore.handle())
-            .registry(&dkr_ref.registry())
-            .insecure_registry(false)
-            .username(user)
-            .password(passwd)
-            .build()
-    );
+    let mut client = dkregistry::v2::Client::configure(&tcore.handle())
+        .registry(&dkr_ref.registry())
+        .insecure_registry(false)
+        .username(user)
+        .password(passwd)
+        .build()?;
 
-    let futcheck = try!(dclient.is_v2_supported());
-    let supported = try!(tcore.run(futcheck));
-    if !supported {
-        return Err("API v2 not supported".into());
-    }
+    let login_scope = "";
 
-    let fut_token = try!(dclient.login(&[&format!("repository:{}:pull", image)]));
-    let token_auth = try!(tcore.run(fut_token));
+    let futures = common::authenticate_client(&mut client, &login_scope)
+        .and_then(|dclient| {
+            dclient
+                    .has_manifest(&image, &version, None)
+                    .and_then(move |manifest_option| Ok((dclient, manifest_option)))
+                    .and_then(|(dclient, manifest_option)| match manifest_option {
+                        None => {
+                            return Err(
+                                format!("{}:{} doesn't have a manifest", &image, &version).into()
+                            )
+                        }
 
-    let futauth = try!(dclient.is_auth(Some(token_auth.token())));
-    if !try!(tcore.run(futauth)) {
-        return Err("login failed".into());
-    }
+                        Some(manifest_kind) => Ok((dclient, manifest_kind)),
+                    })
+        }).and_then(|(dclient, manifest_kind)| {
+            let image = image.clone();
+            dclient
+                .get_manifest(&image, &version)
+                .and_then(move |manifest_body| {
+                    let layers = match manifest_kind {
+                        dkregistry::mediatypes::MediaTypes::ManifestV2S1Signed => {
+                            let m: dkregistry::v2::manifest::ManifestSchema1Signed =
+                        serde_json::from_slice(manifest_body.as_slice()).unwrap();
+                            m.get_layers()
+                        }
+                        dkregistry::mediatypes::MediaTypes::ManifestV2S2 => {
+                            let m: dkregistry::v2::manifest::ManifestSchema2 =
+                            serde_json::from_slice(manifest_body.as_slice()).unwrap();
+                            m.get_layers()
+                        }
+                        _ => return Err("unknown format".into()),
+                    };
+                    Ok((dclient, layers))
+                })
+        }).and_then(|(dclient, layers)| {
+            let image = image.clone();
 
-    dclient.set_token(Some(token_auth.token()));
+            println!("{} -> got {} layer(s)", &image, layers.len(),);
 
-    let fut_hasmanif = dclient.has_manifest(&image, &version, None)?;
-    let manifest_kind = try!(tcore.run(fut_hasmanif)?.ok_or("no manifest found"));
+            futures::stream::iter_ok::<_, dkregistry::errors::Error>(layers)
+                .and_then(move |layer| {
+                    let get_blob_future = dclient.get_blob(&image, &layer);
+                    get_blob_future.inspect(move |blob| {
+                        println!("Layer {}, got {} bytes.\n", layer, blob.len());
+                    })
+                }).collect()
+        });
 
-    let fut_manif = dclient.get_manifest(&image, &version)?;
-    let body = tcore.run(fut_manif)?;
-
-    let layers = match manifest_kind {
-        dkregistry::mediatypes::MediaTypes::ManifestV2S1Signed => {
-            let m: dkregistry::v2::manifest::ManifestSchema1Signed =
-                try!(serde_json::from_slice(body.as_slice()));
-            m.get_layers()
-        }
-        dkregistry::mediatypes::MediaTypes::ManifestV2S2 => {
-            let m: dkregistry::v2::manifest::ManifestSchema2 =
-                try!(serde_json::from_slice(body.as_slice()));
-            m.get_layers()
-        }
-        _ => return Err("unknown format".into()),
+    let blobs = match tcore.run(futures) {
+        Ok(blobs) => blobs,
+        Err(e) => return Err(Box::new(e)),
     };
 
-    for digest in layers {
-        let fut_presence = dclient.has_blob(&image, &digest)?;
-        let has_blob = tcore.run(fut_presence)?;
-        if !has_blob {
-            return Err(format!("missing layer {}", digest).into());
-        }
+    println!("Downloaded {} layers", blobs.len());
 
-        let fut_out = dclient.get_blob(&image, &digest)?;
-        let _out = tcore.run(fut_out)?;
-    }
-
-    return Ok(());
+    Ok(())
 }

@@ -1,15 +1,17 @@
+extern crate dirs;
 extern crate dkregistry;
 extern crate futures;
 extern crate serde_json;
 extern crate tokio_core;
 
 use dkregistry::{reference, render};
+use futures::prelude::*;
+use std::result::Result;
+use std::str::FromStr;
 use std::{boxed, env, error, fs, io};
 use tokio_core::reactor::Core;
 
-use std::str::FromStr;
-
-type Result<T> = std::result::Result<T, boxed::Box<error::Error>>;
+mod common;
 
 fn main() {
     let dkr_ref = match std::env::args().nth(1) {
@@ -22,7 +24,7 @@ fn main() {
 
     let mut user = None;
     let mut password = None;
-    let home = env::home_dir().unwrap_or("/root".into());
+    let home = dirs::home_dir().unwrap();
     let cfg = fs::File::open(home.join(".docker/config.json"));
     if let Ok(fp) = cfg {
         let creds = dkregistry::get_credentials(io::BufReader::new(fp), &registry);
@@ -51,87 +53,90 @@ fn main() {
     };
 }
 
-fn run(dkr_ref: &reference::Reference, user: Option<String>, passwd: Option<String>) -> Result<()> {
+fn run(
+    dkr_ref: &reference::Reference,
+    user: Option<String>,
+    passwd: Option<String>,
+) -> Result<(), boxed::Box<error::Error>> {
+    let mut tcore = try!(Core::new());
+
+    let mut client = dkregistry::v2::Client::configure(&tcore.handle())
+        .registry(&dkr_ref.registry())
+        .insecure_registry(false)
+        .username(user)
+        .password(passwd)
+        .build()?;
+
     let image = dkr_ref.repository();
+    let login_scope = format!("repository:{}:pull", image);
     let version = dkr_ref.version();
 
-    let mut tcore = try!(Core::new());
-    let mut dclient = try!(
-        dkregistry::v2::Client::configure(&tcore.handle())
-            .registry(&dkr_ref.registry())
-            .insecure_registry(false)
-            .username(user)
-            .password(passwd)
-            .build()
-    );
+    let futures = common::authenticate_client(&mut client, &login_scope)
+        .and_then(|dclient| {
+            dclient
+                .has_manifest(&image, &version, None)
+                .and_then(move |manifest_option| Ok((dclient, manifest_option)))
+                .and_then(|(dclient, manifest_option)| match manifest_option {
+                    None => Err(format!("{}:{} doesn't have a manifest", &image, &version).into()),
 
-    let futcheck = try!(dclient.is_v2_supported());
-    let supported = try!(tcore.run(futcheck));
-    if !supported {
-        return Err("API v2 not supported".into());
-    }
+                    Some(manifest_kind) => Ok((dclient, manifest_kind)),
+                })
+        }).and_then(|(dclient, manifest_kind)| {
+            let image = image.clone();
+            dclient.get_manifest(&image, &version).and_then(
+                move |manifest_body| match manifest_kind {
+                    dkregistry::mediatypes::MediaTypes::ManifestV2S1Signed => {
+                        let m: dkregistry::v2::manifest::ManifestSchema1Signed = match
+                        serde_json::from_slice(manifest_body.as_slice()) {
+                            Ok(json) => json,
+                            Err(e) => return Err(e.into()),
 
-    let fut_token = try!(dclient.login(&[&format!("repository:{}:pull", image)]));
-    let token_auth = try!(tcore.run(fut_token));
+                        };
+                        Ok((dclient, m.get_layers()))
+                    }
+                    dkregistry::mediatypes::MediaTypes::ManifestV2S2 => {
+                        let m: dkregistry::v2::manifest::ManifestSchema2 =
+                            match serde_json::from_slice(manifest_body.as_slice()) {
+                                Ok(json) => json,
+                                Err(e) => return Err(e.into()),
+                            };
+                        Ok((dclient, m.get_layers()))
+                    }
+                    _ => Err("unknown format".into()),
+                },
+            )
+        }).and_then(|(dclient, layers)| {
+            let image = image.clone();
 
-    let futauth = try!(dclient.is_auth(Some(token_auth.token())));
-    if !try!(tcore.run(futauth)) {
-        return Err("login failed".into());
-    }
+            println!("{} -> got {} layer(s)", &image, layers.len(),);
 
-    dclient.set_token(Some(token_auth.token()));
+            futures::stream::iter_ok::<_, dkregistry::errors::Error>(layers)
+                .and_then(move |layer| {
+                    let get_blob_future = dclient.get_blob(&image, &layer);
+                    get_blob_future.inspect(move |blob| {
+                        println!("Layer {}, got {} bytes.\n", layer, blob.len());
+                    })
+                }).collect()
+        });
 
-    let fut_hasmanif = dclient.has_manifest(&image, &version, None)?;
-    let manifest_kind = try!(tcore.run(fut_hasmanif)?.ok_or("no manifest found"));
-
-    let fut_manif = dclient.get_manifest(&image, &version)?;
-    let body = tcore.run(fut_manif)?;
-
-    let layers = match manifest_kind {
-        dkregistry::mediatypes::MediaTypes::ManifestV2S1Signed => {
-            let m: dkregistry::v2::manifest::ManifestSchema1Signed =
-                try!(serde_json::from_slice(body.as_slice()));
-            m.get_layers()
-        }
-        dkregistry::mediatypes::MediaTypes::ManifestV2S2 => {
-            let m: dkregistry::v2::manifest::ManifestSchema2 =
-                try!(serde_json::from_slice(body.as_slice()));
-            m.get_layers()
-        }
-        _ => return Err("unknown format".into()),
+    let blobs = match tcore.run(futures) {
+        Ok(blobs) => blobs,
+        Err(e) => return Err(Box::new(e)),
     };
 
-    println!(
-        "{} -> got {} layer(s), saving to directory {:?}",
-        image,
-        layers.len(),
-        version
-    );
-    std::fs::create_dir(&version)?;
-    let mut blobs: Vec<Vec<u8>> = vec![];
+    println!("Downloaded {} layers", blobs.len());
 
-    for (i, digest) in layers.iter().enumerate() {
-        let fut_presence = dclient.has_blob(&image, &digest)?;
-        let has_blob = tcore.run(fut_presence)?;
-        if !has_blob {
-            return Err(format!("missing layer {}", digest).into());
-        }
-
-        println!("Downloading layer {}...", digest);
-        let fut_out = dclient.get_blob(&image, &digest)?;
-        let out = tcore.run(fut_out)?;
-        println!(
-            "Layer {}/{}, got {} bytes.\n",
-            i + 1,
-            layers.len(),
-            out.len()
-        );
-        blobs.push(out);
+    let path = &format!("{}:{}", &image, &version).replace("/", "_");
+    let path = std::path::Path::new(&path);
+    if path.exists() {
+        return Err(format!("path {:?} already exists, exiting", &path).into());
     }
+    // TODO: use async io
+    std::fs::create_dir(&path).unwrap();
+    let can_path = path.canonicalize().unwrap();
 
-    let can_path = std::fs::canonicalize(&version)?;
-    let r = render::unpack(&blobs, &can_path);
-    println!("{:?}", r);
-    r?;
-    Ok(())
+    println!("Unpacking layers to {:?}", &can_path);
+    let r = render::unpack(&blobs, &can_path).unwrap();
+
+    Ok(r)
 }

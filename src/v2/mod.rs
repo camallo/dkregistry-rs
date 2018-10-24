@@ -20,7 +20,7 @@
 //! let dclient = Client::configure(&tcore.handle())
 //!                      .registry("quay.io")
 //!                      .build()?;
-//! let fetch = dclient.get_manifest("coreos/etcd", "v3.1.0")?;
+//! let fetch = dclient.get_manifest("coreos/etcd", "v3.1.0");
 //! let manifest = tcore.run(fetch)?;
 //! #
 //! # Ok(())
@@ -103,13 +103,19 @@ impl Client {
         req
     }
 
-    pub fn is_v2_supported(&self) -> Result<FutureBool> {
+    pub fn is_v2_supported(&self) -> FutureBool {
         let api_header = "Docker-Distribution-API-Version";
         let api_version = "registry/2.0";
 
-        let url = try!(hyper::Uri::from_str(
-            (self.base_url.clone() + "/v2/").as_str()
-        ));
+        let url = match hyper::Uri::from_str((self.base_url.clone() + "/v2/").as_str()) {
+            Ok(url) => url,
+            Err(e) => {
+                return Box::new(futures::future::err::<_, _>(Error::from(format!(
+                    "failed to parse url from string: {}",
+                    e
+                ))))
+            }
+        };
         let req = self.new_request(hyper::Method::GET, url.clone());
         let freq = self.hclient.request(req);
         let fres = freq
@@ -126,7 +132,7 @@ impl Client {
             }).inspect(|b| {
                 trace!("v2 API supported: {}", b);
             });
-        Ok(Box::new(fres))
+        Box::new(fres)
     }
 }
 

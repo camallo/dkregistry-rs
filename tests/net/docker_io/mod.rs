@@ -40,7 +40,7 @@ fn test_dockerio_base() {
         .build()
         .unwrap();
 
-    let futcheck = dclient.is_v2_supported().unwrap();
+    let futcheck = dclient.is_v2_supported();
 
     let res = tcore.run(futcheck).unwrap();
     assert_eq!(res, true);
@@ -57,7 +57,7 @@ fn test_dockerio_insecure() {
         .build()
         .unwrap();
 
-    let futcheck = dclient.is_v2_supported().unwrap();
+    let futcheck = dclient.is_v2_supported();
 
     let res = tcore.run(futcheck).unwrap();
     assert_eq!(res, false);

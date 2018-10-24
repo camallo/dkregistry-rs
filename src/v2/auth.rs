@@ -23,10 +23,19 @@ impl TokenAuth {
 type FutureString = Box<futures::Future<Item = String, Error = self::Error>>;
 
 impl Client {
-    fn get_token_provider(&self) -> Result<FutureString> {
-        let url = try!(hyper::Uri::from_str(
-            (self.base_url.clone() + "/v2/").as_str()
-        ));
+    fn get_token_provider(&self) -> FutureString {
+        let url = {
+            let ep = format!("{}/v2/", self.base_url);
+            match hyper::Uri::from_str(ep.as_str()) {
+                Ok(url) => url,
+                Err(e) => {
+                    return Box::new(futures::future::err::<_, _>(Error::from(format!(
+                        "failed to parse url from string: {}",
+                        e
+                    ))))
+                }
+            }
+        };
         let req = self.new_request(hyper::Method::GET, url);
         let freq = self.hclient.request(req);
         let www_auth = freq
@@ -57,7 +66,7 @@ impl Client {
                 }
                 Ok(auth_ep)
             });
-        Ok(Box::new(www_auth))
+        Box::new(www_auth)
     }
 
     /// Set the token to be used for further registry requests.
@@ -71,14 +80,14 @@ impl Client {
     /// Perform registry authentication and return an authenticated token.
     ///
     /// On success, the returned token will be valid for all requested scopes.
-    pub fn login(&self, scopes: &[&str]) -> Result<FutureTokenAuth> {
+    pub fn login(&self, scopes: &[&str]) -> FutureTokenAuth {
         let subclient = self.hclient.clone();
         let creds = self.credentials.clone();
         let scope = scopes
             .iter()
             .fold("".to_string(), |acc, &s| acc + "&scope=" + s);
         let auth = self
-            .get_token_provider()?
+            .get_token_provider()
             .and_then(move |token_ep| {
                 let auth_ep = token_ep + scope.as_str();
                 trace!("Token endpoint: {}", auth_ep);
@@ -90,10 +99,14 @@ impl Client {
                 if let Some(c) = creds {
                     let plain = format!("{}:{}", c.0, c.1);
                     let basic = format!("Basic {}", base64::encode(&plain));
-                    auth_req.headers_mut().append(
-                        header::AUTHORIZATION,
-                        header::HeaderValue::from_str(&basic).unwrap(),
-                    );
+                    if let Ok(basic_header) = header::HeaderValue::from_str(&basic) {
+                        auth_req
+                            .headers_mut()
+                            .append(header::AUTHORIZATION, basic_header);
+                    } else {
+                        // TODO: return an error. seems difficult to match the error type for the whole closure
+                        error!("could not parse HeaderValue from '{}'", basic);
+                    };
                 };
                 subclient.request(auth_req).map_err(|e| e.into())
             }).and_then(|r| {
@@ -113,21 +126,25 @@ impl Client {
             }).inspect(|_| {
                 trace!("Got token");
             });
-        Ok(Box::new(auth))
+        Box::new(auth)
     }
 
     /// Check whether the client is authenticated with the registry.
-    pub fn is_auth(&self, token: Option<&str>) -> Result<FutureBool> {
-        let url = try!(hyper::Uri::from_str(
-            (self.base_url.clone() + "/v2/").as_str()
-        ));
+    pub fn is_auth(&self, token: Option<&str>) -> FutureBool {
+        let url = match hyper::Uri::from_str((self.base_url.clone() + "/v2/").as_str()) {
+            Ok(url) => url,
+            Err(e) => return Box::new(futures::future::err(e.into())),
+        };
         let mut req = self.new_request(hyper::Method::GET, url.clone());
         if let Some(t) = token {
             let bearer = format!("Bearer {}", t);
-            req.headers_mut().append(
-                header::AUTHORIZATION,
-                header::HeaderValue::from_str(&bearer).unwrap(),
-            );
+            if let Ok(basic_header) = header::HeaderValue::from_str(&bearer) {
+                req.headers_mut()
+                    .append(header::AUTHORIZATION, basic_header);
+            } else {
+                // TODO: return an error. seems difficult to match the error type for the whole closure
+                error!("could not parse HeaderValue from '{}'", bearer);
+            };
         };
 
         let freq = self.hclient.request(req);
@@ -144,6 +161,6 @@ impl Client {
                     _ => Err(format!("is_auth: wrong HTTP status '{}'", status).into()),
                 }
             });
-        Ok(Box::new(fres))
+        Box::new(fres)
     }
 }

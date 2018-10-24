@@ -42,7 +42,7 @@ fn test_gcrio_base() {
         .build()
         .unwrap();
 
-    let futcheck = dclient.is_v2_supported().unwrap();
+    let futcheck = dclient.is_v2_supported();
 
     let res = tcore.run(futcheck).unwrap();
     assert_eq!(res, true);
@@ -59,7 +59,7 @@ fn test_gcrio_insecure() {
         .build()
         .unwrap();
 
-    let futcheck = dclient.is_v2_supported().unwrap();
+    let futcheck = dclient.is_v2_supported();
 
     let res = tcore.run(futcheck).unwrap();
     assert_eq!(res, false);
@@ -77,7 +77,7 @@ fn test_gcrio_get_tags() {
         .unwrap();
 
     let image = "google_containers/mounttest";
-    let fut_tags = dclient.get_tags(image, None).unwrap();
+    let fut_tags = dclient.get_tags(image, None);
     let tags = tcore.run(fut_tags.collect()).unwrap();
     let has_version = tags.iter().any(|t| t == "0.2");
 
@@ -98,9 +98,7 @@ fn test_gcrio_has_manifest() {
     let image = "google_containers/mounttest";
     let tag = "0.2";
     let manifest_type = dkregistry::mediatypes::MediaTypes::ManifestV2S1Signed.to_string();
-    let fut = dclient
-        .has_manifest(image, tag, Some(vec![manifest_type.as_str()].as_slice()))
-        .unwrap();
+    let fut = dclient.has_manifest(image, tag, Some(vec![manifest_type.as_str()].as_slice()));
     let has_manifest = tcore.run(fut).unwrap();
 
     assert_eq!(

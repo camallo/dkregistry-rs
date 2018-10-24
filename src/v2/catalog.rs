@@ -14,14 +14,25 @@ struct Catalog {
 }
 
 impl v2::Client {
-    pub fn get_catalog(&self, paginate: Option<u32>) -> Result<StreamCatalog> {
+    pub fn get_catalog(&self, paginate: Option<u32>) -> StreamCatalog {
         let url = {
-            let mut s = self.base_url.clone() + "/v2/_catalog";
-            if let Some(n) = paginate {
-                s = s + &format!("?n={}", n);
+            let suffix = if let Some(n) = paginate {
+                format!("?n={}", n)
+            } else {
+                "".to_string()
             };
-            try!(hyper::Uri::from_str(s.as_str()))
+            let ep = format!("{}/v2/_catalog{}", self.base_url, suffix);
+            match hyper::Uri::from_str(ep.as_str()) {
+                Ok(url) => url,
+                Err(e) => {
+                    return Box::new(futures::stream::once(Err(format!(
+                        "failed to parse url from string: {}",
+                        e
+                    ).into())));
+                }
+            }
         };
+
         let req = self.new_request(hyper::Method::GET, url);
         let freq = self.hclient.request(req);
         let fres = freq
@@ -41,6 +52,6 @@ impl v2::Client {
                 serde_json::from_slice(&body.into_bytes()).map_err(|e| e.into())
             }).map(|cat| futures::stream::iter_ok(cat.repositories.into_iter()))
             .flatten_stream();
-        Ok(Box::new(fres))
+        Box::new(fres)
     }
 }

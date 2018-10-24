@@ -18,18 +18,20 @@ impl Client {
     ///
     /// The name and reference parameters identify the image.
     /// The reference may be either a tag or digest.
-    pub fn get_manifest(&self, name: &str, reference: &str) -> Result<FutureManifest> {
-        let url = try!(hyper::Uri::from_str(&format!(
+    pub fn get_manifest(&self, name: &str, reference: &str) -> FutureManifest {
+        let url = hyper::Uri::from_str(&format!(
             "{}/v2/{}/manifests/{}",
             self.base_url.clone(),
             name,
             reference
-        )));
+        )).unwrap();
         let req = {
             let mut r = self.new_request(hyper::Method::GET, url.clone());
             let mtype = mediatypes::MediaTypes::ManifestV2S2.to_string();
-            r.headers_mut()
-                .append(header::ACCEPT, header::HeaderValue::from_str(&mtype)?);
+            r.headers_mut().append(
+                header::ACCEPT,
+                header::HeaderValue::from_str(&mtype).unwrap(),
+            );
             r
         };
         let freq = self.hclient.request(req);
@@ -49,7 +51,7 @@ impl Client {
                     format!("get_manifest: failed to fetch the whole body: {}", e).into()
                 })
             }).and_then(|body| Ok(body.into_bytes().to_vec()));
-        Ok(Box::new(fres))
+        Box::new(fres)
     }
 
     /// Check if an image manifest exists.
@@ -61,7 +63,7 @@ impl Client {
         name: &str,
         reference: &str,
         mediatypes: Option<&[&str]>,
-    ) -> Result<mediatypes::FutureMediaType> {
+    ) -> mediatypes::FutureMediaType {
         let url = {
             let ep = format!(
                 "{}/v2/{}/manifests/{}",
@@ -69,11 +71,11 @@ impl Client {
                 name,
                 reference
             );
-            try!(hyper::Uri::from_str(ep.as_str()))
+            hyper::Uri::from_str(ep.as_str()).unwrap()
         };
         let accept_types = match mediatypes {
             None => vec![mediatypes::MediaTypes::ManifestV2S2.to_mime()],
-            Some(ref v) => try!(to_mimes(v)),
+            Some(ref v) => to_mimes(v).unwrap(),
         };
         let req = {
             let mut r = self.new_request(hyper::Method::HEAD, url.clone());
@@ -107,7 +109,7 @@ impl Client {
                 };
                 Ok(res)
             });
-        Ok(Box::new(fres))
+        Box::new(fres)
     }
 }
 

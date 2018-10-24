@@ -25,7 +25,7 @@ fn test_version_check_status_ok() {
         .build()
         .unwrap();
 
-    let futcheck = dclient.is_v2_supported().unwrap();
+    let futcheck = dclient.is_v2_supported();
 
     let res = tcore.run(futcheck).unwrap();
     assert_eq!(res, true);
@@ -50,7 +50,7 @@ fn test_version_check_status_unauth() {
         .build()
         .unwrap();
 
-    let futcheck = dclient.is_v2_supported().unwrap();
+    let futcheck = dclient.is_v2_supported();
 
     let res = tcore.run(futcheck).unwrap();
     assert_eq!(res, true);
@@ -75,7 +75,7 @@ fn test_version_check_status_notfound() {
         .build()
         .unwrap();
 
-    let futcheck = dclient.is_v2_supported().unwrap();
+    let futcheck = dclient.is_v2_supported();
 
     let res = tcore.run(futcheck).unwrap();
     assert_eq!(res, false);
@@ -100,7 +100,7 @@ fn test_version_check_status_forbidden() {
         .build()
         .unwrap();
 
-    let futcheck = dclient.is_v2_supported().unwrap();
+    let futcheck = dclient.is_v2_supported();
 
     let res = tcore.run(futcheck).unwrap();
     assert_eq!(res, false);
@@ -122,7 +122,7 @@ fn test_version_check_noheader() {
         .build()
         .unwrap();
 
-    let futcheck = dclient.is_v2_supported().unwrap();
+    let futcheck = dclient.is_v2_supported();
 
     let res = tcore.run(futcheck).unwrap();
     assert_eq!(res, false);
@@ -147,7 +147,7 @@ fn test_version_check_trailing_slash() {
         .build()
         .unwrap();
 
-    let futcheck = dclient.is_v2_supported().unwrap();
+    let futcheck = dclient.is_v2_supported();
 
     let res = tcore.run(futcheck).unwrap();
     assert_eq!(res, false);

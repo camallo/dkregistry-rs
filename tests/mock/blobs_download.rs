@@ -28,7 +28,7 @@ fn test_blobs_has_layer() {
         .build()
         .unwrap();
 
-    let futcheck = dclient.has_blob(name, digest).unwrap();
+    let futcheck = dclient.has_blob(name, digest);
 
     let res = tcore.run(futcheck).unwrap();
     assert_eq!(res, true);
@@ -54,7 +54,7 @@ fn test_blobs_hasnot_layer() {
         .build()
         .unwrap();
 
-    let futcheck = dclient.has_blob(name, digest).unwrap();
+    let futcheck = dclient.has_blob(name, digest);
 
     let res = tcore.run(futcheck).unwrap();
     assert_eq!(res, false);

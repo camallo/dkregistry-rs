@@ -13,13 +13,13 @@ struct Tags {
 
 impl Client {
     /// List existing tags for an image.
-    pub fn get_tags(&self, name: &str, paginate: Option<u32>) -> Result<StreamTags> {
+    pub fn get_tags(&self, name: &str, paginate: Option<u32>) -> StreamTags {
         let url = {
             let mut s = format!("{}/v2/{}/tags/list", self.base_url, name);
             if let Some(n) = paginate {
                 s = s + &format!("?n={}", n);
             };
-            try!(hyper::Uri::from_str(s.as_str()))
+            hyper::Uri::from_str(s.as_str()).unwrap()
         };
         let req = self.new_request(hyper::Method::GET, url);
         let freq = self.hclient.request(req);
@@ -49,6 +49,6 @@ impl Client {
                 serde_json::from_slice(&body.into_bytes()).map_err(|e| e.into())
             }).map(|ts| futures::stream::iter_ok(ts.tags.into_iter()))
             .flatten_stream();
-        Ok(Box::new(fres))
+        Box::new(fres)
     }
 }

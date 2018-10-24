@@ -21,7 +21,7 @@
 //!                      .insecure_registry(false)
 //!                      .registry(host)
 //!                      .build()?;
-//! let check = dclient.is_v2_supported()?;
+//! let check = dclient.is_v2_supported();
 //! match tcore.run(check)? {
 //!     false => println!("{} does NOT support v2", host),
 //!     true => println!("{} supports v2", host),

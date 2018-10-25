@@ -21,7 +21,14 @@ impl Client {
                 }
             }
         };
-        let req = self.new_request(hyper::Method::HEAD, url.clone());
+        let req = match self.new_request(hyper::Method::HEAD, url.clone()) {
+            Ok(r) => r,
+            Err(e) => {
+                let msg = format!("new_request failed: {}", e);
+                error!("{}", msg);
+                return Box::new(futures::future::err::<_, _>(Error::from(msg)));
+            }
+        };
         let freq = self.hclient.request(req);
         let fres = freq
             .from_err()
@@ -51,11 +58,18 @@ impl Client {
                     return Box::new(futures::future::err::<_, _>(Error::from(format!(
                         "failed to parse url from string: {}",
                         e
-                    ))))
+                    ))));
                 }
             }
         };
-        let req = self.new_request(hyper::Method::GET, url.clone());
+        let req = match self.new_request(hyper::Method::GET, url.clone()) {
+            Ok(r) => r,
+            Err(e) => {
+                let msg = format!("new_request failed: {}", e);
+                error!("{}", msg);
+                return Box::new(futures::future::err::<_, _>(Error::from(msg)));
+            }
+        };
         let freq = self.hclient.request(req);
         let fres = freq
             .from_err()

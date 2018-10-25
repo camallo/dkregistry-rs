@@ -36,7 +36,14 @@ impl Client {
                 }
             }
         };
-        let req = self.new_request(hyper::Method::GET, url);
+        let req = match self.new_request(hyper::Method::GET, url) {
+            Ok(r) => r,
+            Err(e) => {
+                let msg = format!("new_request failed: {}", e);
+                error!("{}", msg);
+                return Box::new(futures::future::err::<_, _>(Error::from(msg)));
+            }
+        };
         let freq = self.hclient.request(req);
         let www_auth = freq
             .from_err()
@@ -104,12 +111,14 @@ impl Client {
                             .headers_mut()
                             .append(header::AUTHORIZATION, basic_header);
                     } else {
-                        // TODO: return an error. seems difficult to match the error type for the whole closure
-                        error!("could not parse HeaderValue from '{}'", basic);
+                        let msg = format!("could not parse HeaderValue from '{}'", basic);
+                            error!("{}", msg);
+                            // TODO: return an error. seems difficult to match the error type for the whole closure
                     };
                 };
                 subclient.request(auth_req).map_err(|e| e.into())
-            }).and_then(|r| {
+            })
+            .and_then(|r| {
                 let status = r.status();
                 trace!("Got status {}", status);
                 match status {
@@ -135,15 +144,23 @@ impl Client {
             Ok(url) => url,
             Err(e) => return Box::new(futures::future::err(e.into())),
         };
-        let mut req = self.new_request(hyper::Method::GET, url.clone());
+        let mut req = match self.new_request(hyper::Method::GET, url.clone()) {
+            Ok(r) => r,
+            Err(e) => {
+                let msg = format!("new_request failed: {}", e);
+                error!("{}", msg);
+                return Box::new(futures::future::err(Error::from(msg)));
+            }
+        };
         if let Some(t) = token {
             let bearer = format!("Bearer {}", t);
             if let Ok(basic_header) = header::HeaderValue::from_str(&bearer) {
                 req.headers_mut()
                     .append(header::AUTHORIZATION, basic_header);
             } else {
-                // TODO: return an error. seems difficult to match the error type for the whole closure
-                error!("could not parse HeaderValue from '{}'", bearer);
+                let msg = format!("could not parse HeaderValue from '{}'", bearer);
+                error!("{}", msg);
+                return Box::new(futures::future::err(Error::from(msg)));
             };
         };
 

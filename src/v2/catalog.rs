@@ -25,15 +25,21 @@ impl v2::Client {
             match hyper::Uri::from_str(ep.as_str()) {
                 Ok(url) => url,
                 Err(e) => {
-                    return Box::new(futures::stream::once(Err(format!(
-                        "failed to parse url from string: {}",
-                        e
-                    ).into())));
+                    let msg = format!("new_request failed: {}", e);
+                    error!("{}", msg);
+                    return Box::new(futures::stream::once::<_, Error>(Err(Error::from(msg))));
                 }
             }
         };
 
-        let req = self.new_request(hyper::Method::GET, url);
+        let req = match self.new_request(hyper::Method::GET, url) {
+            Ok(r) => r,
+            Err(e) => {
+                let msg = format!("new_request failed: {}", e);
+                error!("{}", msg);
+                return Box::new(futures::stream::once::<_, Error>(Err(Error::from(msg))));
+            }
+        };
         let freq = self.hclient.request(req);
         let fres = freq
             .from_err()

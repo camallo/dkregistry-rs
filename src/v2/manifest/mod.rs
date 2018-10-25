@@ -19,20 +19,41 @@ impl Client {
     /// The name and reference parameters identify the image.
     /// The reference may be either a tag or digest.
     pub fn get_manifest(&self, name: &str, reference: &str) -> FutureManifest {
-        let url = hyper::Uri::from_str(&format!(
+        let url = match hyper::Uri::from_str(&format!(
             "{}/v2/{}/manifests/{}",
             self.base_url.clone(),
             name,
             reference
-        )).unwrap();
+        )) {
+            Ok(url) => url,
+            Err(e) => {
+                let msg = format!("failed to parse Uri from str: {}", e);
+                error!("{}", msg);
+                return Box::new(futures::future::err::<_, _>(Error::from(msg)));
+            }
+        };
         let req = {
-            let mut r = self.new_request(hyper::Method::GET, url.clone());
+            let mut req = match self.new_request(hyper::Method::GET, url.clone()) {
+                Ok(r) => r,
+                Err(e) => {
+                    let msg = format!("new_request failed: {}", e);
+                    error!("{}", msg);
+                    return Box::new(futures::future::err(Error::from(msg)));
+                }
+            };
             let mtype = mediatypes::MediaTypes::ManifestV2S2.to_string();
-            r.headers_mut().append(
+            req.headers_mut().append(
                 header::ACCEPT,
-                header::HeaderValue::from_str(&mtype).unwrap(),
+                match header::HeaderValue::from_str(&mtype) {
+                    Ok(headervalue) => headervalue,
+                    Err(e) => {
+                        let msg = format!("failed to parse HeaderValue from str: {}:", e);
+                        error!("{}", msg);
+                        return Box::new(futures::future::err::<_, _>(Error::from(msg)));
+                    }
+                },
             );
-            r
+            req
         };
         let freq = self.hclient.request(req);
         let fres = freq
@@ -71,19 +92,48 @@ impl Client {
                 name,
                 reference
             );
-            hyper::Uri::from_str(ep.as_str()).unwrap()
+            match hyper::Uri::from_str(ep.as_str()) {
+                Ok(url) => url,
+                Err(e) => {
+                    let msg = format!("failed to parse Uri from str: {}", e);
+                    error!("{}", msg);
+                    return Box::new(futures::future::err::<_, _>(Error::from(msg)));
+                }
+            }
         };
-        let accept_types = match mediatypes {
-            None => vec![mediatypes::MediaTypes::ManifestV2S2.to_mime()],
-            Some(ref v) => to_mimes(v).unwrap(),
+        let accept_types = match {
+            match mediatypes {
+                None => if let Ok(m) = mediatypes::MediaTypes::ManifestV2S2.to_mime() {
+                    Ok(vec![m])
+                } else {
+                    Err(Error::from("to_mime failed"))
+                },
+                Some(ref v) => to_mimes(v),
+            }
+        } {
+            Ok(x) => x,
+            Err(e) => {
+                return Box::new(futures::future::err::<_, _>(Error::from(format!(
+                    "failed to match mediatypes: {}",
+                    e
+                ))));
+            }
         };
+
         let req = {
-            let mut r = self.new_request(hyper::Method::HEAD, url.clone());
+            let mut req = match self.new_request(hyper::Method::HEAD, url.clone()) {
+                Ok(r) => r,
+                Err(e) => {
+                    let msg = format!("new_request failed: {}", e);
+                    error!("{}", msg);
+                    return Box::new(futures::future::err(Error::from(msg)));
+                }
+            };
             for v in accept_types {
                 let _ = header::HeaderValue::from_str(&v.to_string())
-                    .map(|hval| r.headers_mut().append(hyper::header::ACCEPT, hval));
+                    .map(|hval| req.headers_mut().append(hyper::header::ACCEPT, hval));
             }
-            r
+            req
         };
         let freq = self.hclient.request(req);
         let fres = freq
@@ -119,7 +169,13 @@ fn to_mimes(v: &[&str]) -> Result<Vec<mime::Mime>> {
         .filter_map(|x| {
             let mtype = mediatypes::MediaTypes::from_str(x);
             match mtype {
-                Ok(m) => Some(m.to_mime()),
+                Ok(m) => Some(match m.to_mime() {
+                    Ok(mime) => mime,
+                    Err(e) => {
+                        error!("to_mime failed: {}", e);
+                        return None;
+                    }
+                }),
                 _ => None,
             }
         }).collect();

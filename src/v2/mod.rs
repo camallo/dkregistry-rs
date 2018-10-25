@@ -78,29 +78,28 @@ impl Client {
         Config::default(handle)
     }
 
-    fn new_request(&self, method: hyper::Method, url: hyper::Uri) -> hyper::Request<hyper::Body> {
-        // TODO(lucab): get rid of all unwraps here.
+    fn new_request(&self, method: hyper::Method, url: hyper::Uri) -> Result<hyper::Request<hyper::Body>> {
         let mut req = hyper::Request::default();
         *req.method_mut() = method;
         *req.uri_mut() = url;
         req.headers_mut().append(
             header::HOST,
-            header::HeaderValue::from_str(&self.index).unwrap(),
+            header::HeaderValue::from_str(&self.index)?,
         );
         if let Some(ref t) = self.token {
             let bearer = format!("Bearer {}", t);
             req.headers_mut().append(
                 header::AUTHORIZATION,
-                header::HeaderValue::from_str(&bearer).unwrap(),
+                header::HeaderValue::from_str(&bearer)?,
             );
         };
         if let Some(ref ua) = self.user_agent {
             req.headers_mut().append(
                 header::USER_AGENT,
-                header::HeaderValue::from_str(ua).unwrap(),
+                header::HeaderValue::from_str(ua)?,
             );
         };
-        req
+        Ok(req)
     }
 
     pub fn is_v2_supported(&self) -> FutureBool {
@@ -116,7 +115,14 @@ impl Client {
                 ))))
             }
         };
-        let req = self.new_request(hyper::Method::GET, url.clone());
+        let req = match self.new_request(hyper::Method::GET, url.clone()) {
+            Ok(r) => r,
+            Err(e) => {
+                let msg = format!("new_request failed: {}", e);
+                error!("{}", msg);
+                return Box::new(futures::future::err::<_, _>(Error::from(msg)));
+            }
+        };
         let freq = self.hclient.request(req);
         let fres = freq
             .from_err()

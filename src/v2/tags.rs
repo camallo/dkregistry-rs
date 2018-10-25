@@ -1,4 +1,4 @@
-use futures::{self, Stream};
+use futures::prelude::*;
 use hyper::{self, header};
 use v2::*;
 
@@ -19,9 +19,24 @@ impl Client {
             if let Some(n) = paginate {
                 s = s + &format!("?n={}", n);
             };
-            hyper::Uri::from_str(s.as_str()).unwrap()
+            match hyper::Uri::from_str(s.as_str()) {
+                Ok(url) => url,
+                Err(e) => {
+                    return Box::new(futures::stream::once(Err(format!(
+                        "failed to parse url from string: {}",
+                        e
+                    ).into())));
+                }
+            }
         };
-        let req = self.new_request(hyper::Method::GET, url);
+        let req = match self.new_request(hyper::Method::GET, url.clone()) {
+            Ok(r) => r,
+            Err(e) => {
+                let msg = format!("new_request failed: {}", e);
+                error!("{}", msg);
+                return Box::new(futures::stream::once(Err(msg.into())));
+            }
+        };
         let freq = self.hclient.request(req);
         let fres = freq
             .from_err()

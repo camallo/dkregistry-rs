@@ -55,13 +55,16 @@ fn run(
     let login_scope = format!("repository:{}:pull", image);
 
     let futures = common::authenticate_client(&mut client, &login_scope)
-        .and_then(|dclient| dclient.get_tags(&image, Some(7)).collect());
+        .and_then(|dclient| dclient.get_tags(&image, Some(7)).collect())
+        .and_then(|tags| {
+            for tag in tags {
+                println!("{:?}", tag);
+            }
+            Ok(())
+        });
 
     match tcore.run(futures) {
-        Ok(tags) => {
-            println!("{:?}", tags);
-            Ok(())
-        }
+        Ok(_) => Ok(()),
         Err(e) => Err(Box::new(e)),
     }
 }

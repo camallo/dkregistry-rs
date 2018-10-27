@@ -25,7 +25,7 @@ fn test_base_no_insecure() {
         .build()
         .unwrap();
 
-    let futcheck = dclient.is_v2_supported().unwrap();
+    let futcheck = dclient.is_v2_supported();
 
     // This relies on the fact that mockito is HTTP-only and
     // trying to speak TLS to it results in garbage/errors.
@@ -52,7 +52,7 @@ fn test_base_useragent() {
         .build()
         .unwrap();
 
-    let futcheck = dclient.is_v2_supported().unwrap();
+    let futcheck = dclient.is_v2_supported();
 
     let res = tcore.run(futcheck).unwrap();
     assert_eq!(res, true);
@@ -81,7 +81,7 @@ fn test_base_custom_useragent() {
         .build()
         .unwrap();
 
-    let futcheck = dclient.is_v2_supported().unwrap();
+    let futcheck = dclient.is_v2_supported();
 
     let res = tcore.run(futcheck).unwrap();
     assert_eq!(res, true);
@@ -108,7 +108,7 @@ fn test_base_no_useragent() {
         .build()
         .unwrap();
 
-    let futcheck = dclient.is_v2_supported().unwrap();
+    let futcheck = dclient.is_v2_supported();
 
     let res = tcore.run(futcheck).unwrap();
     assert_eq!(res, true);

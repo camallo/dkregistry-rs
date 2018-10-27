@@ -29,7 +29,7 @@ fn test_tags_simple() {
         .build()
         .unwrap();
 
-    let futcheck = dclient.get_tags(name, None).unwrap();
+    let futcheck = dclient.get_tags(name, None);
 
     let res = tcore.run(futcheck.collect()).unwrap();
     assert_eq!(res, vec!["t1", "t2"]);
@@ -72,7 +72,7 @@ fn test_tags_paginate() {
         .build()
         .unwrap();
 
-    let next = dclient.get_tags(name, Some(1)).unwrap();
+    let next = dclient.get_tags(name, Some(1));
 
     let (page1, next) = tcore.run(next.into_future()).ok().unwrap();
     assert_eq!(page1, Some("t1".to_owned()));
@@ -106,7 +106,7 @@ fn test_tags_404() {
         .build()
         .unwrap();
 
-    let futcheck = dclient.get_tags(name, None).unwrap();
+    let futcheck = dclient.get_tags(name, None);
 
     let res = tcore.run(futcheck.collect());
     assert!(res.is_err());
@@ -135,7 +135,7 @@ fn test_tags_missing_header() {
         .build()
         .unwrap();
 
-    let futcheck = dclient.get_tags(name, None).unwrap();
+    let futcheck = dclient.get_tags(name, None);
 
     let res = tcore.run(futcheck.collect());
     assert!(res.is_err());

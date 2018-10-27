@@ -1,4 +1,4 @@
-use futures::{self, Stream};
+use futures::prelude::*;
 use hyper::{self, header};
 use v2::*;
 
@@ -13,15 +13,30 @@ struct Tags {
 
 impl Client {
     /// List existing tags for an image.
-    pub fn get_tags(&self, name: &str, paginate: Option<u32>) -> Result<StreamTags> {
+    pub fn get_tags(&self, name: &str, paginate: Option<u32>) -> StreamTags {
         let url = {
             let mut s = format!("{}/v2/{}/tags/list", self.base_url, name);
             if let Some(n) = paginate {
                 s = s + &format!("?n={}", n);
             };
-            try!(hyper::Uri::from_str(s.as_str()))
+            match hyper::Uri::from_str(s.as_str()) {
+                Ok(url) => url,
+                Err(e) => {
+                    return Box::new(futures::stream::once(Err(format!(
+                        "failed to parse url from string: {}",
+                        e
+                    ).into())));
+                }
+            }
         };
-        let req = self.new_request(hyper::Method::GET, url);
+        let req = match self.new_request(hyper::Method::GET, url.clone()) {
+            Ok(r) => r,
+            Err(e) => {
+                let msg = format!("new_request failed: {}", e);
+                error!("{}", msg);
+                return Box::new(futures::stream::once(Err(msg.into())));
+            }
+        };
         let freq = self.hclient.request(req);
         let fres = freq
             .from_err()
@@ -49,6 +64,6 @@ impl Client {
                 serde_json::from_slice(&body.into_bytes()).map_err(|e| e.into())
             }).map(|ts| futures::stream::iter_ok(ts.tags.into_iter()))
             .flatten_stream();
-        Ok(Box::new(fres))
+        Box::new(fres)
     }
 }

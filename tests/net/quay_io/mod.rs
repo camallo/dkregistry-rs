@@ -43,7 +43,7 @@ fn test_quayio_base() {
         .build()
         .unwrap();
 
-    let futcheck = dclient.is_v2_supported().unwrap();
+    let futcheck = dclient.is_v2_supported();
 
     let res = tcore.run(futcheck).unwrap();
     assert_eq!(res, true);
@@ -60,7 +60,7 @@ fn test_quayio_insecure() {
         .build()
         .unwrap();
 
-    let futcheck = dclient.is_v2_supported().unwrap();
+    let futcheck = dclient.is_v2_supported();
 
     let res = tcore.run(futcheck).unwrap();
     assert_eq!(res, false);
@@ -78,7 +78,7 @@ fn test_quayio_get_tags() {
         .unwrap();
 
     let image = "coreos/alpine-sh";
-    let fut_tags = dclient.get_tags(image, None).unwrap();
+    let fut_tags = dclient.get_tags(image, None);
     let tags = tcore.run(fut_tags.collect()).unwrap();
     let has_version = tags.iter().any(|t| t == "latest");
 
@@ -98,7 +98,7 @@ fn test_quayio_has_manifest() {
 
     let image = "coreos/alpine-sh";
     let reference = "latest";
-    let fut = dclient.has_manifest(image, reference, None).unwrap();
+    let fut = dclient.has_manifest(image, reference, None);
     let has_manifest = tcore.run(fut).unwrap();
 
     assert_eq!(has_manifest, Some(MediaTypes::ManifestV2S1Signed));
@@ -117,7 +117,7 @@ fn test_quayio_has_no_manifest() {
 
     let image = "coreos/alpine-sh";
     let reference = "clearly_bogus";
-    let fut = dclient.has_manifest(image, reference, None).unwrap();
+    let fut = dclient.has_manifest(image, reference, None);
     let has_manifest = tcore.run(fut).unwrap();
 
     assert_eq!(has_manifest, None);

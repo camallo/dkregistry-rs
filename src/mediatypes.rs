@@ -65,16 +65,16 @@ impl MediaTypes {
             _ => bail!("unknown mediatype {:?}", mtype),
         }
     }
-    pub fn to_mime(&self) -> mime::Mime {
+    pub fn to_mime(&self) -> Result<mime::Mime> {
         match self {
-            &MediaTypes::ApplicationJson => mime::APPLICATION_JSON,
+            &MediaTypes::ApplicationJson => Ok(mime::APPLICATION_JSON),
             ref m => {
                 if let Some(s) = m.get_str("Sub") {
-                    ("application/".to_string() + s).parse().unwrap()
+                    ("application/".to_string() + s).parse()
                 } else {
-                    "application/star".parse().unwrap()
+                    "application/star".parse()
                 }
             }
-        }
+        }.map_err(|e| Error::from(e.to_string()))
     }
 }

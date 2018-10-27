@@ -1,10 +1,13 @@
 extern crate dkregistry;
+extern crate futures;
 extern crate tokio_core;
 
+mod common;
+
+use futures::prelude::*;
+use std::result::Result;
 use std::{boxed, error};
 use tokio_core::reactor::Core;
-
-type Result<T> = std::result::Result<T, boxed::Box<error::Error>>;
 
 fn main() {
     let registry = match std::env::args().nth(1) {
@@ -29,43 +32,28 @@ fn main() {
     };
 }
 
-fn run(host: &str, user: Option<String>, passwd: Option<String>) -> Result<()> {
-    let mut tcore = try!(Core::new());
-    let dclient = try!(
-        dkregistry::v2::Client::configure(&tcore.handle())
-            .registry(host)
-            .insecure_registry(false)
-            .username(user)
-            .password(passwd)
-            .build()
-    );
+fn run(
+    host: &str,
+    user: Option<String>,
+    passwd: Option<String>,
+) -> Result<(), boxed::Box<error::Error>> {
+    let mut tcore = Core::new()?;
 
-    let futcheck = try!(dclient.is_v2_supported());
-    let supported = try!(tcore.run(futcheck));
-    if !supported {
-        return Err("API v2 not supported".into());
+    let mut client = dkregistry::v2::Client::configure(&tcore.handle())
+        .registry(host)
+        .insecure_registry(false)
+        .username(user)
+        .password(passwd)
+        .build()?;
+
+    let login_scope = "";
+
+    let futures = common::authenticate_client(&mut client, &login_scope)
+        .and_then(|dclient| dclient.is_v2_supported());
+
+    match tcore.run(futures) {
+        Ok(login_successful) if login_successful => Ok(()),
+        Err(e) => Err(Box::new(e)),
+        _ => Err("Login unsucessful".into()),
     }
-
-    let futauth = try!(dclient.is_auth(None));
-    let logged_in = try!(tcore.run(futauth));
-    if logged_in {
-        return Err("no login performed, but already authenticated".into());
-    }
-
-    let fut_token = try!(dclient.login(&[]));
-    let token = try!(tcore.run(fut_token));
-
-    let futauth = try!(dclient.is_auth(Some(token.token())));
-    let done = try!(tcore.run(futauth));
-
-    match done {
-        false => return Err("login failed".into()),
-        true => println!("logged in!",),
-    }
-    let futcheck = try!(dclient.is_v2_supported());
-    if !try!(tcore.run(futcheck)) {
-        return Err("API check failed after login".into());
-    };
-
-    return Ok(());
 }

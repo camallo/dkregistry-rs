@@ -27,7 +27,7 @@ fn test_catalog_simple() {
         .build()
         .unwrap();
 
-    let futcheck = dclient.get_catalog(None).unwrap();
+    let futcheck = dclient.get_catalog(None);
 
     let res = tcore.run(futcheck.collect()).unwrap();
     assert_eq!(res, vec!["r1/i1", "r2"]);
@@ -67,7 +67,7 @@ fn test_catalog_paginate() {
         .build()
         .unwrap();
 
-    let next = dclient.get_catalog(Some(1)).unwrap();
+    let next = dclient.get_catalog(Some(1));
 
     let (page1, next) = tcore.run(next.into_future()).ok().unwrap();
     assert_eq!(page1, Some("r1/i1".to_owned()));

@@ -30,6 +30,7 @@ strum = "0.11"
 strum_macros = "0.11"
 tar = "0.4"
 tokio-core = "0.1"
+dirs = "1.0"
 
 [dev-dependencies]
 env_logger = "0.5"

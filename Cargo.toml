@@ -13,7 +13,7 @@ exclude = [
 ]
 
 [dependencies]
-base64 = "0.9"
+base64 = "0.10"
 error-chain = { version = "0.12", default-features = false }
 futures = "0.1"
 hyper = "0.12"

@@ -31,6 +31,9 @@ For each release to be published, proceed as follows:
 * `cargo clean`
 * `git clean -fd`
 * `export RELEASE_VER=x.y.z`
+* Depending on which version level this release increases, choose one of *major*, *minor*, or *patch* according to [semantic versioning][semver]
+
+    `export RELEASE_LEVEL=patch`
 * `export UPSTREAM_REMOTE=upstream`
 
 #### 2. Create release commits on a dedicated branch and tag it
@@ -38,7 +41,7 @@ For each release to be published, proceed as follows:
 * `git checkout -b release-${RELEASE_VER}`
 * This will create the tag after asking for version confirmation:
 
-  `cargo release`
+    `cargo release ${RELEASE_LEVEL}`
 
 #### 3. Open a PR for this release
 
@@ -79,3 +82,4 @@ This guide requires:
 [cargo-release]: https://github.com/sunng87/cargo-release
 [rustup]: https://rustup.rs/
 [crates-io]: https://crates.io/
+[semver]: https://semver.org/

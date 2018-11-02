@@ -18,17 +18,20 @@ Once merged, the last steps of the process consist in pushing the git tag and pu
 
 If this is the first time, make sure all the requirements from the section below are met.
 
-These steps show how to release version `x.y.z` on the `origin` remote (this can be checked via `git remote -av`).
+This guide assumes that you have push access to the upstream repository of the project.
+Since this is required to push the new tag we have decided to also place the PR branch on the upstream repository.
+
+These steps show how to release version `x.y.z` on the `upstream` remote (this can be checked via `git remote -av`).
 
 For each release to be published, proceed as follows:
 
-#### 1. Make sure the poject is clean and prepare the environment
+#### 1. Make sure the project is clean and prepare the environment
 
 * `cargo test`
 * `cargo clean`
 * `git clean -fd`
 * `export RELEASE_VER=x.y.z`
-* `export UPSTREAM_REMOTE=origin`
+* `export UPSTREAM_REMOTE=upstream`
 
 #### 2. Create release commits on a dedicated branch and tag it
 

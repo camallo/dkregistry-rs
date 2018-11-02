@@ -54,7 +54,7 @@ For each release to be published, proceed as follows:
 * `git checkout ${RELEASE_VER}`
 * Make sure the tag is what you intend to release; if so this will show an empty output:
 
-    `git diff release-${RELEASE_VER}`
+    `git diff release-${RELEASE_VER}~1 ${RELEASE_VER}`
 * `cargo publish`
 
 #### 6. Clean up the environment

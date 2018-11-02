@@ -47,7 +47,7 @@ For each release to be published, proceed as follows:
 
 #### 5. Publish the artifacts (tag and crate)
 
-* `git push --tags ${UPSTREAM_REMOTE} ${RELEASE_VER}`
+* `git push ${UPSTREAM_REMOTE} ${RELEASE_VER}`
 * Make sure the upstream tag matches the local tag:
 
     `git fetch --tags --verbose ${UPSTREAM_REMOTE} 2>&1 | grep ${RELEASE_VER}`

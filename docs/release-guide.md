@@ -47,14 +47,14 @@ For each release to be published, proceed as follows:
 
 #### 5. Publish the artifacts (tag and crate)
 
-* `git push --tags ${UPSTREAM_REMOTE} ${RELEASE_VER}`
+* `git push ${UPSTREAM_REMOTE} ${RELEASE_VER}`
 * Make sure the upstream tag matches the local tag:
 
     `git fetch --tags --verbose ${UPSTREAM_REMOTE} 2>&1 | grep ${RELEASE_VER}`
 * `git checkout ${RELEASE_VER}`
 * Make sure the tag is what you intend to release; if so this will show an empty output:
 
-    `git diff release-${RELEASE_VER}`
+    `git diff release-${RELEASE_VER}~1 ${RELEASE_VER}`
 * `cargo publish`
 
 #### 6. Clean up the environment

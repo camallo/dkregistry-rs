@@ -33,6 +33,8 @@
 //! # }
 //! ```
 
+#![deny(missing_debug_implementations)]
+
 extern crate base64;
 extern crate futures;
 extern crate http;

@@ -67,7 +67,7 @@ fn test_quayio_insecure() {
 }
 
 #[test]
-fn test_quayio_get_tags() {
+fn test_quayio_get_tags_simple() {
     let mut tcore = Core::new().unwrap();
     let dclient = dkregistry::v2::Client::configure(&tcore.handle())
         .registry(REGISTRY)
@@ -81,6 +81,44 @@ fn test_quayio_get_tags() {
     let fut_tags = dclient.get_tags(image, None);
     let tags = tcore.run(fut_tags.collect()).unwrap();
     let has_version = tags.iter().any(|t| t == "latest");
+
+    assert_eq!(has_version, true);
+}
+
+#[test]
+fn test_quayio_get_tags_limit() {
+    let mut tcore = Core::new().unwrap();
+    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+        .registry(REGISTRY)
+        .insecure_registry(false)
+        .username(None)
+        .password(None)
+        .build()
+        .unwrap();
+
+    let image = "coreos/alpine-sh";
+    let fut_tags = dclient.get_tags(image, Some(10));
+    let tags = tcore.run(fut_tags.collect()).unwrap();
+    let has_version = tags.iter().any(|t| t == "latest");
+
+    assert_eq!(has_version, true);
+}
+
+#[test]
+fn test_quayio_get_tags_pagination() {
+    let mut tcore = Core::new().unwrap();
+    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+        .registry(REGISTRY)
+        .insecure_registry(false)
+        .username(None)
+        .password(None)
+        .build()
+        .unwrap();
+
+    let image = "coreos/flannel";
+    let fut_tags = dclient.get_tags(image, Some(20));
+    let tags = tcore.run(fut_tags.collect()).unwrap();
+    let has_version = tags.iter().any(|t| t == "v0.10.0");
 
     assert_eq!(has_version, true);
 }

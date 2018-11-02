@@ -44,14 +44,14 @@ fn test_tags_paginate() {
     let tags_p2 = r#"{"name": "repo", "tags": [ "t2" ]}"#;
 
     let ep1 = format!("/v2/{}/tags/list?n=1", name);
-    let ep2 = format!("/v2/{}/tags/list?n=1&last=t1", name);
+    let ep2 = format!("/v2/{}/tags/list?n=1&next_page=t1", name);
     let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
     let _m1 = mock("GET", ep1.as_str())
         .with_status(200)
         .with_header(
             "Link",
             &format!(
-                r#"<{}/v2/_tags?n=1&last=t1>; rel="next""#,
+                r#"<{}/v2/_tags?n=1&next_page=t1>; rel="next""#,
                 mockito::SERVER_URL
             ),
         ).with_header("Content-Type", "application/json")
@@ -74,14 +74,13 @@ fn test_tags_paginate() {
 
     let next = dclient.get_tags(name, Some(1));
 
-    let (page1, next) = tcore.run(next.into_future()).ok().unwrap();
-    assert_eq!(page1, Some("t1".to_owned()));
+    let (first_tag, stream_rest) = tcore.run(next.into_future()).ok().unwrap();
+    assert_eq!(first_tag, Some("t1".to_owned()));
 
-    let (page2, next) = tcore.run(next.into_future()).ok().unwrap();
-    // TODO(lucab): implement pagination
-    assert_eq!(page2, None);
+    let (second_tag, stream_rest) = tcore.run(stream_rest.into_future()).ok().unwrap();
+    assert_eq!(second_tag, Some("t2".to_owned()));
 
-    let (end, _) = tcore.run(next.into_future()).ok().unwrap();
+    let (end, _) = tcore.run(stream_rest.into_future()).ok().unwrap();
     assert_eq!(end, None);
 
     mockito::reset();

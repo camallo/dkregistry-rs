@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use v2::*;
 
 /// Manifest version 2 schema 1, signed.
@@ -48,5 +49,21 @@ impl ManifestSchema1Signed {
             .rev()
             .map(|l| l.blob_sum.clone())
             .collect()
+    }
+
+    /// Get a collection of all image labels stored in the history array of this manifest.
+    ///
+    /// Note that for this manifest type any `layer` beyond 0 probably returns None.
+    pub fn get_labels(&self, layer: usize) -> Option<(HashMap<String, String>)> {
+        Some(
+            serde_json::from_str::<serde_json::Value>(&self.history.get(layer)?.v1_compat)
+                .ok()?
+                .get("config")?
+                .get("Labels")?
+                .as_object()?
+                .into_iter()
+                .filter_map(|(label, value)| Some((label.to_owned(), value.as_str()?.to_owned())))
+                .collect(),
+        )
     }
 }

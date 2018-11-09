@@ -4,11 +4,11 @@ extern crate futures;
 extern crate serde_json;
 extern crate tokio_core;
 
-use dkregistry::{reference, render};
+use dkregistry::reference;
 use futures::prelude::*;
 use std::result::Result;
 use std::str::FromStr;
-use std::{boxed, env, error, fs, io};
+use std::{env, fs, io};
 use tokio_core::reactor::Core;
 
 mod common;

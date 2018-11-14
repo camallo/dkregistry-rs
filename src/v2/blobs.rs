@@ -82,7 +82,14 @@ impl Client {
                     | StatusCode::FOUND => {
                         trace!("Got moved status {:?}", r.status());
                     }
-                    _ => return Either::A(future::ok(r)),
+                    StatusCode::OK => {
+                        return Either::A(future::ok(r));
+                    }
+                    _ => {
+                        return Either::A(future::err(
+                            format!("unexpected status code '{}'", r.status()).into(),
+                        ));
+                    }
                 };
                 let redirect: Option<String> = match r.headers().get("Location") {
                     None => {

@@ -51,21 +51,38 @@ impl Client {
         let fres = reqwest::async::Client::new()
             .get(url)
             .send()
-            .inspect(|res| trace!("Blob GET status: {:?}", res.status()))
-            .and_then(|mut res| {
-                let body = std::mem::replace(res.body_mut(), reqwest::async::Decoder::empty());
-                body.concat2()
-            }).map_err(|e| Error::from(format!("{}", e)))
-            .and_then(|body| {
-                let mut cursor = std::io::Cursor::new(body);
-                let mut buf = Vec::new();
-                use std::io::Read;
-                match cursor.read_to_end(&mut buf) {
-                    Ok(size) => {
-                        trace!("Received {} bytes from blob", size);
-                        Ok(buf)
-                    }
-                    Err(e) => Err(Error::from(format!("{}", e))),
+            .map_err(|e| ::errors::Error::from(format!("{}", e)))
+            .and_then(|res| {
+                trace!("Blob GET status: {:?}", res.status());
+                let status = res.status();
+                if status.is_success() || status.is_client_error() {
+                    Ok(res)
+                } else {
+                    Err(::errors::Error::from(format!(
+                        "GET request failed with status '{}'",
+                        status
+                    )))
+                }
+            }).and_then(|mut res| {
+                std::mem::replace(res.body_mut(), reqwest::async::Decoder::empty())
+                    .concat2()
+                    .map_err(|e| ::errors::Error::from(format!("{}", e)))
+                    .join(futures::future::ok(res))
+            }).map_err(|e| ::errors::Error::from(format!("{}", e)))
+            .and_then(|(body, res)| {
+                let body_vec = body.to_vec();
+                let len = body_vec.len();
+                let status = res.status();
+                if status.is_success() {
+                    trace!("Successfully received blob with {} bytes ", len);
+                    Ok(body_vec)
+                } else {
+                    Err(Error::from(format!(
+                        "GET request failed with status '{}' and body of size {}: {:#?}",
+                        status,
+                        len,
+                        String::from_utf8_lossy(&body_vec)
+                    )))
                 }
             });
         Box::new(fres)

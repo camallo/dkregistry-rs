@@ -85,7 +85,7 @@ pub fn get_credentials<T: Read>(
     };
     let auth = match map.auths.get(real_index) {
         Some(x) => try!(base64::decode(x.auth.as_str())),
-        None => bail!("no auth for index"),
+        None => bail!("no auth for index {}", real_index),
     };
     let s = try!(String::from_utf8(auth));
     let creds: Vec<&str> = s.splitn(2, ':').collect();

@@ -55,6 +55,7 @@ extern crate strum;
 extern crate tar;
 #[macro_use]
 extern crate strum_macros;
+extern crate reqwest;
 
 pub mod errors;
 pub mod mediatypes;

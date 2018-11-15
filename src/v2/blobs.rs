@@ -1,6 +1,6 @@
-use futures::future::{self, Either};
 use futures::Stream;
-use hyper::StatusCode;
+use reqwest;
+use reqwest::StatusCode;
 use v2::*;
 
 /// Convenience alias for future binary blob.
@@ -11,48 +11,7 @@ impl Client {
     pub fn has_blob(&self, name: &str, digest: &str) -> FutureBool {
         let url = {
             let ep = format!("{}/v2/{}/blobs/{}", self.base_url, name, digest);
-            match hyper::Uri::from_str(ep.as_str()) {
-                Ok(url) => url,
-                Err(e) => {
-                    return Box::new(futures::future::err::<_, _>(Error::from(format!(
-                        "failed to parse url from string: {}",
-                        e
-                    ))))
-                }
-            }
-        };
-        let req = match self.new_request(hyper::Method::HEAD, url.clone()) {
-            Ok(r) => r,
-            Err(e) => {
-                let msg = format!("new_request failed: {}", e);
-                error!("{}", msg);
-                return Box::new(futures::future::err::<_, _>(Error::from(msg)));
-            }
-        };
-        let freq = self.hclient.request(req);
-        let fres = freq
-            .from_err()
-            .inspect(move |_| {
-                trace!("HEAD {:?}", url);
-            }).and_then(|r| {
-                trace!("Blob check result: {:?}", r.status());
-                match r.status() {
-                    StatusCode::MOVED_PERMANENTLY
-                    | StatusCode::TEMPORARY_REDIRECT
-                    | StatusCode::FOUND
-                    | StatusCode::OK => Ok(true),
-                    _ => Ok(false),
-                }
-            });
-        Box::new(fres)
-    }
-
-    /// Retrieve blob.
-    pub fn get_blob(&self, name: &str, digest: &str) -> FutureBlob {
-        let cl = self.clone();
-        let url = {
-            let ep = format!("{}/v2/{}/blobs/{}", self.base_url.clone(), name, digest);
-            match hyper::Uri::from_str(ep.as_str()) {
+            match reqwest::Url::parse(&ep) {
                 Ok(url) => url,
                 Err(e) => {
                     return Box::new(futures::future::err::<_, _>(Error::from(format!(
@@ -62,60 +21,85 @@ impl Client {
                 }
             }
         };
-        let req = match self.new_request(hyper::Method::GET, url.clone()) {
-            Ok(r) => r,
-            Err(e) => {
-                let msg = format!("new_request failed: {}", e);
-                error!("{}", msg);
-                return Box::new(futures::future::err::<_, _>(Error::from(msg)));
+
+        let fres = reqwest::async::Client::new()
+            .head(url)
+            .send()
+            .inspect(|res| trace!("Blob HEAD status: {:?}", res.status()))
+            .and_then(|res| match res.status() {
+                StatusCode::OK => Ok(true),
+                _ => Ok(false),
+            }).map_err(|e| format!("{}", e).into());
+        Box::new(fres)
+    }
+
+    /// Retrieve blob.
+    pub fn get_blob(&self, name: &str, digest: &str) -> FutureBlob {
+        let url = {
+            let ep = format!("{}/v2/{}/blobs/{}", self.base_url, name, digest);
+            match reqwest::Url::parse(&ep) {
+                Ok(url) => url,
+                Err(e) => {
+                    return Box::new(futures::future::err::<_, _>(Error::from(format!(
+                        "failed to parse url from string: {}",
+                        e
+                    ))));
+                }
             }
         };
-        let freq = self.hclient.request(req);
-        let fres = freq
-            .from_err()
-            .inspect(move |_| {
-                trace!("GET {:?}", url);
-            }).and_then(move |r| {
-                match r.status() {
-                    StatusCode::MOVED_PERMANENTLY
-                    | StatusCode::TEMPORARY_REDIRECT
-                    | StatusCode::FOUND => {
-                        trace!("Got moved status {:?}", r.status());
-                    }
-                    _ => return Either::A(future::ok(r)),
-                };
-                let redirect: Option<String> = match r.headers().get("Location") {
-                    None => {
-                        return Either::A(future::err(Error::from(
-                            "get_blob: missing location header",
-                        )))
-                    }
-                    Some(loc) => {
-                        trace!("Got Location header {:?}", loc);
-                        String::from_utf8(loc.as_bytes().to_vec()).ok()
-                    }
-                };
-                if let Some(u) = redirect {
-                    let new_url = match hyper::Uri::from_str(u.as_str()) {
-                        Ok(u) => u,
-                        _ => {
-                            return Either::A(future::err(
-                                format!("get_blob: wrong URL '{}'", u).into(),
-                            ))
-                        }
-                    };
-                    trace!("Following redirection to {}", new_url);
-                    let mut req = hyper::Request::default();
-                    *req.method_mut() = hyper::Method::GET;
-                    *req.uri_mut() = new_url;
-                    return Either::B(cl.hclient.request(req).from_err());
-                };
-                Either::A(future::ok(r))
-            }).and_then(|r| {
-                r.into_body()
+
+        let fres = reqwest::async::Client::new()
+            .get(url)
+            .send()
+            .map_err(|e| ::errors::Error::from(format!("{}", e)))
+            .and_then(|res| {
+                trace!("Blob GET status: {:?}", res.status());
+                let status = res.status();
+
+                if status.is_success()
+                    // Let client errors through to populate them with the body
+                    || status.is_client_error()
+                {
+                    Ok(res)
+                } else {
+                    Err(::errors::Error::from(format!(
+                        "GET request failed with status '{}'",
+                        status
+                    )))
+                }
+            }).and_then(|mut res| {
+                std::mem::replace(res.body_mut(), reqwest::async::Decoder::empty())
                     .concat2()
-                    .map_err(|e| format!("get_blob: failed to fetch the whole body: {}", e).into())
-            }).and_then(|body| Ok(body.into_bytes().to_vec()));
+                    .map_err(|e| ::errors::Error::from(format!("{}", e)))
+                    .join(futures::future::ok(res))
+            }).map_err(|e| ::errors::Error::from(format!("{}", e)))
+            .and_then(|(body, res)| {
+                let body_vec = body.to_vec();
+                let len = body_vec.len();
+                let status = res.status();
+
+                if status.is_success() {
+                    trace!("Successfully received blob with {} bytes ", len);
+                    Ok(body_vec)
+                } else if status.is_client_error() {
+                    Err(Error::from(format!(
+                        "GET request failed with status '{}' and body of size {}: {:#?}",
+                        status,
+                        len,
+                        String::from_utf8_lossy(&body_vec)
+                    )))
+                } else {
+                    // We only want to handle success and client errors here
+                    error!(
+                        "Received unexpected HTTP status '{}' after fetching the body. Please submit a bug report.",
+                        status
+                    );
+                    Err(Error::from(format!(
+                        "GET request failed with status '{}'",
+                        status
+                    )))
+                }
+            });
         Box::new(fres)
     }
 }

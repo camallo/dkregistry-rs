@@ -103,11 +103,13 @@ impl Client {
         };
         let accept_types = match {
             match mediatypes {
-                None => if let Ok(m) = mediatypes::MediaTypes::ManifestV2S2.to_mime() {
-                    Ok(vec![m])
-                } else {
-                    Err(Error::from("to_mime failed"))
-                },
+                None => {
+                    if let Ok(m) = mediatypes::MediaTypes::ManifestV2S2.to_mime() {
+                        Ok(vec![m])
+                    } else {
+                        Err(Error::from("to_mime failed"))
+                    }
+                }
                 Some(ref v) => to_mimes(v),
             }
         } {

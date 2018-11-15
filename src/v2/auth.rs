@@ -112,13 +112,12 @@ impl Client {
                             .append(header::AUTHORIZATION, basic_header);
                     } else {
                         let msg = format!("could not parse HeaderValue from '{}'", basic);
-                            error!("{}", msg);
-                            // TODO: return an error. seems difficult to match the error type for the whole closure
+                        error!("{}", msg);
+                        // TODO: return an error. seems difficult to match the error type for the whole closure
                     };
                 };
                 subclient.request(auth_req).map_err(|e| e.into())
-            })
-            .and_then(|r| {
+            }).and_then(|r| {
                 let status = r.status();
                 trace!("Got status {}", status);
                 match status {

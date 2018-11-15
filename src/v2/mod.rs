@@ -78,14 +78,16 @@ impl Client {
         Config::default(handle)
     }
 
-    fn new_request(&self, method: hyper::Method, url: hyper::Uri) -> Result<hyper::Request<hyper::Body>> {
+    fn new_request(
+        &self,
+        method: hyper::Method,
+        url: hyper::Uri,
+    ) -> Result<hyper::Request<hyper::Body>> {
         let mut req = hyper::Request::default();
         *req.method_mut() = method;
         *req.uri_mut() = url;
-        req.headers_mut().append(
-            header::HOST,
-            header::HeaderValue::from_str(&self.index)?,
-        );
+        req.headers_mut()
+            .append(header::HOST, header::HeaderValue::from_str(&self.index)?);
         if let Some(ref t) = self.token {
             let bearer = format!("Bearer {}", t);
             req.headers_mut().append(
@@ -94,10 +96,8 @@ impl Client {
             );
         };
         if let Some(ref ua) = self.user_agent {
-            req.headers_mut().append(
-                header::USER_AGENT,
-                header::HeaderValue::from_str(ua)?,
-            );
+            req.headers_mut()
+                .append(header::USER_AGENT, header::HeaderValue::from_str(ua)?);
         };
         Ok(req)
     }

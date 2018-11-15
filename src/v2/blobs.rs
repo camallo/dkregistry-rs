@@ -55,7 +55,11 @@ impl Client {
             .and_then(|res| {
                 trace!("Blob GET status: {:?}", res.status());
                 let status = res.status();
-                if status.is_success() || status.is_client_error() {
+
+                if status.is_success()
+                    // Let client errors through to populate them with the body
+                    || status.is_client_error()
+                {
                     Ok(res)
                 } else {
                     Err(::errors::Error::from(format!(
@@ -73,15 +77,26 @@ impl Client {
                 let body_vec = body.to_vec();
                 let len = body_vec.len();
                 let status = res.status();
+
                 if status.is_success() {
                     trace!("Successfully received blob with {} bytes ", len);
                     Ok(body_vec)
-                } else {
+                } else if status.is_client_error() {
                     Err(Error::from(format!(
                         "GET request failed with status '{}' and body of size {}: {:#?}",
                         status,
                         len,
                         String::from_utf8_lossy(&body_vec)
+                    )))
+                } else {
+                    // We only want to handle success and client errors here
+                    error!(
+                        "Received unexpected HTTP status '{}' after fetching the body. Please submit a bug report.",
+                        status
+                    );
+                    Err(Error::from(format!(
+                        "GET request failed with status '{}'",
+                        status
                     )))
                 }
             });

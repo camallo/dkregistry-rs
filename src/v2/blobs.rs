@@ -22,8 +22,8 @@ impl Client {
             }
         };
 
-        let fres = reqwest::async::Client::new()
-            .head(url)
+        let fres = self
+            .build_reqwest(reqwest::async::Client::new().head(url))
             .send()
             .inspect(|res| trace!("Blob HEAD status: {:?}", res.status()))
             .and_then(|res| match res.status() {
@@ -48,8 +48,7 @@ impl Client {
             }
         };
 
-        let fres = reqwest::async::Client::new()
-            .get(url)
+        let fres = self.build_reqwest(reqwest::async::Client::new().get(url))
             .send()
             .map_err(|e| ::errors::Error::from(format!("{}", e)))
             .and_then(|res| {

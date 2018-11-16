@@ -140,6 +140,18 @@ impl Client {
             });
         Box::new(fres)
     }
+
+    /// Takes reqwest's async RequestBuilder and injects an authentication header if a token is present
+    fn build_reqwest(
+        &self,
+        client: reqwest::async::RequestBuilder,
+    ) -> reqwest::async::RequestBuilder {
+        if let Some(token) = &self.token {
+            client.header(reqwest::header::AUTHORIZATION, format!("Bearer {}", token))
+        } else {
+            client
+        }
+    }
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]

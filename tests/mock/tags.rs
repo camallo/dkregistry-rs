@@ -54,7 +54,8 @@ fn test_tags_paginate() {
                 r#"<{}/v2/_tags?n=1&next_page=t1>; rel="next""#,
                 mockito::SERVER_URL
             ),
-        ).with_header("Content-Type", "application/json")
+        )
+        .with_header("Content-Type", "application/json")
         .with_body(tags_p1)
         .create();
     let _m2 = mock("GET", ep2.as_str())

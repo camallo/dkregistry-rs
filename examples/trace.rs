@@ -18,7 +18,8 @@ fn main() {
     let dkr_ref = match std::env::args().nth(1) {
         Some(ref x) => reference::Reference::from_str(x),
         None => reference::Reference::from_str("quay.io/coreos/etcd"),
-    }.unwrap();
+    }
+    .unwrap();
     let registry = dkr_ref.registry();
 
     println!("[{}] downloading image {}", registry, dkr_ref);
@@ -91,7 +92,8 @@ fn run(
 
                         Some(manifest_kind) => Ok((dclient, manifest_kind)),
                     })
-        }).and_then(|(dclient, manifest_kind)| {
+        })
+        .and_then(|(dclient, manifest_kind)| {
             let image = image.clone();
             dclient
                 .get_manifest(&image, &version)
@@ -99,19 +101,20 @@ fn run(
                     let layers = match manifest_kind {
                         dkregistry::mediatypes::MediaTypes::ManifestV2S1Signed => {
                             let m: dkregistry::v2::manifest::ManifestSchema1Signed =
-                        serde_json::from_slice(manifest_body.as_slice()).unwrap();
+                                serde_json::from_slice(manifest_body.as_slice()).unwrap();
                             m.get_layers()
                         }
                         dkregistry::mediatypes::MediaTypes::ManifestV2S2 => {
                             let m: dkregistry::v2::manifest::ManifestSchema2 =
-                            serde_json::from_slice(manifest_body.as_slice()).unwrap();
+                                serde_json::from_slice(manifest_body.as_slice()).unwrap();
                             m.get_layers()
                         }
                         _ => return Err("unknown format".into()),
                     };
                     Ok((dclient, layers))
                 })
-        }).and_then(|(dclient, layers)| {
+        })
+        .and_then(|(dclient, layers)| {
             let image = image.clone();
 
             println!("{} -> got {} layer(s)", &image, layers.len(),);
@@ -122,7 +125,8 @@ fn run(
                     get_blob_future.inspect(move |blob| {
                         println!("Layer {}, got {} bytes.\n", layer, blob.len());
                     })
-                }).collect()
+                })
+                .collect()
         });
 
     let blobs = match tcore.run(futures) {

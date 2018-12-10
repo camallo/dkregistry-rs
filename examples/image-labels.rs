@@ -17,7 +17,8 @@ fn main() {
     let dkr_ref = match std::env::args().nth(1) {
         Some(ref x) => reference::Reference::from_str(x),
         None => reference::Reference::from_str("quay.io/steveej/cincinnati-test-labels:0.0.0"),
-    }.unwrap();
+    }
+    .unwrap();
     let registry = dkr_ref.registry();
 
     println!("[{}] downloading image {}", registry, dkr_ref);
@@ -81,7 +82,8 @@ fn run(
 
                     Some(manifest_kind) => Ok((dclient, manifest_kind)),
                 })
-        }).and_then(|(dclient, manifest_kind)| {
+        })
+        .and_then(|(dclient, manifest_kind)| {
             let image = image.clone();
             dclient
                 .get_manifest(&image, &version)

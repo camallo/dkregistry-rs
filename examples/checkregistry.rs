@@ -20,12 +20,10 @@ fn main() {
 
 fn run(host: &str) -> Result<bool, boxed::Box<error::Error>> {
     let mut tcore = try!(Core::new());
-    let dclient = try!(
-        dkregistry::v2::Client::configure(&tcore.handle())
-            .registry(host)
-            .insecure_registry(false)
-            .build()
-    );
+    let dclient = try!(dkregistry::v2::Client::configure(&tcore.handle())
+        .registry(host)
+        .insecure_registry(false)
+        .build());
     let futcheck = dclient.is_v2_supported();
 
     let supported = try!(tcore.run(futcheck));

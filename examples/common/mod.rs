@@ -17,7 +17,8 @@ pub fn authenticate_client<'a>(
                     Ok(dclient)
                 }
             })
-        }).and_then(|dclient| {
+        })
+        .and_then(|dclient| {
             dclient.is_auth(None).and_then(|is_auth| {
                 if is_auth {
                     Err("no login performed, but already authenticated".into())
@@ -25,7 +26,8 @@ pub fn authenticate_client<'a>(
                     Ok(dclient)
                 }
             })
-        }).and_then(move |dclient| {
+        })
+        .and_then(move |dclient| {
             dclient.login(&[&login_scope]).and_then(move |token| {
                 dclient
                     .is_auth(Some(token.token()))

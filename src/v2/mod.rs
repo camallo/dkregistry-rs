@@ -128,14 +128,16 @@ impl Client {
             .from_err()
             .inspect(move |_| {
                 trace!("GET {:?}", url);
-            }).and_then(move |r| match (r.status(), r.headers().get(api_header)) {
+            })
+            .and_then(move |r| match (r.status(), r.headers().get(api_header)) {
                 (hyper::StatusCode::OK, Some(x)) => Ok(x == api_version),
                 (hyper::StatusCode::UNAUTHORIZED, Some(x)) => Ok(x == api_version),
                 (s, v) => {
                     trace!("Got status {}, header version {:?}", s, v);
                     Ok(false)
                 }
-            }).inspect(|b| {
+            })
+            .inspect(|b| {
                 trace!("v2 API supported: {}", b);
             });
         Box::new(fres)

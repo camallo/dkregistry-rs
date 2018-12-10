@@ -47,13 +47,15 @@ impl Client {
                     let req = client.new_request(hyper::Method::GET, url);
                     futures::future::result(req)
                         .and_then(move |req| client.hclient.request(req).from_err())
-                }).and_then(|resp| {
+                })
+                .and_then(|resp| {
                     let status = resp.status();
                     match status {
                         hyper::StatusCode::OK => Ok(resp),
                         _ => Err(format!("get_tags: wrong HTTP status '{}'", status).into()),
                     }
-                }).and_then(|resp| {
+                })
+                .and_then(|resp| {
                     let ct_hdr = resp.headers().get(header::CONTENT_TYPE).cloned();
                     let ok = match ct_hdr {
                         None => false,
@@ -63,23 +65,28 @@ impl Client {
                         return Err(format!("get_tags: wrong content type '{:?}'", ct_hdr).into());
                     }
                     Ok(resp)
-                }).and_then(|resp| {
+                })
+                .and_then(|resp| {
                     let hdr = resp.headers().get(header::LINK).cloned();
                     trace!("next_page {:?}", hdr);
                     resp.into_body()
                         .concat2()
                         .map_err(|e| {
                             format!("get_tags: failed to fetch the whole body: {}", e).into()
-                        }).and_then(move |body| Ok((body, parse_link(hdr))))
-                }).and_then(|(body, hdr)| -> Result<(TagsChunk, Option<String>)> {
+                        })
+                        .and_then(move |body| Ok((body, parse_link(hdr))))
+                })
+                .and_then(|(body, hdr)| -> Result<(TagsChunk, Option<String>)> {
                     serde_json::from_slice(&body.into_bytes())
                         .map_err(|e| e.into())
                         .map(|tags_chunk| (tags_chunk, hdr))
-                }).map(|(tags_chunk, last)| {
+                })
+                .map(|(tags_chunk, last)| {
                     (futures::stream::iter_ok(tags_chunk.tags.into_iter()), last)
                 });
             Some(freq)
-        }).flatten();
+        })
+        .flatten();
 
         Box::new(fres)
     }

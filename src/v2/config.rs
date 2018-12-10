@@ -5,7 +5,6 @@ use v2::*;
 #[derive(Debug)]
 pub struct Config {
     config: client::Client<hyper_rustls::HttpsConnector<client::HttpConnector>, hyper::Body>,
-    handle: reactor::Handle,
     index: String,
     insecure_registry: bool,
     user_agent: Option<String>,
@@ -15,12 +14,11 @@ pub struct Config {
 
 impl Config {
     /// Initialize `Config` with default values.
-    pub fn default(handle: &reactor::Handle) -> Self {
+    pub fn default() -> Self {
         let dns_threads = 4;
         Self {
             config: hyper::client::Client::builder()
                 .build(hyper_rustls::HttpsConnector::new(dns_threads)),
-            handle: handle.clone(),
             index: "registry-1.docker.io".into(),
             insecure_registry: false,
             user_agent: Some(::USER_AGENT.to_owned()),

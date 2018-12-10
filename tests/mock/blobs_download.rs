@@ -20,7 +20,7 @@ fn test_blobs_has_layer() {
         .create();
 
     let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let dclient = dkregistry::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)
@@ -46,7 +46,7 @@ fn test_blobs_hasnot_layer() {
     let _m = mock("HEAD", ep.as_str()).with_status(404).create();
 
     let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let dclient = dkregistry::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)

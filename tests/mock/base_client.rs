@@ -17,7 +17,7 @@ fn test_base_no_insecure() {
         .create();
 
     let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let dclient = dkregistry::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(false)
         .username(None)
@@ -44,7 +44,7 @@ fn test_base_useragent() {
         .create();
 
     let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let dclient = dkregistry::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)
@@ -72,7 +72,7 @@ fn test_base_custom_useragent() {
         .create();
 
     let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let dclient = dkregistry::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .user_agent(Some(ua.to_string()))
@@ -99,7 +99,7 @@ fn test_base_no_useragent() {
         .create();
 
     let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let dclient = dkregistry::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .user_agent(None)

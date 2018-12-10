@@ -17,7 +17,7 @@
 //! // Check whether a registry supports API v2.
 //! let host = "quay.io";
 //! let mut tcore = Core::new()?;
-//! let dclient = Client::configure(&tcore.handle())
+//! let dclient = Client::configure()
 //!                      .insecure_registry(false)
 //!                      .registry(host)
 //!                      .build()?;

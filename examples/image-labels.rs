@@ -61,7 +61,7 @@ fn run(
 ) -> Result<(), dkregistry::errors::Error> {
     let mut tcore = Core::new()?;
 
-    let mut client = dkregistry::v2::Client::configure(&tcore.handle())
+    let mut client = dkregistry::v2::Client::configure()
         .registry(&dkr_ref.registry())
         .insecure_registry(false)
         .username(user)

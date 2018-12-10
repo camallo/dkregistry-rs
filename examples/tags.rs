@@ -45,7 +45,7 @@ fn run(
     image: &str,
 ) -> Result<(), boxed::Box<error::Error>> {
     let mut tcore = Core::new()?;
-    let mut client = dkregistry::v2::Client::configure(&tcore.handle())
+    let mut client = dkregistry::v2::Client::configure()
         .registry(host)
         .insecure_registry(false)
         .username(user)

@@ -38,7 +38,7 @@ fn test_quayio_base() {
     };
 
     let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
         .username(Some(user))
@@ -55,7 +55,7 @@ fn test_quayio_base() {
 #[test]
 fn test_quayio_insecure() {
     let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(true)
         .username(None)
@@ -78,7 +78,7 @@ fn test_quayio_auth_login() {
     };
 
     let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
         .username(Some(user))
@@ -99,7 +99,7 @@ fn test_quayio_auth_login() {
 #[test]
 fn test_quayio_get_tags_simple() {
     let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
         .username(None)
@@ -118,7 +118,7 @@ fn test_quayio_get_tags_simple() {
 #[test]
 fn test_quayio_get_tags_limit() {
     let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
         .username(None)
@@ -137,7 +137,7 @@ fn test_quayio_get_tags_limit() {
 #[test]
 fn test_quayio_get_tags_pagination() {
     let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
         .username(None)
@@ -163,7 +163,7 @@ fn test_quayio_auth_tags() {
     };
 
     let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
         .username(Some(user))
@@ -196,7 +196,7 @@ fn test_quayio_auth_tags() {
 #[test]
 fn test_quayio_has_manifest() {
     let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
         .username(None)
@@ -223,7 +223,7 @@ fn test_quayio_auth_manifest() {
     };
 
     let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
         .username(Some(user))
@@ -255,7 +255,7 @@ fn test_quayio_auth_manifest() {
 #[test]
 fn test_quayio_has_no_manifest() {
     let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
         .username(None)
@@ -285,7 +285,7 @@ fn test_quayio_auth_layer_blob() {
     };
 
     let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
         .username(Some(user))

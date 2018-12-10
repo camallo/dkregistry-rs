@@ -17,7 +17,7 @@
 //!
 //! // Retrieve an image manifest.
 //! let mut tcore = Core::new()?;
-//! let dclient = Client::configure(&tcore.handle())
+//! let dclient = Client::configure()
 //!                      .registry("quay.io")
 //!                      .build()?;
 //! let fetch = dclient.get_manifest("coreos/etcd", "v3.1.0");
@@ -34,7 +34,6 @@ use futures;
 use hyper::{self, client, header};
 use hyper_rustls;
 use serde_json;
-use tokio_core::reactor;
 
 use futures::Future;
 use std::str::FromStr;
@@ -74,8 +73,8 @@ pub type FutureBool = Box<futures::Future<Item = bool, Error = Error>>;
 pub type FutureManifest = Box<futures::Future<Item = Vec<u8>, Error = Error>>;
 
 impl Client {
-    pub fn configure(handle: &reactor::Handle) -> Config {
-        Config::default(handle)
+    pub fn configure() -> Config {
+        Config::default()
     }
 
     fn new_request(

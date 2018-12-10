@@ -34,7 +34,7 @@ fn test_gcrio_base() {
     };
 
     let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
         .username(Some(user))
@@ -51,7 +51,7 @@ fn test_gcrio_base() {
 #[test]
 fn test_gcrio_insecure() {
     let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(true)
         .username(None)
@@ -68,7 +68,7 @@ fn test_gcrio_insecure() {
 #[test]
 fn test_gcrio_get_tags() {
     let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
         .username(None)
@@ -87,7 +87,7 @@ fn test_gcrio_get_tags() {
 #[test]
 fn test_gcrio_has_manifest() {
     let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
         .username(None)

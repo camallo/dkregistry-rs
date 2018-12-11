@@ -271,8 +271,8 @@ fn test_quayio_has_no_manifest() {
 fn test_quayio_auth_layer_blob() {
     let image = "steveej/cincinnati-test";
     let reference = "0.0.1";
-    let layer0_sha = "sha256:dc9b1c7fec43c5c9655c00e0042847320faadf2a86379cbb8df1eaafade971e5";
-    let layer0_len: usize = 199;
+    let layer0_sha = "sha256:ef11b765159341c08891fb84fa57d4a094903dd79059a2f8af9e1c3babda74e5";
+    let layer0_len: usize = 198;
 
     let login_scope = format!("repository:{}:pull", image);
     let (user, password) = match get_env() {

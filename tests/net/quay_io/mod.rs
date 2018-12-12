@@ -179,11 +179,13 @@ fn test_quayio_auth_tags() {
                 dclient
                     .is_auth(Some(&token))
                     .map(move |ok| (dclient, token, ok))
-            }).and_then(|(mut dclient, token, ok)| {
+            })
+            .and_then(|(mut dclient, token, ok)| {
                 ensure!(ok, "authentication failed");
                 dclient.set_token(Some(&token));
                 Ok(dclient)
-            }).and_then(|dclient| dclient.get_tags(image, None).collect())
+            })
+            .and_then(|dclient| dclient.get_tags(image, None).collect())
     });
 
     let tags = tcore.run(fut_tags).unwrap();
@@ -237,11 +239,13 @@ fn test_quayio_auth_manifest() {
                 dclient
                     .is_auth(Some(&token))
                     .map(move |ok| (dclient, token, ok))
-            }).and_then(|(mut dclient, token, ok)| {
+            })
+            .and_then(|(mut dclient, token, ok)| {
                 ensure!(ok, "authentication failed");
                 dclient.set_token(Some(&token));
                 Ok(dclient)
-            }).and_then(|dclient| dclient.has_manifest(image, reference, None))
+            })
+            .and_then(|dclient| dclient.has_manifest(image, reference, None))
     });
 
     let has_manifest = tcore.run(fut_has_manifest).unwrap();
@@ -297,15 +301,18 @@ fn test_quayio_auth_layer_blob() {
                 dclient
                     .is_auth(Some(&token))
                     .map(move |ok| (dclient, token, ok))
-            }).and_then(|(mut dclient, token, ok)| {
+            })
+            .and_then(|(mut dclient, token, ok)| {
                 ensure!(ok, "authentication failed");
                 dclient.set_token(Some(&token));
                 Ok(dclient)
-            }).and_then(|dclient| {
+            })
+            .and_then(|dclient| {
                 dclient
                     .get_manifest(image, reference)
                     .map(|manifest| (dclient, manifest))
-            }).and_then(|(dclient, manifest)| {
+            })
+            .and_then(|(dclient, manifest)| {
                 let m: ManifestSchema1Signed = serde_json::from_slice(manifest.as_slice()).unwrap();
                 let layers = m.get_layers();
                 let num_layers = layers.len();
@@ -313,7 +320,8 @@ fn test_quayio_auth_layer_blob() {
                 let digest = layers[0].clone();
                 ensure!(digest == layer0_sha, "layer0 digest: {}", digest);
                 Ok((dclient, digest))
-            }).and_then(|(dclient, digest)| dclient.get_blob(&image, &digest))
+            })
+            .and_then(|(dclient, digest)| dclient.get_blob(&image, &digest))
     });
 
     let layer0_blob = tcore.run(fut_layer0_blob).unwrap();

@@ -75,6 +75,7 @@ impl MediaTypes {
                     "application/star".parse()
                 }
             }
-        }.map_err(|e| Error::from(e.to_string()))
+        }
+        .map_err(|e| Error::from(e.to_string()))
     }
 }

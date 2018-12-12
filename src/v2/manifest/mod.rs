@@ -60,18 +60,21 @@ impl Client {
             .from_err()
             .inspect(move |_| {
                 trace!("GET {:?}", url);
-            }).and_then(|r| {
+            })
+            .and_then(|r| {
                 let status = r.status();
                 trace!("Got status: {:?}", status);
                 match status {
                     hyper::StatusCode::OK => Ok(r),
                     _ => Err(format!("get_manifest: wrong HTTP status '{}'", status).into()),
                 }
-            }).and_then(|r| {
+            })
+            .and_then(|r| {
                 r.into_body().concat2().map_err(|e| {
                     format!("get_manifest: failed to fetch the whole body: {}", e).into()
                 })
-            }).and_then(|body| Ok(body.into_bytes().to_vec()));
+            })
+            .and_then(|body| Ok(body.into_bytes().to_vec()));
         Box::new(fres)
     }
 
@@ -142,7 +145,8 @@ impl Client {
             .from_err()
             .inspect(move |_| {
                 trace!("HEAD {:?}", url);
-            }).and_then(|r| {
+            })
+            .and_then(|r| {
                 let status = r.status();
                 let mut ct = None;
                 if let Some(h) = r.headers().get(header::CONTENT_TYPE) {
@@ -180,6 +184,7 @@ fn to_mimes(v: &[&str]) -> Result<Vec<mime::Mime>> {
                 }),
                 _ => None,
             }
-        }).collect();
+        })
+        .collect();
     Ok(res)
 }

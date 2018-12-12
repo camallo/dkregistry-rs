@@ -29,7 +29,8 @@ impl Client {
             .and_then(|res| match res.status() {
                 StatusCode::OK => Ok(true),
                 _ => Ok(false),
-            }).map_err(|e| format!("{}", e).into());
+            })
+            .map_err(|e| format!("{}", e).into());
         Box::new(fres)
     }
 

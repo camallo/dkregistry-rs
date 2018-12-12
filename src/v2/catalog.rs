@@ -50,13 +50,16 @@ impl v2::Client {
                     hyper::StatusCode::OK => Ok(r),
                     _ => Err(format!("get_catalog: wrong HTTP status '{}'", status).into()),
                 }
-            }).and_then(|r| {
+            })
+            .and_then(|r| {
                 r.into_body().concat2().map_err(|e| {
                     format!("get_catalog: failed to fetch the whole body: {}", e).into()
                 })
-            }).and_then(|body| -> Result<Catalog> {
+            })
+            .and_then(|body| -> Result<Catalog> {
                 serde_json::from_slice(&body.into_bytes()).map_err(|e| e.into())
-            }).map(|cat| futures::stream::iter_ok(cat.repositories.into_iter()))
+            })
+            .map(|cat| futures::stream::iter_ok(cat.repositories.into_iter()))
             .flatten_stream();
         Box::new(fres)
     }

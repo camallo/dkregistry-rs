@@ -54,7 +54,8 @@ impl Client {
                     .ok_or_else(|| Error::from("get_token: missing Auth header"))?;
                 let chal = String::from_utf8(a.as_bytes().to_vec())?;
                 Ok(chal)
-            }).and_then(move |hdr| {
+            })
+            .and_then(move |hdr| {
                 let mut auth_ep = "".to_owned();
                 let mut service = None;
                 for item in hdr.trim_left_matches("Bearer ").split(',') {
@@ -99,7 +100,8 @@ impl Client {
                 let auth_ep = token_ep + scope.as_str();
                 trace!("Token endpoint: {}", auth_ep);
                 hyper::Uri::from_str(auth_ep.as_str()).map_err(|e| e.into())
-            }).and_then(move |u| {
+            })
+            .and_then(move |u| {
                 let mut auth_req = hyper::Request::default();
                 *auth_req.method_mut() = hyper::Method::GET;
                 *auth_req.uri_mut() = u;
@@ -117,21 +119,25 @@ impl Client {
                     };
                 };
                 subclient.request(auth_req).map_err(|e| e.into())
-            }).and_then(|r| {
+            })
+            .and_then(|r| {
                 let status = r.status();
                 trace!("Got status {}", status);
                 match status {
                     hyper::StatusCode::OK => Ok(r),
                     _ => Err(format!("login: wrong HTTP status '{}'", status).into()),
                 }
-            }).and_then(|r| {
+            })
+            .and_then(|r| {
                 r.into_body()
                     .concat2()
                     .map_err(|e| format!("login: failed to fetch the whole body: {}", e).into())
-            }).and_then(|body| {
+            })
+            .and_then(|body| {
                 let s = String::from_utf8(body.into_bytes().to_vec())?;
                 serde_json::from_slice(s.as_bytes()).map_err(|e| e.into())
-            }).inspect(|_| {
+            })
+            .inspect(|_| {
                 trace!("Got token");
             });
         Box::new(auth)
@@ -168,7 +174,8 @@ impl Client {
             .from_err()
             .inspect(move |_| {
                 trace!("GET {:?}", url);
-            }).and_then(move |r| {
+            })
+            .and_then(move |r| {
                 let status = r.status();
                 trace!("Got status {}", status);
                 match status {

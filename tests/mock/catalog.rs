@@ -49,7 +49,8 @@ fn test_catalog_paginate() {
                 r#"<{}/v2/_catalog?n=21&last=r1/i1>; rel="next""#,
                 mockito::SERVER_URL
             ),
-        ).with_header("Content-Type", "application/json")
+        )
+        .with_header("Content-Type", "application/json")
         .with_body(repos_p1)
         .create();
     let _m2 = mock("GET", "/v2/_catalog?n=1&last=r1")

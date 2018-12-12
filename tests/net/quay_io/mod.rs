@@ -1,13 +1,13 @@
 extern crate dkregistry;
 extern crate futures;
 extern crate serde_json;
-extern crate tokio_core;
+extern crate tokio;
 
 use self::dkregistry::mediatypes::MediaTypes;
 use self::dkregistry::v2::manifest::ManifestSchema1Signed;
 use self::futures::future;
 use self::futures::prelude::*;
-use self::tokio_core::reactor::Core;
+use self::tokio::runtime::current_thread::Runtime;
 
 static REGISTRY: &'static str = "quay.io";
 
@@ -37,7 +37,7 @@ fn test_quayio_base() {
         None => return,
     };
 
-    let mut tcore = Core::new().unwrap();
+    let mut runtime = Runtime::new().unwrap();
     let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
@@ -48,13 +48,13 @@ fn test_quayio_base() {
 
     let futcheck = dclient.is_v2_supported();
 
-    let res = tcore.run(futcheck).unwrap();
+    let res = runtime.block_on(futcheck).unwrap();
     assert_eq!(res, true);
 }
 
 #[test]
 fn test_quayio_insecure() {
-    let mut tcore = Core::new().unwrap();
+    let mut runtime = Runtime::new().unwrap();
     let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(true)
@@ -65,7 +65,7 @@ fn test_quayio_insecure() {
 
     let futcheck = dclient.is_v2_supported();
 
-    let res = tcore.run(futcheck).unwrap();
+    let res = runtime.block_on(futcheck).unwrap();
     assert_eq!(res, false);
 }
 
@@ -77,7 +77,7 @@ fn test_quayio_auth_login() {
         None => return,
     };
 
-    let mut tcore = Core::new().unwrap();
+    let mut runtime = Runtime::new().unwrap();
     let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
@@ -92,13 +92,13 @@ fn test_quayio_auth_login() {
             .and_then(move |token| dclient.is_auth(Some(token.token())))
     });
 
-    let res = tcore.run(futlogin).unwrap();
+    let res = runtime.block_on(futlogin).unwrap();
     assert_eq!(res, true);
 }
 
 #[test]
 fn test_quayio_get_tags_simple() {
-    let mut tcore = Core::new().unwrap();
+    let mut runtime = Runtime::new().unwrap();
     let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
@@ -109,7 +109,7 @@ fn test_quayio_get_tags_simple() {
 
     let image = "coreos/alpine-sh";
     let fut_tags = dclient.get_tags(image, None);
-    let tags = tcore.run(fut_tags.collect()).unwrap();
+    let tags = runtime.block_on(fut_tags.collect()).unwrap();
     let has_version = tags.iter().any(|t| t == "latest");
 
     assert_eq!(has_version, true);
@@ -117,7 +117,7 @@ fn test_quayio_get_tags_simple() {
 
 #[test]
 fn test_quayio_get_tags_limit() {
-    let mut tcore = Core::new().unwrap();
+    let mut runtime = Runtime::new().unwrap();
     let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
@@ -128,7 +128,7 @@ fn test_quayio_get_tags_limit() {
 
     let image = "coreos/alpine-sh";
     let fut_tags = dclient.get_tags(image, Some(10));
-    let tags = tcore.run(fut_tags.collect()).unwrap();
+    let tags = runtime.block_on(fut_tags.collect()).unwrap();
     let has_version = tags.iter().any(|t| t == "latest");
 
     assert_eq!(has_version, true);
@@ -136,7 +136,7 @@ fn test_quayio_get_tags_limit() {
 
 #[test]
 fn test_quayio_get_tags_pagination() {
-    let mut tcore = Core::new().unwrap();
+    let mut runtime = Runtime::new().unwrap();
     let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
@@ -147,7 +147,7 @@ fn test_quayio_get_tags_pagination() {
 
     let image = "coreos/flannel";
     let fut_tags = dclient.get_tags(image, Some(20));
-    let tags = tcore.run(fut_tags.collect()).unwrap();
+    let tags = runtime.block_on(fut_tags.collect()).unwrap();
     let has_version = tags.iter().any(|t| t == "v0.10.0");
 
     assert_eq!(has_version, true);
@@ -162,7 +162,7 @@ fn test_quayio_auth_tags() {
         None => return,
     };
 
-    let mut tcore = Core::new().unwrap();
+    let mut runtime = Runtime::new().unwrap();
     let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
@@ -188,14 +188,14 @@ fn test_quayio_auth_tags() {
             .and_then(|dclient| dclient.get_tags(image, None).collect())
     });
 
-    let tags = tcore.run(fut_tags).unwrap();
+    let tags = runtime.block_on(fut_tags).unwrap();
     let has_version = tags.iter().any(|t| t == "0.0.1");
     assert_eq!(has_version, true);
 }
 
 #[test]
 fn test_quayio_has_manifest() {
-    let mut tcore = Core::new().unwrap();
+    let mut runtime = Runtime::new().unwrap();
     let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
@@ -207,7 +207,7 @@ fn test_quayio_has_manifest() {
     let image = "coreos/alpine-sh";
     let reference = "latest";
     let fut = dclient.has_manifest(image, reference, None);
-    let has_manifest = tcore.run(fut).unwrap();
+    let has_manifest = runtime.block_on(fut).unwrap();
 
     assert_eq!(has_manifest, Some(MediaTypes::ManifestV2S1Signed));
 }
@@ -222,7 +222,7 @@ fn test_quayio_auth_manifest() {
         None => return,
     };
 
-    let mut tcore = Core::new().unwrap();
+    let mut runtime = Runtime::new().unwrap();
     let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
@@ -248,13 +248,13 @@ fn test_quayio_auth_manifest() {
             .and_then(|dclient| dclient.has_manifest(image, reference, None))
     });
 
-    let has_manifest = tcore.run(fut_has_manifest).unwrap();
+    let has_manifest = runtime.block_on(fut_has_manifest).unwrap();
     assert_eq!(has_manifest, Some(MediaTypes::ManifestV2S1Signed));
 }
 
 #[test]
 fn test_quayio_has_no_manifest() {
-    let mut tcore = Core::new().unwrap();
+    let mut runtime = Runtime::new().unwrap();
     let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
@@ -266,7 +266,7 @@ fn test_quayio_has_no_manifest() {
     let image = "coreos/alpine-sh";
     let reference = "clearly_bogus";
     let fut = dclient.has_manifest(image, reference, None);
-    let has_manifest = tcore.run(fut).unwrap();
+    let has_manifest = runtime.block_on(fut).unwrap();
 
     assert_eq!(has_manifest, None);
 }
@@ -284,7 +284,7 @@ fn test_quayio_auth_layer_blob() {
         None => return,
     };
 
-    let mut tcore = Core::new().unwrap();
+    let mut runtime = Runtime::new().unwrap();
     let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
@@ -324,6 +324,6 @@ fn test_quayio_auth_layer_blob() {
             .and_then(|(dclient, digest)| dclient.get_blob(&image, &digest))
     });
 
-    let layer0_blob = tcore.run(fut_layer0_blob).unwrap();
+    let layer0_blob = runtime.block_on(fut_layer0_blob).unwrap();
     assert_eq!(layer0_blob.len(), layer0_len);
 }

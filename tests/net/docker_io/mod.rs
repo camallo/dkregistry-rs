@@ -1,7 +1,7 @@
 extern crate dkregistry;
-extern crate tokio_core;
+extern crate tokio;
 
-use self::tokio_core::reactor::Core;
+use self::tokio::runtime::current_thread::Runtime;
 
 static REGISTRY: &'static str = "registry-1.docker.io";
 
@@ -31,7 +31,7 @@ fn test_dockerio_base() {
         None => return,
     };
 
-    let mut tcore = Core::new().unwrap();
+    let mut runtime = Runtime::new().unwrap();
     let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
@@ -42,13 +42,13 @@ fn test_dockerio_base() {
 
     let futcheck = dclient.is_v2_supported();
 
-    let res = tcore.run(futcheck).unwrap();
+    let res = runtime.block_on(futcheck).unwrap();
     assert_eq!(res, true);
 }
 
 #[test]
 fn test_dockerio_insecure() {
-    let mut tcore = Core::new().unwrap();
+    let mut runtime = Runtime::new().unwrap();
     let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(true)
@@ -59,6 +59,6 @@ fn test_dockerio_insecure() {
 
     let futcheck = dclient.is_v2_supported();
 
-    let res = tcore.run(futcheck).unwrap();
+    let res = runtime.block_on(futcheck).unwrap();
     assert_eq!(res, false);
 }

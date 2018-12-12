@@ -1,11 +1,11 @@
 extern crate dkregistry;
 extern crate futures;
 extern crate mockito;
-extern crate tokio_core;
+extern crate tokio;
 
 use self::futures::Stream;
 use self::mockito::mock;
-use self::tokio_core::reactor::Core;
+use self::tokio::runtime::current_thread::Runtime;
 
 #[test]
 fn test_tags_simple() {
@@ -20,7 +20,7 @@ fn test_tags_simple() {
         .with_body(tags)
         .create();
 
-    let mut tcore = Core::new().unwrap();
+    let mut runtime = Runtime::new().unwrap();
     let dclient = dkregistry::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
@@ -31,7 +31,7 @@ fn test_tags_simple() {
 
     let futcheck = dclient.get_tags(name, None);
 
-    let res = tcore.run(futcheck.collect()).unwrap();
+    let res = runtime.block_on(futcheck.collect()).unwrap();
     assert_eq!(res, vec!["t1", "t2"]);
 
     mockito::reset();
@@ -64,7 +64,7 @@ fn test_tags_paginate() {
         .with_body(tags_p2)
         .create();
 
-    let mut tcore = Core::new().unwrap();
+    let mut runtime = Runtime::new().unwrap();
     let dclient = dkregistry::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
@@ -75,13 +75,13 @@ fn test_tags_paginate() {
 
     let next = dclient.get_tags(name, Some(1));
 
-    let (first_tag, stream_rest) = tcore.run(next.into_future()).ok().unwrap();
+    let (first_tag, stream_rest) = runtime.block_on(next.into_future()).ok().unwrap();
     assert_eq!(first_tag, Some("t1".to_owned()));
 
-    let (second_tag, stream_rest) = tcore.run(stream_rest.into_future()).ok().unwrap();
+    let (second_tag, stream_rest) = runtime.block_on(stream_rest.into_future()).ok().unwrap();
     assert_eq!(second_tag, Some("t2".to_owned()));
 
-    let (end, _) = tcore.run(stream_rest.into_future()).ok().unwrap();
+    let (end, _) = runtime.block_on(stream_rest.into_future()).ok().unwrap();
     assert_eq!(end, None);
 
     mockito::reset();
@@ -97,7 +97,7 @@ fn test_tags_404() {
         .with_header("Content-Type", "application/json")
         .create();
 
-    let mut tcore = Core::new().unwrap();
+    let mut runtime = Runtime::new().unwrap();
     let dclient = dkregistry::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
@@ -108,7 +108,7 @@ fn test_tags_404() {
 
     let futcheck = dclient.get_tags(name, None);
 
-    let res = tcore.run(futcheck.collect());
+    let res = runtime.block_on(futcheck.collect());
     assert!(res.is_err());
 
     mockito::reset();
@@ -126,7 +126,7 @@ fn test_tags_missing_header() {
         .with_body(tags)
         .create();
 
-    let mut tcore = Core::new().unwrap();
+    let mut runtime = Runtime::new().unwrap();
     let dclient = dkregistry::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
@@ -137,7 +137,7 @@ fn test_tags_missing_header() {
 
     let futcheck = dclient.get_tags(name, None);
 
-    let res = tcore.run(futcheck.collect());
+    let res = runtime.block_on(futcheck.collect());
     assert!(res.is_err());
 
     mockito::reset();

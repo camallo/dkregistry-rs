@@ -2,14 +2,13 @@ extern crate dirs;
 extern crate dkregistry;
 extern crate futures;
 extern crate serde_json;
-extern crate tokio_core;
+extern crate tokio;
 
 use dkregistry::{reference, render};
 use futures::prelude::*;
 use std::result::Result;
 use std::str::FromStr;
 use std::{boxed, env, error, fs, io};
-use tokio_core::reactor::Core;
 
 mod common;
 
@@ -59,8 +58,6 @@ fn run(
     user: Option<String>,
     passwd: Option<String>,
 ) -> Result<(), boxed::Box<error::Error>> {
-    let mut tcore = try!(Core::new());
-
     let mut client = dkregistry::v2::Client::configure()
         .registry(&dkr_ref.registry())
         .insecure_registry(false)
@@ -122,10 +119,9 @@ fn run(
                 .collect()
         });
 
-    let blobs = match tcore.run(futures) {
-        Ok(blobs) => blobs,
-        Err(e) => return Err(Box::new(e)),
-    };
+    let blobs = tokio::runtime::current_thread::Runtime::new()
+        .unwrap()
+        .block_on(futures)?;
 
     println!("Downloaded {} layers", blobs.len());
 

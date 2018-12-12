@@ -4,7 +4,7 @@ extern crate env_logger;
 extern crate futures;
 extern crate log;
 extern crate serde_json;
-extern crate tokio_core;
+extern crate tokio;
 
 mod common;
 
@@ -12,7 +12,7 @@ use dkregistry::reference;
 use futures::prelude::*;
 use std::str::FromStr;
 use std::{boxed, env, error, fs, io};
-use tokio_core::reactor::Core;
+use tokio::runtime::current_thread::Runtime;
 
 fn main() {
     let dkr_ref = match std::env::args().nth(1) {
@@ -67,7 +67,7 @@ fn run(
 
     let image = dkr_ref.repository();
     let version = dkr_ref.version();
-    let mut tcore = Core::new()?;
+    let mut runtime = Runtime::new()?;
 
     let mut client = dkregistry::v2::Client::configure()
         .registry(&dkr_ref.registry())
@@ -129,7 +129,7 @@ fn run(
                 .collect()
         });
 
-    let blobs = match tcore.run(futures) {
+    let blobs = match runtime.block_on(futures) {
         Ok(blobs) => blobs,
         Err(e) => return Err(Box::new(e)),
     };

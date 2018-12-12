@@ -2,14 +2,14 @@ extern crate dirs;
 extern crate dkregistry;
 extern crate futures;
 extern crate serde_json;
-extern crate tokio_core;
+extern crate tokio;
 
 use dkregistry::reference;
 use futures::prelude::*;
 use std::result::Result;
 use std::str::FromStr;
 use std::{env, fs, io};
-use tokio_core::reactor::Core;
+use tokio::runtime::current_thread::Runtime;
 
 mod common;
 
@@ -59,7 +59,7 @@ fn run(
     user: Option<String>,
     passwd: Option<String>,
 ) -> Result<(), dkregistry::errors::Error> {
-    let mut tcore = Core::new()?;
+    let mut runtime = Runtime::new()?;
 
     let mut client = dkregistry::v2::Client::configure()
         .registry(&dkr_ref.registry())
@@ -107,7 +107,7 @@ fn run(
                 })
         });
 
-    let manifest = match tcore.run(futures) {
+    let manifest = match runtime.block_on(futures) {
         Ok(manifest) => Ok(manifest),
         Err(e) => Err(format!("Got error {}", e)),
     }?;

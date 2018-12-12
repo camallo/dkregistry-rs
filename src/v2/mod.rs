@@ -8,20 +8,20 @@
 //!
 //! ```rust,no_run
 //! # extern crate dkregistry;
-//! # extern crate tokio_core;
+//! # extern crate tokio;
 //! # fn main() {
 //! # fn run() -> dkregistry::errors::Result<()> {
 //! #
-//! use tokio_core::reactor::Core;
+//! use tokio::runtime::current_thread::Runtime;
 //! use dkregistry::v2::Client;
 //!
 //! // Retrieve an image manifest.
-//! let mut tcore = Core::new()?;
+//! let mut runtime = Runtime::new()?;
 //! let dclient = Client::configure()
 //!                      .registry("quay.io")
 //!                      .build()?;
 //! let fetch = dclient.get_manifest("coreos/etcd", "v3.1.0");
-//! let manifest = tcore.run(fetch)?;
+//! let manifest = runtime.block_on(fetch)?;
 //! #
 //! # Ok(())
 //! # };

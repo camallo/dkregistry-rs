@@ -7,22 +7,22 @@
 //!
 //! ```rust,no_run
 //! # extern crate dkregistry;
-//! # extern crate tokio_core;
+//! # extern crate tokio;
 //! # fn main() {
 //! # fn run() -> dkregistry::errors::Result<()> {
 //! #
-//! use tokio_core::reactor::Core;
+//! use tokio::runtime::current_thread::Runtime;
 //! use dkregistry::v2::Client;
 //!
 //! // Check whether a registry supports API v2.
 //! let host = "quay.io";
-//! let mut tcore = Core::new()?;
+//! let mut runtime = Runtime::new()?;
 //! let dclient = Client::configure()
 //!                      .insecure_registry(false)
 //!                      .registry(host)
 //!                      .build()?;
 //! let check = dclient.is_v2_supported();
-//! match tcore.run(check)? {
+//! match runtime.block_on(check)? {
 //!     false => println!("{} does NOT support v2", host),
 //!     true => println!("{} supports v2", host),
 //! };
@@ -43,7 +43,6 @@ extern crate hyper_rustls;
 extern crate mime;
 extern crate serde;
 extern crate serde_json;
-extern crate tokio_core;
 #[macro_use]
 extern crate error_chain;
 #[macro_use]

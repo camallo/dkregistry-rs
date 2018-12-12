@@ -1,11 +1,11 @@
 extern crate dkregistry;
 extern crate futures;
 extern crate mockito;
-extern crate tokio_core;
+extern crate tokio;
 
 use self::futures::Stream;
 use self::mockito::mock;
-use self::tokio_core::reactor::Core;
+use self::tokio::runtime::current_thread::Runtime;
 
 #[test]
 fn test_catalog_simple() {
@@ -18,7 +18,7 @@ fn test_catalog_simple() {
         .with_body(repos)
         .create();
 
-    let mut tcore = Core::new().unwrap();
+    let mut runtime = Runtime::new().unwrap();
     let dclient = dkregistry::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
@@ -29,7 +29,7 @@ fn test_catalog_simple() {
 
     let futcheck = dclient.get_catalog(None);
 
-    let res = tcore.run(futcheck.collect()).unwrap();
+    let res = runtime.block_on(futcheck.collect()).unwrap();
     assert_eq!(res, vec!["r1/i1", "r2"]);
 
     mockito::reset();
@@ -59,7 +59,7 @@ fn test_catalog_paginate() {
         .with_body(repos_p2)
         .create();
 
-    let mut tcore = Core::new().unwrap();
+    let mut runtime = Runtime::new().unwrap();
     let dclient = dkregistry::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
@@ -70,14 +70,14 @@ fn test_catalog_paginate() {
 
     let next = dclient.get_catalog(Some(1));
 
-    let (page1, next) = tcore.run(next.into_future()).ok().unwrap();
+    let (page1, next) = runtime.block_on(next.into_future()).ok().unwrap();
     assert_eq!(page1, Some("r1/i1".to_owned()));
 
-    let (page2, next) = tcore.run(next.into_future()).ok().unwrap();
+    let (page2, next) = runtime.block_on(next.into_future()).ok().unwrap();
     // TODO(lucab): implement pagination
     assert_eq!(page2, None);
 
-    let (end, _) = tcore.run(next.into_future()).ok().unwrap();
+    let (end, _) = runtime.block_on(next.into_future()).ok().unwrap();
     assert_eq!(end, None);
 
     mockito::reset();

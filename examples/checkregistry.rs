@@ -1,8 +1,8 @@
 extern crate dkregistry;
-extern crate tokio_core;
+extern crate tokio;
 
 use std::{boxed, error};
-use tokio_core::reactor::Core;
+use tokio::runtime::current_thread::Runtime;
 
 fn main() {
     let registry = match std::env::args().nth(1) {
@@ -19,14 +19,14 @@ fn main() {
 }
 
 fn run(host: &str) -> Result<bool, boxed::Box<error::Error>> {
-    let mut tcore = try!(Core::new());
+    let mut runtime = Runtime::new()?;
     let dclient = try!(dkregistry::v2::Client::configure()
         .registry(host)
         .insecure_registry(false)
         .build());
     let futcheck = dclient.is_v2_supported();
 
-    let supported = try!(tcore.run(futcheck));
+    let supported = runtime.block_on(futcheck)?;
     match supported {
         false => println!("{} does NOT support v2", host),
         true => println!("{} supports v2", host),

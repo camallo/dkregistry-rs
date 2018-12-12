@@ -1,9 +1,9 @@
 extern crate dkregistry;
 extern crate futures;
-extern crate tokio_core;
+extern crate tokio;
 
 use self::futures::stream::Stream;
-use self::tokio_core::reactor::Core;
+use self::tokio::runtime::current_thread::Runtime;
 
 static REGISTRY: &'static str = "gcr.io";
 
@@ -33,7 +33,7 @@ fn test_gcrio_base() {
         None => return,
     };
 
-    let mut tcore = Core::new().unwrap();
+    let mut runtime = Runtime::new().unwrap();
     let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
@@ -44,13 +44,13 @@ fn test_gcrio_base() {
 
     let futcheck = dclient.is_v2_supported();
 
-    let res = tcore.run(futcheck).unwrap();
+    let res = runtime.block_on(futcheck).unwrap();
     assert_eq!(res, true);
 }
 
 #[test]
 fn test_gcrio_insecure() {
-    let mut tcore = Core::new().unwrap();
+    let mut runtime = Runtime::new().unwrap();
     let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(true)
@@ -61,13 +61,13 @@ fn test_gcrio_insecure() {
 
     let futcheck = dclient.is_v2_supported();
 
-    let res = tcore.run(futcheck).unwrap();
+    let res = runtime.block_on(futcheck).unwrap();
     assert_eq!(res, false);
 }
 
 #[test]
 fn test_gcrio_get_tags() {
-    let mut tcore = Core::new().unwrap();
+    let mut runtime = Runtime::new().unwrap();
     let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
@@ -78,7 +78,7 @@ fn test_gcrio_get_tags() {
 
     let image = "google_containers/mounttest";
     let fut_tags = dclient.get_tags(image, None);
-    let tags = tcore.run(fut_tags.collect()).unwrap();
+    let tags = runtime.block_on(fut_tags.collect()).unwrap();
     let has_version = tags.iter().any(|t| t == "0.2");
 
     assert_eq!(has_version, true);
@@ -86,7 +86,7 @@ fn test_gcrio_get_tags() {
 
 #[test]
 fn test_gcrio_has_manifest() {
-    let mut tcore = Core::new().unwrap();
+    let mut runtime = Runtime::new().unwrap();
     let dclient = dkregistry::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
@@ -99,7 +99,7 @@ fn test_gcrio_has_manifest() {
     let tag = "0.2";
     let manifest_type = dkregistry::mediatypes::MediaTypes::ManifestV2S1Signed.to_string();
     let fut = dclient.has_manifest(image, tag, Some(vec![manifest_type.as_str()].as_slice()));
-    let has_manifest = tcore.run(fut).unwrap();
+    let has_manifest = runtime.block_on(fut).unwrap();
 
     assert_eq!(
         has_manifest,

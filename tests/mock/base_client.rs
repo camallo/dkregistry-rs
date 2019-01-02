@@ -10,7 +10,7 @@ static API_VERSION_V: &'static str = "registry/2.0";
 
 #[test]
 fn test_base_no_insecure() {
-    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let addr = mockito::server_address().to_string();
     let _m = mock("GET", "/v2/")
         .with_status(200)
         .with_header(API_VERSION_K, API_VERSION_V)
@@ -36,7 +36,7 @@ fn test_base_no_insecure() {
 
 #[test]
 fn test_base_useragent() {
-    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let addr = mockito::server_address().to_string();
     let _m = mock("GET", "/v2/")
         .match_header("user-agent", dkregistry::USER_AGENT)
         .with_status(200)
@@ -64,7 +64,7 @@ fn test_base_useragent() {
 fn test_base_custom_useragent() {
     let ua = "custom-ua/1.0";
 
-    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let addr = mockito::server_address().to_string();
     let _m = mock("GET", "/v2/")
         .match_header("user-agent", ua)
         .with_status(200)
@@ -91,7 +91,7 @@ fn test_base_custom_useragent() {
 
 #[test]
 fn test_base_no_useragent() {
-    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let addr = mockito::server_address().to_string();
     let _m = mock("GET", "/v2/")
         .match_header("user-agent", mockito::Matcher::Missing)
         .with_status(200)

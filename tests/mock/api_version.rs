@@ -10,7 +10,7 @@ static API_VERSION_V: &'static str = "registry/2.0";
 
 #[test]
 fn test_version_check_status_ok() {
-    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let addr = mockito::server_address().to_string();
     let _m = mock("GET", "/v2/")
         .with_status(200)
         .with_header(API_VERSION_K, API_VERSION_V)
@@ -35,7 +35,7 @@ fn test_version_check_status_ok() {
 
 #[test]
 fn test_version_check_status_unauth() {
-    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let addr = mockito::server_address().to_string();
     let _m = mock("GET", "/v2/")
         .with_status(401)
         .with_header(API_VERSION_K, API_VERSION_V)
@@ -60,7 +60,7 @@ fn test_version_check_status_unauth() {
 
 #[test]
 fn test_version_check_status_notfound() {
-    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let addr = mockito::server_address().to_string();
     let _m = mock("GET", "/v2/")
         .with_status(404)
         .with_header(API_VERSION_K, API_VERSION_V)
@@ -85,7 +85,7 @@ fn test_version_check_status_notfound() {
 
 #[test]
 fn test_version_check_status_forbidden() {
-    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let addr = mockito::server_address().to_string();
     let _m = mock("GET", "/v2/")
         .with_status(403)
         .with_header(API_VERSION_K, API_VERSION_V)
@@ -110,7 +110,7 @@ fn test_version_check_status_forbidden() {
 
 #[test]
 fn test_version_check_noheader() {
-    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let addr = mockito::server_address().to_string();
     let _m = mock("GET", "/v2/").with_status(403).create();
 
     let mut tcore = Core::new().unwrap();
@@ -132,7 +132,7 @@ fn test_version_check_noheader() {
 
 #[test]
 fn test_version_check_trailing_slash() {
-    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let addr = mockito::server_address().to_string();
     let _m = mock("GET", "/v2")
         .with_status(200)
         .with_header(API_VERSION_K, API_VERSION_V)

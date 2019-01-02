@@ -12,7 +12,7 @@ fn test_blobs_has_layer() {
     let binary_digest = "binarydigest";
 
     let ep = format!("/v2/{}/blobs/{}", name, digest);
-    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let addr = mockito::server_address().to_string();
     let _m = mock("HEAD", ep.as_str())
         .with_status(200)
         .with_header("Content-Length", "0")
@@ -42,7 +42,7 @@ fn test_blobs_hasnot_layer() {
     let digest = "fakedigest";
 
     let ep = format!("/v2/{}/blobs/{}", name, digest);
-    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let addr = mockito::server_address().to_string();
     let _m = mock("HEAD", ep.as_str()).with_status(404).create();
 
     let mut tcore = Core::new().unwrap();

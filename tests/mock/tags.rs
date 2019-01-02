@@ -13,7 +13,7 @@ fn test_tags_simple() {
     let tags = r#"{"name": "repo", "tags": [ "t1", "t2" ]}"#;
 
     let ep = format!("/v2/{}/tags/list", name);
-    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let addr = mockito::server_address().to_string();
     let _m = mock("GET", ep.as_str())
         .with_status(200)
         .with_header("Content-Type", "application/json")
@@ -45,14 +45,14 @@ fn test_tags_paginate() {
 
     let ep1 = format!("/v2/{}/tags/list?n=1", name);
     let ep2 = format!("/v2/{}/tags/list?n=1&next_page=t1", name);
-    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let addr = mockito::server_address().to_string();
     let _m1 = mock("GET", ep1.as_str())
         .with_status(200)
         .with_header(
             "Link",
             &format!(
                 r#"<{}/v2/_tags?n=1&next_page=t1>; rel="next""#,
-                mockito::SERVER_URL
+                mockito::server_url()
             ),
         )
         .with_header("Content-Type", "application/json")
@@ -91,7 +91,7 @@ fn test_tags_paginate() {
 fn test_tags_404() {
     let name = "repo";
     let ep = format!("/v2/{}/tags/list", name);
-    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let addr = mockito::server_address().to_string();
     let _m = mock("GET", ep.as_str())
         .with_status(404)
         .with_header("Content-Type", "application/json")
@@ -120,7 +120,7 @@ fn test_tags_missing_header() {
     let tags = r#"{"name": "repo", "tags": [ "t1", "t2" ]}"#;
     let ep = format!("/v2/{}/tags/list", name);
 
-    let addr = mockito::SERVER_ADDRESS.replace("127.0.0.1", "localhost");
+    let addr = mockito::server_address().to_string();
     let _m = mock("GET", ep.as_str())
         .with_status(200)
         .with_body(tags)

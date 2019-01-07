@@ -5,7 +5,7 @@
 //!
 //! ## Example
 //!
-//! ```rust
+//! ```rust,no_run
 //! # extern crate dkregistry;
 //! # extern crate tokio_core;
 //! # fn main() {

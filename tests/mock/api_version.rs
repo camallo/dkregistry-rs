@@ -25,10 +25,12 @@ fn test_version_check_status_ok() {
         .build()
         .unwrap();
 
-    let futcheck = dclient.is_v2_supported();
+    let is_v2 = dclient.is_v2_supported();
+    let ok = tcore.run(is_v2).unwrap();
+    assert_eq!(ok, true);
 
-    let res = tcore.run(futcheck).unwrap();
-    assert_eq!(res, true);
+    let ensure_v2 = dclient.ensure_v2_registry();
+    let dclient = tcore.run(ensure_v2).unwrap();
 
     mockito::reset();
 }

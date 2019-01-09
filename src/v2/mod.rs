@@ -6,7 +6,7 @@
 //!
 //! ## Example
 //!
-//! ```rust
+//! ```rust,no_run
 //! # extern crate dkregistry;
 //! # extern crate tokio_core;
 //! # fn main() {
@@ -102,6 +102,20 @@ impl Client {
         Ok(req)
     }
 
+    /// Ensure remote registry supports v2 API.
+    pub fn ensure_v2_registry(self) -> impl Future<Item = Self, Error = Error> {
+        self.is_v2_supported()
+            .map(move |ok| (ok, self))
+            .and_then(|(ok, client)| {
+                if !ok {
+                    bail!("remote server does not support docker-registry v2 API")
+                } else {
+                    Ok(client)
+                }
+            })
+    }
+
+    /// Check whether remote registry supports v2 API.
     pub fn is_v2_supported(&self) -> FutureBool {
         let api_header = "Docker-Distribution-API-Version";
         let api_version = "registry/2.0";

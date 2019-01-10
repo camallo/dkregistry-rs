@@ -1,9 +1,9 @@
 extern crate dkregistry;
 extern crate mockito;
-extern crate tokio_core;
+extern crate tokio;
 
 use self::mockito::mock;
-use self::tokio_core::reactor::Core;
+use self::tokio::runtime::current_thread::Runtime;
 
 static API_VERSION_K: &'static str = "Docker-Distribution-API-Version";
 static API_VERSION_V: &'static str = "registry/2.0";
@@ -16,8 +16,8 @@ fn test_base_no_insecure() {
         .with_header(API_VERSION_K, API_VERSION_V)
         .create();
 
-    let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let mut runtime = Runtime::new().unwrap();
+    let dclient = dkregistry::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(false)
         .username(None)
@@ -29,7 +29,7 @@ fn test_base_no_insecure() {
 
     // This relies on the fact that mockito is HTTP-only and
     // trying to speak TLS to it results in garbage/errors.
-    tcore.run(futcheck).is_err();
+    runtime.block_on(futcheck).is_err();
 
     mockito::reset();
 }
@@ -43,8 +43,8 @@ fn test_base_useragent() {
         .with_header(API_VERSION_K, API_VERSION_V)
         .create();
 
-    let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let mut runtime = Runtime::new().unwrap();
+    let dclient = dkregistry::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)
@@ -54,7 +54,7 @@ fn test_base_useragent() {
 
     let futcheck = dclient.is_v2_supported();
 
-    let res = tcore.run(futcheck).unwrap();
+    let res = runtime.block_on(futcheck).unwrap();
     assert_eq!(res, true);
 
     mockito::reset();
@@ -71,8 +71,8 @@ fn test_base_custom_useragent() {
         .with_header(API_VERSION_K, API_VERSION_V)
         .create();
 
-    let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let mut runtime = Runtime::new().unwrap();
+    let dclient = dkregistry::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .user_agent(Some(ua.to_string()))
@@ -83,7 +83,7 @@ fn test_base_custom_useragent() {
 
     let futcheck = dclient.is_v2_supported();
 
-    let res = tcore.run(futcheck).unwrap();
+    let res = runtime.block_on(futcheck).unwrap();
     assert_eq!(res, true);
 
     mockito::reset();
@@ -98,8 +98,8 @@ fn test_base_no_useragent() {
         .with_header(API_VERSION_K, API_VERSION_V)
         .create();
 
-    let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let mut runtime = Runtime::new().unwrap();
+    let dclient = dkregistry::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .user_agent(None)
@@ -110,7 +110,7 @@ fn test_base_no_useragent() {
 
     let futcheck = dclient.is_v2_supported();
 
-    let res = tcore.run(futcheck).unwrap();
+    let res = runtime.block_on(futcheck).unwrap();
     assert_eq!(res, true);
 
     mockito::reset();

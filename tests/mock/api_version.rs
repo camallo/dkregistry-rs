@@ -1,9 +1,9 @@
 extern crate dkregistry;
 extern crate mockito;
-extern crate tokio_core;
+extern crate tokio;
 
 use self::mockito::mock;
-use self::tokio_core::reactor::Core;
+use self::tokio::runtime::current_thread::Runtime;
 
 static API_VERSION_K: &'static str = "Docker-Distribution-API-Version";
 static API_VERSION_V: &'static str = "registry/2.0";
@@ -16,8 +16,8 @@ fn test_version_check_status_ok() {
         .with_header(API_VERSION_K, API_VERSION_V)
         .create();
 
-    let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let mut runtime = Runtime::new().unwrap();
+    let dclient = dkregistry::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)
@@ -26,11 +26,11 @@ fn test_version_check_status_ok() {
         .unwrap();
 
     let is_v2 = dclient.is_v2_supported();
-    let ok = tcore.run(is_v2).unwrap();
+    let ok = runtime.block_on(is_v2).unwrap();
     assert_eq!(ok, true);
 
     let ensure_v2 = dclient.ensure_v2_registry();
-    let dclient = tcore.run(ensure_v2).unwrap();
+    let _dclient = runtime.block_on(ensure_v2).unwrap();
 
     mockito::reset();
 }
@@ -43,8 +43,8 @@ fn test_version_check_status_unauth() {
         .with_header(API_VERSION_K, API_VERSION_V)
         .create();
 
-    let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let mut runtime = Runtime::new().unwrap();
+    let dclient = dkregistry::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)
@@ -54,7 +54,7 @@ fn test_version_check_status_unauth() {
 
     let futcheck = dclient.is_v2_supported();
 
-    let res = tcore.run(futcheck).unwrap();
+    let res = runtime.block_on(futcheck).unwrap();
     assert_eq!(res, true);
 
     mockito::reset();
@@ -68,8 +68,8 @@ fn test_version_check_status_notfound() {
         .with_header(API_VERSION_K, API_VERSION_V)
         .create();
 
-    let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let mut runtime = Runtime::new().unwrap();
+    let dclient = dkregistry::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)
@@ -79,7 +79,7 @@ fn test_version_check_status_notfound() {
 
     let futcheck = dclient.is_v2_supported();
 
-    let res = tcore.run(futcheck).unwrap();
+    let res = runtime.block_on(futcheck).unwrap();
     assert_eq!(res, false);
 
     mockito::reset();
@@ -93,8 +93,8 @@ fn test_version_check_status_forbidden() {
         .with_header(API_VERSION_K, API_VERSION_V)
         .create();
 
-    let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let mut runtime = Runtime::new().unwrap();
+    let dclient = dkregistry::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)
@@ -104,7 +104,7 @@ fn test_version_check_status_forbidden() {
 
     let futcheck = dclient.is_v2_supported();
 
-    let res = tcore.run(futcheck).unwrap();
+    let res = runtime.block_on(futcheck).unwrap();
     assert_eq!(res, false);
 
     mockito::reset();
@@ -115,8 +115,8 @@ fn test_version_check_noheader() {
     let addr = mockito::server_address().to_string();
     let _m = mock("GET", "/v2/").with_status(403).create();
 
-    let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let mut runtime = Runtime::new().unwrap();
+    let dclient = dkregistry::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)
@@ -126,7 +126,7 @@ fn test_version_check_noheader() {
 
     let futcheck = dclient.is_v2_supported();
 
-    let res = tcore.run(futcheck).unwrap();
+    let res = runtime.block_on(futcheck).unwrap();
     assert_eq!(res, false);
 
     mockito::reset();
@@ -140,8 +140,8 @@ fn test_version_check_trailing_slash() {
         .with_header(API_VERSION_K, API_VERSION_V)
         .create();
 
-    let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let mut runtime = Runtime::new().unwrap();
+    let dclient = dkregistry::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)
@@ -151,7 +151,7 @@ fn test_version_check_trailing_slash() {
 
     let futcheck = dclient.is_v2_supported();
 
-    let res = tcore.run(futcheck).unwrap();
+    let res = runtime.block_on(futcheck).unwrap();
     assert_eq!(res, false);
 
     mockito::reset();

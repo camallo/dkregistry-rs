@@ -1,13 +1,13 @@
 extern crate dkregistry;
 extern crate futures;
-extern crate tokio_core;
+extern crate tokio;
 
 mod common;
 
 use futures::prelude::*;
 use std::result::Result;
 use std::{boxed, error};
-use tokio_core::reactor::Core;
+use tokio::runtime::current_thread::Runtime;
 
 fn main() {
     let registry = match std::env::args().nth(1) {
@@ -44,8 +44,8 @@ fn run(
     passwd: Option<String>,
     image: &str,
 ) -> Result<(), boxed::Box<error::Error>> {
-    let mut tcore = Core::new()?;
-    let mut client = dkregistry::v2::Client::configure(&tcore.handle())
+    let mut runtime = Runtime::new()?;
+    let mut client = dkregistry::v2::Client::configure()
         .registry(host)
         .insecure_registry(false)
         .username(user)
@@ -63,7 +63,7 @@ fn run(
             Ok(())
         });
 
-    match tcore.run(futures) {
+    match runtime.block_on(futures) {
         Ok(_) => Ok(()),
         Err(e) => Err(Box::new(e)),
     }

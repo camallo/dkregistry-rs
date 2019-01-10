@@ -1,9 +1,9 @@
 extern crate dkregistry;
 extern crate mockito;
-extern crate tokio_core;
+extern crate tokio;
 
 use self::mockito::mock;
-use self::tokio_core::reactor::Core;
+use self::tokio::runtime::current_thread::Runtime;
 
 #[test]
 fn test_blobs_has_layer() {
@@ -19,8 +19,8 @@ fn test_blobs_has_layer() {
         .with_header("Docker-Content-Digest", binary_digest)
         .create();
 
-    let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let mut runtime = Runtime::new().unwrap();
+    let dclient = dkregistry::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)
@@ -30,7 +30,7 @@ fn test_blobs_has_layer() {
 
     let futcheck = dclient.has_blob(name, digest);
 
-    let res = tcore.run(futcheck).unwrap();
+    let res = runtime.block_on(futcheck).unwrap();
     assert_eq!(res, true);
 
     mockito::reset();
@@ -45,8 +45,8 @@ fn test_blobs_hasnot_layer() {
     let addr = mockito::server_address().to_string();
     let _m = mock("HEAD", ep.as_str()).with_status(404).create();
 
-    let mut tcore = Core::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure(&tcore.handle())
+    let mut runtime = Runtime::new().unwrap();
+    let dclient = dkregistry::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)
@@ -56,7 +56,7 @@ fn test_blobs_hasnot_layer() {
 
     let futcheck = dclient.has_blob(name, digest);
 
-    let res = tcore.run(futcheck).unwrap();
+    let res = runtime.block_on(futcheck).unwrap();
     assert_eq!(res, false);
 
     mockito::reset();

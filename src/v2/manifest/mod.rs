@@ -19,62 +19,81 @@ impl Client {
     /// The name and reference parameters identify the image.
     /// The reference may be either a tag or digest.
     pub fn get_manifest(&self, name: &str, reference: &str) -> FutureManifest {
-        let url = match hyper::Uri::from_str(&format!(
-            "{}/v2/{}/manifests/{}",
-            self.base_url.clone(),
-            name,
-            reference
-        )) {
-            Ok(url) => url,
+        Box::new(
+            self.get_manifest_and_ref(name, reference)
+                .map(|(manifest, _)| manifest),
+        )
+    }
+
+    /// Fetch an image manifest and return it with its digest.
+    ///
+    /// The name and reference parameters identify the image.
+    /// The reference may be either a tag or digest.
+    pub fn get_manifest_and_ref(&self, name: &str, reference: &str) -> FutureManifestAndRef {
+        let url = {
+            let ep = format!(
+                "{}/v2/{}/manifests/{}",
+                self.base_url.clone(),
+                name,
+                reference
+            );
+            match reqwest::Url::parse(&ep) {
+                Ok(url) => url,
+                Err(e) => {
+                    return Box::new(future::err::<_, _>(Error::from(format!(
+                        "failed to parse url from string '{}': {}",
+                        ep, e
+                    ))));
+                }
+            }
+        };
+
+        let mtype = match header::HeaderValue::from_str(
+            &mediatypes::MediaTypes::ManifestV2S2.to_string(),
+        ) {
+            Ok(headervalue) => headervalue,
             Err(e) => {
-                let msg = format!("failed to parse Uri from str: {}", e);
+                let msg = format!("failed to parse HeaderValue from str: {}:", e);
                 error!("{}", msg);
                 return Box::new(futures::future::err::<_, _>(Error::from(msg)));
             }
         };
-        let req = {
-            let mut req = match self.new_request(hyper::Method::GET, url.clone()) {
-                Ok(r) => r,
-                Err(e) => {
-                    let msg = format!("new_request failed: {}", e);
-                    error!("{}", msg);
-                    return Box::new(futures::future::err(Error::from(msg)));
-                }
-            };
-            let mtype = mediatypes::MediaTypes::ManifestV2S2.to_string();
-            req.headers_mut().append(
-                header::ACCEPT,
-                match header::HeaderValue::from_str(&mtype) {
-                    Ok(headervalue) => headervalue,
-                    Err(e) => {
-                        let msg = format!("failed to parse HeaderValue from str: {}:", e);
-                        error!("{}", msg);
-                        return Box::new(futures::future::err::<_, _>(Error::from(msg)));
-                    }
-                },
-            );
-            req
-        };
-        let freq = self.hclient.request(req);
-        let fres = freq
-            .from_err()
-            .inspect(move |_| {
-                trace!("GET {:?}", url);
-            })
-            .and_then(|r| {
-                let status = r.status();
+
+        let fres = self
+            .build_reqwest(
+                reqwest::async::Client::new()
+                    .get(url)
+                    .header(reqwest::header::ACCEPT, mtype),
+            )
+            .send()
+            .map_err(|e| Error::from(format!("{}", e)))
+            .and_then(|res| {
+                trace!("GET '{}' status: {:?}", res.url(), res.status());
+                let status = res.status();
                 trace!("Got status: {:?}", status);
                 match status {
-                    hyper::StatusCode::OK => Ok(r),
-                    _ => Err(format!("get_manifest: wrong HTTP status '{}'", status).into()),
+                    reqwest::StatusCode::OK => Ok(res),
+                    _ => Err(format!("GET {}: wrong HTTP status '{}'", res.url(), status).into()),
                 }
             })
-            .and_then(|r| {
-                r.into_body().concat2().map_err(|e| {
-                    format!("get_manifest: failed to fetch the whole body: {}", e).into()
-                })
+            .and_then(|res| {
+                future::ok(res.headers().clone()).join(
+                    res.into_body()
+                        .concat2()
+                        .map_err(|e| Error::from(format!("{}", e))),
+                )
             })
-            .and_then(|body| Ok(body.into_bytes().to_vec()));
+            .map_err(|e| Error::from(format!("{}", e)))
+            .and_then(|(headers, body)| {
+                Ok((
+                    body.to_vec(),
+                    headers
+                        .get("docker-content-digest")
+                        .ok_or(Error::from("cannot find manifestref in headers"))?
+                        .to_str()?
+                        .to_string(),
+                ))
+            });
         Box::new(fres)
     }
 

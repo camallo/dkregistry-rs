@@ -31,7 +31,7 @@ strum_macros = "0.13"
 tar = "0.4"
 tokio = "0.1"
 dirs = "1.0"
-reqwest = "0.9"
+reqwest = { version = "0.9", default-features = false, features = [ "rustls-tls"] }
 
 [dev-dependencies]
 env_logger = "0.6"

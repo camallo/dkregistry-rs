@@ -125,7 +125,7 @@ impl Client {
                 return Box::new(futures::future::err::<_, _>(Error::from(format!(
                     "failed to parse url from string: {}",
                     e
-                ))))
+                ))));
             }
         };
         let req = match self.new_request(hyper::Method::GET, url.clone()) {

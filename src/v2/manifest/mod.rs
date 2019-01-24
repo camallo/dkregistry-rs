@@ -2,7 +2,7 @@
 use mediatypes;
 use v2::*;
 
-use futures::Stream;
+use futures::{future, Stream};
 use hyper::header;
 use hyper::StatusCode;
 use mime;
@@ -100,7 +100,7 @@ impl Client {
                 Err(e) => {
                     let msg = format!("failed to parse Uri from str: {}", e);
                     error!("{}", msg);
-                    return Box::new(futures::future::err::<_, _>(Error::from(msg)));
+                    return Box::new(future::err::<_, _>(Error::from(msg)));
                 }
             }
         };
@@ -118,7 +118,7 @@ impl Client {
         } {
             Ok(x) => x,
             Err(e) => {
-                return Box::new(futures::future::err::<_, _>(Error::from(format!(
+                return Box::new(future::err::<_, _>(Error::from(format!(
                     "failed to match mediatypes: {}",
                     e
                 ))));
@@ -131,7 +131,7 @@ impl Client {
                 Err(e) => {
                     let msg = format!("new_request failed: {}", e);
                     error!("{}", msg);
-                    return Box::new(futures::future::err(Error::from(msg)));
+                    return Box::new(future::err(Error::from(msg)));
                 }
             };
             for v in accept_types {

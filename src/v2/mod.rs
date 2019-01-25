@@ -72,6 +72,9 @@ pub type FutureBool = Box<futures::Future<Item = bool, Error = Error>>;
 /// Convenience alias for a future manifest blob.
 pub type FutureManifest = Box<futures::Future<Item = Vec<u8>, Error = Error>>;
 
+/// Convenience alias for a future manifest blob and ref.
+pub type FutureManifestAndRef = Box<futures::Future<Item = (Vec<u8>, String), Error = Error>>;
+
 impl Client {
     pub fn configure() -> Config {
         Config::default()
@@ -125,7 +128,7 @@ impl Client {
                 return Box::new(futures::future::err::<_, _>(Error::from(format!(
                     "failed to parse url from string: {}",
                     e
-                ))))
+                ))));
             }
         };
         let req = match self.new_request(hyper::Method::GET, url.clone()) {

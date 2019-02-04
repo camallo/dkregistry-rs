@@ -32,6 +32,10 @@
 use std::str::FromStr;
 use std::{fmt, str};
 
+static DEFAULT_REGISTRY: &str = "registry-1.docker.io";
+static DEFAULT_TAG: &str = "latest";
+static DEFAULT_SCHEME: &str = "docker";
+
 /// Image version, either a tag or a digest.
 #[derive(Clone)]
 pub enum Version {
@@ -96,8 +100,8 @@ pub struct Reference {
 
 impl Reference {
     pub fn new(registry: Option<String>, repository: String, version: Option<Version>) -> Self {
-        let reg = registry.unwrap_or_else(|| "registry-1.docker.io".to_string());
-        let ver = version.unwrap_or_else(|| Version::Tag("latest".to_string()));
+        let reg = registry.unwrap_or_else(|| DEFAULT_REGISTRY.to_string());
+        let ver = version.unwrap_or_else(|| Version::Tag(DEFAULT_TAG.to_string()));
         Self {
             has_schema: false,
             raw_input: "".into(),
@@ -126,8 +130,8 @@ impl Reference {
     //TODO(lucab): move this to a real URL type
     pub fn to_url(&self) -> String {
         format!(
-            "docker://{}/{}{:?}",
-            self.registry, self.repository, self.version
+            "{}://{}/{}{:?}",
+            DEFAULT_SCHEME, self.registry, self.repository, self.version
         )
     }
 }
@@ -162,7 +166,8 @@ fn parse_url(s: &str) -> Result<Reference, ::errors::Error> {
     if rest.is_empty() {
         bail!("name too short");
     }
-    let mut reg = "registry-1.docker.io";
+
+    let mut reg = DEFAULT_REGISTRY;
     let split: Vec<&str> = rest.rsplitn(3, '/').collect();
     let repository = match split.len() {
         1 => "library/".to_string() + rest,
@@ -182,4 +187,21 @@ fn parse_url(s: &str) -> Result<Reference, ::errors::Error> {
         repository,
         version,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn detect_port_with_simple_repo() {
+        let dkr_ref = Reference::from_str(
+            "sat-r220-02.lab.eng.rdu2.redhat.com:5000/default_organization-custom-ocp",
+        )
+        .unwrap();
+        assert_eq!(
+            dkr_ref.registry(),
+            "docker://sat-r220-02.lab.eng.rdu2.redhat.com:5000"
+        )
+    }
 }

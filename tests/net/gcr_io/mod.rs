@@ -62,7 +62,7 @@ fn test_gcrio_insecure() {
     let futcheck = dclient.is_v2_supported();
 
     let res = runtime.block_on(futcheck).unwrap();
-    assert_eq!(res, false);
+    assert_eq!(res, true);
 }
 
 #[test]

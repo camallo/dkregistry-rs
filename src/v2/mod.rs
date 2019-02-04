@@ -117,45 +117,35 @@ impl Client {
     }
 
     /// Check whether remote registry supports v2 API.
-    pub fn is_v2_supported(&self) -> FutureBool {
+    pub fn is_v2_supported(&self) -> impl Future<Item = bool, Error = Error> {
         let api_header = "Docker-Distribution-API-Version";
         let api_version = "registry/2.0";
 
-        let url = match hyper::Uri::from_str((self.base_url.clone() + "/v2/").as_str()) {
-            Ok(url) => url,
-            Err(e) => {
-                return Box::new(futures::future::err::<_, _>(Error::from(format!(
-                    "failed to parse url from string: {}",
-                    e
-                ))));
-            }
-        };
-        let req = match self.new_request(hyper::Method::GET, url.clone()) {
-            Ok(r) => r,
-            Err(e) => {
-                let msg = format!("new_request failed: {}", e);
-                error!("{}", msg);
-                return Box::new(futures::future::err::<_, _>(Error::from(msg)));
-            }
-        };
-        let freq = self.hclient.request(req);
-        let fres = freq
-            .from_err()
-            .inspect(move |_| {
+        // GET request to bare v2 endpoint.
+        let v2_endpoint = format!("{}/v2/", self.base_url);
+        let get_v2 = reqwest::Url::parse(&v2_endpoint)
+            .chain_err(|| format!("failed to parse url string '{}'", &v2_endpoint))
+            .map(|url| {
                 trace!("GET {:?}", url);
+                self.build_reqwest(reqwest::async::Client::new().get(url))
             })
+            .into_future()
+            .and_then(|req| req.send().from_err());
+
+        // Check status code and API headers according to spec:
+        // https://docs.docker.com/registry/spec/api/#api-version-check
+        get_v2
             .and_then(move |r| match (r.status(), r.headers().get(api_header)) {
                 (hyper::StatusCode::OK, Some(x)) => Ok(x == api_version),
                 (hyper::StatusCode::UNAUTHORIZED, Some(x)) => Ok(x == api_version),
                 (s, v) => {
-                    trace!("Got status {}, header version {:?}", s, v);
+                    trace!("Got unexpected status {}, header version {:?}", s, v);
                     Ok(false)
                 }
             })
             .inspect(|b| {
                 trace!("v2 API supported: {}", b);
-            });
-        Box::new(fres)
+            })
     }
 
     /// Takes reqwest's async RequestBuilder and injects an authentication header if a token is present

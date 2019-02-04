@@ -3,6 +3,7 @@
 use base64;
 use http;
 use hyper;
+use reqwest;
 use serde_json;
 use std::{io, string};
 
@@ -14,6 +15,7 @@ error_chain! {
         Hyper(hyper::Error);
         Io(io::Error);
         Json(serde_json::Error);
+        Reqwest(reqwest::Error);
         UriParse(http::uri::InvalidUri);
         Utf8Parse(string::FromUtf8Error);
     }

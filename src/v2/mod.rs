@@ -161,13 +161,18 @@ impl Client {
     /// Takes reqwest's async RequestBuilder and injects an authentication header if a token is present
     fn build_reqwest(
         &self,
-        client: reqwest::async::RequestBuilder,
+        req_builder: reqwest::async::RequestBuilder,
     ) -> reqwest::async::RequestBuilder {
+        let mut builder = req_builder;
+
         if let Some(token) = &self.token {
-            client.header(reqwest::header::AUTHORIZATION, format!("Bearer {}", token))
-        } else {
-            client
+            builder = builder.header(reqwest::header::AUTHORIZATION, format!("Bearer {}", token))
         }
+        if let Some(ua) = &self.user_agent {
+            builder = builder.header(reqwest::header::USER_AGENT, ua.as_str());
+        };
+
+        builder
     }
 }
 

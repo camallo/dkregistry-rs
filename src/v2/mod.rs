@@ -30,12 +30,11 @@
 //! ```
 
 use super::errors::*;
-use futures;
+use futures::prelude::*;
 use hyper::{self, client, header};
 use hyper_rustls;
 use serde_json;
 
-use futures::Future;
 use std::str::FromStr;
 
 mod config;
@@ -67,13 +66,13 @@ pub struct Client {
 }
 
 /// Convenience alias for a future boolean result.
-pub type FutureBool = Box<futures::Future<Item = bool, Error = Error>>;
+pub type FutureBool = Box<Future<Item = bool, Error = Error>>;
 
 /// Convenience alias for a future manifest blob.
-pub type FutureManifest = Box<futures::Future<Item = Vec<u8>, Error = Error>>;
+pub type FutureManifest = Box<Future<Item = Vec<u8>, Error = Error>>;
 
 /// Convenience alias for a future manifest blob and ref.
-pub type FutureManifestAndRef = Box<futures::Future<Item = (Vec<u8>, String), Error = Error>>;
+pub type FutureManifestAndRef = Box<Future<Item = (Vec<u8>, String), Error = Error>>;
 
 impl Client {
     pub fn configure() -> Config {

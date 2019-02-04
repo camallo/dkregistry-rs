@@ -73,7 +73,8 @@ pub type FutureBool = Box<futures::Future<Item = bool, Error = Error>>;
 pub type FutureManifest = Box<futures::Future<Item = Vec<u8>, Error = Error>>;
 
 /// Convenience alias for a future manifest blob and ref.
-pub type FutureManifestAndRef = Box<futures::Future<Item = (Vec<u8>, String), Error = Error>>;
+pub type FutureManifestAndRef =
+    Box<futures::Future<Item = (Vec<u8>, Option<String>), Error = Error>>;
 
 impl Client {
     pub fn configure() -> Config {

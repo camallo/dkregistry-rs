@@ -84,14 +84,14 @@ impl Client {
             })
             .map_err(|e| Error::from(format!("{}", e)))
             .and_then(|(headers, body)| {
-                Ok((
-                    body.to_vec(),
-                    headers
-                        .get("docker-content-digest")
-                        .ok_or(Error::from("cannot find manifestref in headers"))?
-                        .to_str()?
-                        .to_string(),
-                ))
+                let content_digest = match headers.get("docker-content-digest") {
+                    Some(content_digest_value) => Some(content_digest_value.to_str()?.to_string()),
+                    None => {
+                        debug!("cannot find manifestref in headers");
+                        None
+                    }
+                };
+                Ok((body.to_vec(), content_digest))
             });
         Box::new(fres)
     }

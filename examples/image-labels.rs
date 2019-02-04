@@ -61,7 +61,7 @@ fn run(
 ) -> Result<(), dkregistry::errors::Error> {
     let mut runtime = Runtime::new()?;
 
-    let mut client = dkregistry::v2::Client::configure()
+    let client = dkregistry::v2::Client::configure()
         .registry(&dkr_ref.registry())
         .insecure_registry(false)
         .username(user)
@@ -72,7 +72,7 @@ fn run(
     let login_scope = format!("repository:{}:pull", image);
     let version = dkr_ref.version();
 
-    let futures = common::authenticate_client(&mut client, &login_scope)
+    let futures = common::authenticate_client(client, login_scope)
         .and_then(|dclient| {
             dclient
                 .has_manifest(&image, &version, None)

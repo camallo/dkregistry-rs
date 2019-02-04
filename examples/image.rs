@@ -4,23 +4,30 @@ extern crate futures;
 extern crate serde_json;
 extern crate tokio;
 
-use dkregistry::{reference, render};
+use dkregistry::render;
 use futures::prelude::*;
 use std::result::Result;
-use std::str::FromStr;
 use std::{boxed, env, error, fs, io};
 
 mod common;
 
 fn main() {
-    let dkr_ref = match std::env::args().nth(1) {
-        Some(ref x) => reference::Reference::from_str(x),
-        None => reference::Reference::from_str("quay.io/coreos/etcd"),
-    }
-    .unwrap();
-    let registry = dkr_ref.registry();
+    let registry = match std::env::args().nth(1) {
+        Some(x) => x,
+        None => "quay.io".into(),
+    };
 
-    println!("[{}] downloading image {}", registry, dkr_ref);
+    let image = match std::env::args().nth(2) {
+        Some(x) => x,
+        None => "coreos/etcd".into(),
+    };
+
+    let version = match std::env::args().nth(3) {
+        Some(x) => x,
+        None => "latest".into(),
+    };
+
+    println!("[{}] downloading image {}:{}", registry, image, version);
 
     let mut user = None;
     let mut password = None;
@@ -45,7 +52,7 @@ fn main() {
         }
     };
 
-    let res = run(&dkr_ref, user, password);
+    let res = run(&registry, &image, &version, user, password);
 
     if let Err(e) = res {
         println!("[{}] {}", registry, e);
@@ -54,22 +61,27 @@ fn main() {
 }
 
 fn run(
-    dkr_ref: &reference::Reference,
+    registry: &str,
+    image: &str,
+    version: &str,
     user: Option<String>,
     passwd: Option<String>,
 ) -> Result<(), boxed::Box<error::Error>> {
-    let mut client = dkregistry::v2::Client::configure()
-        .registry(&dkr_ref.registry())
+    env_logger::Builder::new()
+        .filter(Some("dkregistry"), log::LevelFilter::Trace)
+        .filter(Some("trace"), log::LevelFilter::Trace)
+        .try_init()?;
+
+    let client = dkregistry::v2::Client::configure()
+        .registry(registry)
         .insecure_registry(false)
         .username(user)
         .password(passwd)
         .build()?;
 
-    let image = dkr_ref.repository();
     let login_scope = format!("repository:{}:pull", image);
-    let version = dkr_ref.version();
 
-    let futures = common::authenticate_client(&mut client, &login_scope)
+    let futures = common::authenticate_client(client, login_scope)
         .and_then(|dclient| {
             dclient
                 .has_manifest(&image, &version, None)

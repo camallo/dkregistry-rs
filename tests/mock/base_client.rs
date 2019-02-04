@@ -88,30 +88,3 @@ fn test_base_custom_useragent() {
 
     mockito::reset();
 }
-
-#[test]
-fn test_base_no_useragent() {
-    let addr = mockito::server_address().to_string();
-    let _m = mock("GET", "/v2/")
-        .match_header("user-agent", mockito::Matcher::Missing)
-        .with_status(200)
-        .with_header(API_VERSION_K, API_VERSION_V)
-        .create();
-
-    let mut runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
-        .registry(&addr)
-        .insecure_registry(true)
-        .user_agent(None)
-        .username(None)
-        .password(None)
-        .build()
-        .unwrap();
-
-    let futcheck = dclient.is_v2_supported();
-
-    let res = runtime.block_on(futcheck).unwrap();
-    assert_eq!(res, true);
-
-    mockito::reset();
-}

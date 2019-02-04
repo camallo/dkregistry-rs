@@ -30,12 +30,11 @@
 //! ```
 
 use super::errors::*;
-use futures::{self, future};
+use futures::prelude::*;
 use hyper::{self, client, header};
 use hyper_rustls;
 use serde_json;
 
-use futures::Future;
 use std::str::FromStr;
 
 mod config;
@@ -67,14 +66,13 @@ pub struct Client {
 }
 
 /// Convenience alias for a future boolean result.
-pub type FutureBool = Box<futures::Future<Item = bool, Error = Error>>;
+pub type FutureBool = Box<Future<Item = bool, Error = Error>>;
 
 /// Convenience alias for a future manifest blob.
-pub type FutureManifest = Box<futures::Future<Item = Vec<u8>, Error = Error>>;
+pub type FutureManifest = Box<Future<Item = Vec<u8>, Error = Error>>;
 
 /// Convenience alias for a future manifest blob and ref.
-pub type FutureManifestAndRef =
-    Box<futures::Future<Item = (Vec<u8>, Option<String>), Error = Error>>;
+pub type FutureManifestAndRef = Box<Future<Item = (Vec<u8>, Option<String>), Error = Error>>;
 
 impl Client {
     pub fn configure() -> Config {
@@ -119,43 +117,35 @@ impl Client {
     }
 
     /// Check whether remote registry supports v2 API.
-    pub fn is_v2_supported(&self) -> FutureBool {
+    pub fn is_v2_supported(&self) -> impl Future<Item = bool, Error = Error> {
         let api_header = "Docker-Distribution-API-Version";
         let api_version = "registry/2.0";
 
-        let url = {
-            let ep = format!("{}/v2", self.base_url.clone(),);
-            match reqwest::Url::parse(&ep) {
-                Ok(url) => url,
-                Err(e) => {
-                    return Box::new(future::err::<_, _>(Error::from(format!(
-                        "failed to parse url from string '{}': {}",
-                        ep, e
-                    ))));
-                }
-            }
-        };
+        // GET request to bare v2 endpoint.
+        let v2_endpoint = format!("{}/v2/", self.base_url);
+        let get_v2 = reqwest::Url::parse(&v2_endpoint)
+            .chain_err(|| format!("failed to parse url string '{}'", &v2_endpoint))
+            .map(|url| {
+                trace!("GET {:?}", url);
+                self.build_reqwest(reqwest::async::Client::new().get(url))
+            })
+            .into_future()
+            .and_then(|req| req.send().from_err());
 
-        let fres = self
-            .build_reqwest(reqwest::async::Client::new().get(url.clone()))
-            .send()
-            .map_err(|e| Error::from(format!("{}", e)))
-            .and_then(move |r| {
-                trace!("GET '{}' status: {:?}", r.url(), r.status());
-                match (r.status(), r.headers().get(api_header)) {
-                    (reqwest::StatusCode::OK, Some(x)) => Ok(x == api_version),
-                    (reqwest::StatusCode::UNAUTHORIZED, Some(x)) => Ok(x == api_version),
-                    (s, v) => {
-                        trace!("Got status {}, header version {:?}", s, v);
-                        Ok(false)
-                    }
+        // Check status code and API headers according to spec:
+        // https://docs.docker.com/registry/spec/api/#api-version-check
+        get_v2
+            .and_then(move |r| match (r.status(), r.headers().get(api_header)) {
+                (hyper::StatusCode::OK, Some(x)) => Ok(x == api_version),
+                (hyper::StatusCode::UNAUTHORIZED, Some(x)) => Ok(x == api_version),
+                (s, v) => {
+                    trace!("Got unexpected status {}, header version {:?}", s, v);
+                    Ok(false)
                 }
             })
             .inspect(|b| {
                 trace!("v2 API supported: {}", b);
-            });
-
-        Box::new(fres)
+            })
     }
 
     /// Takes reqwest's async RequestBuilder and injects an authentication header if a token is present

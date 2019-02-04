@@ -1,10 +1,10 @@
 use base64;
-use futures::Stream;
+use futures::{future, prelude::*};
 use hyper::header;
 use v2::*;
 
 /// Convenience alias for future `TokenAuth` result.
-pub type FutureTokenAuth = Box<futures::Future<Item = TokenAuth, Error = Error> + 'static>;
+pub type FutureTokenAuth = Box<Future<Item = TokenAuth, Error = Error> + 'static>;
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct TokenAuth {
@@ -20,7 +20,7 @@ impl TokenAuth {
     }
 }
 
-type FutureString = Box<futures::Future<Item = String, Error = self::Error>>;
+type FutureString = Box<Future<Item = String, Error = self::Error>>;
 
 impl Client {
     fn get_token_provider(&self) -> FutureString {
@@ -163,7 +163,7 @@ impl Client {
             } else {
                 let msg = format!("could not parse HeaderValue from '{}'", bearer);
                 error!("{}", msg);
-                return Box::new(futures::future::err(Error::from(msg)));
+                return Box::new(future::err(Error::from(msg)));
             };
         } else {
             debug!("is_auth called without token");

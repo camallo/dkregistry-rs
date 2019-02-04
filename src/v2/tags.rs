@@ -1,5 +1,5 @@
 use futures::prelude::*;
-use hyper::{self, header};
+use reqwest::{self, header, Url};
 use v2::*;
 
 /// Convenience alias for a stream of `String` tags.
@@ -20,42 +20,46 @@ struct TagsChunk {
 impl Client {
     /// List existing tags for an image.
     pub fn get_tags(&self, name: &str, paginate: Option<u32>) -> StreamTags {
-        let dclient = self.clone();
+        let client = self.clone();
         let base_url = format!("{}/v2/{}/tags/list", self.base_url, name);
 
-        let fres = futures::stream::unfold(Some(String::new()), move |link| {
+        let fres = futures::stream::unfold(Some(String::new()), move |last| {
+            let client = client.clone();
+
             // Stream ends when response has no `Link` header.
-            let last = match link {
+            let link = match last {
                 None => return None,
                 Some(ref s) if s == "" => None,
                 s => s,
             };
 
-            let full_url = match (paginate, last) {
+            let url_paginated = match (paginate, link) {
                 (Some(p), None) => format!("{}?n={}", base_url, p),
                 (None, Some(l)) => format!("{}?next_page={}", base_url, l),
                 (Some(p), Some(l)) => format!("{}?n={}&next_page={}", base_url, p, l),
                 _ => base_url.to_string(),
             };
-            let client = dclient.clone();
-            let url = hyper::Uri::from_str(&full_url);
 
-            let freq = futures::future::result(url)
-                .from_err()
-                .and_then(move |url| {
-                    trace!("GET {:?}", &url);
-                    let req = client.new_request(hyper::Method::GET, url);
-                    futures::future::result(req)
-                        .and_then(move |req| client.hclient.request(req).from_err())
+            let freq = futures::future::result(Url::parse(&url_paginated))
+                .map_err(|e| Error::from(format!("{}", e)))
+                .inspect(|url| trace!("GET {}", url))
+                .map(move |url| {
+                    // receive the next page of tags
+
+                    client
+                        .build_reqwest(reqwest::async::Client::new().get(url.clone()))
+                        .send()
+                        // ensure the status is OK
+                        .map_err(|e| Error::from(format!("{}", e)))
+                })
+                .flatten()
+                .and_then(|resp| {
+                    resp.error_for_status()
+                        .map_err(|e| Error::from(format!("{}", e)))
                 })
                 .and_then(|resp| {
-                    let status = resp.status();
-                    match status {
-                        hyper::StatusCode::OK => Ok(resp),
-                        _ => Err(format!("get_tags: wrong HTTP status '{}'", status).into()),
-                    }
-                })
-                .and_then(|resp| {
+                    // ensure the CONTENT_TYPE header is application/json
+
                     let ct_hdr = resp.headers().get(header::CONTENT_TYPE).cloned();
                     let ok = match ct_hdr {
                         None => false,
@@ -67,6 +71,8 @@ impl Client {
                     Ok(resp)
                 })
                 .and_then(|resp| {
+                    // extract the response body and parse the LINK header
+
                     let hdr = resp.headers().get(header::LINK).cloned();
                     trace!("next_page {:?}", hdr);
                     resp.into_body()
@@ -77,13 +83,15 @@ impl Client {
                         .and_then(move |body| Ok((body, parse_link(hdr))))
                 })
                 .and_then(|(body, hdr)| -> Result<(TagsChunk, Option<String>)> {
-                    serde_json::from_slice(&body.into_bytes())
+                    serde_json::from_slice(&body)
                         .map_err(|e| e.into())
                         .map(|tags_chunk| (tags_chunk, hdr))
                 })
-                .map(|(tags_chunk, last)| {
-                    (futures::stream::iter_ok(tags_chunk.tags.into_iter()), last)
-                });
+                .map(|(tags_chunk, link)| {
+                    (futures::stream::iter_ok(tags_chunk.tags.into_iter()), link)
+                })
+                .map_err(|e| format!("{}", e));
+
             Some(freq)
         })
         .flatten();

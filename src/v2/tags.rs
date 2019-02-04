@@ -48,6 +48,7 @@ impl Client {
 
                     client
                         .build_reqwest(reqwest::async::Client::new().get(url.clone()))
+                        .header(header::ACCEPT, "application/json")
                         .send()
                         // ensure the status is OK
                         .map_err(|e| Error::from(format!("{}", e)))
@@ -66,7 +67,9 @@ impl Client {
                         Some(ref ct) => ct.to_str()?.starts_with("application/json"),
                     };
                     if !ok {
-                        return Err(format!("get_tags: wrong content type '{:?}'", ct_hdr).into());
+                        // TODO:(steveeJ): Make this an error once Satellite
+                        // returns the content type correctly
+                        debug!("get_tags: wrong content type '{:?}', ignoring...", ct_hdr);
                     }
                     Ok(resp)
                 })

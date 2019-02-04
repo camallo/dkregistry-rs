@@ -3,9 +3,8 @@ use mediatypes;
 use v2::*;
 
 use futures::{future, Stream};
-use hyper::header;
-use hyper::StatusCode;
 use mime;
+use reqwest::{self, header, StatusCode, Url};
 
 mod manifest_schema1;
 pub use self::manifest_schema1::*;
@@ -63,16 +62,16 @@ impl Client {
             .build_reqwest(
                 reqwest::async::Client::new()
                     .get(url)
-                    .header(reqwest::header::ACCEPT, mtype),
+                    .header(header::ACCEPT, mtype),
             )
             .send()
             .map_err(|e| Error::from(format!("{}", e)))
             .and_then(|res| {
-                trace!("GET '{}' status: {:?}", res.url(), res.status());
                 let status = res.status();
-                trace!("Got status: {:?}", status);
+                trace!("GET '{}' status: {:?}", res.url(), status);
+
                 match status {
-                    reqwest::StatusCode::OK => Ok(res),
+                    StatusCode::OK => Ok(res),
                     _ => Err(format!("GET {}: wrong HTTP status '{}'", res.url(), status).into()),
                 }
             })
@@ -114,12 +113,13 @@ impl Client {
                 name,
                 reference
             );
-            match hyper::Uri::from_str(ep.as_str()) {
+            match Url::parse(&ep) {
                 Ok(url) => url,
                 Err(e) => {
-                    let msg = format!("failed to parse Uri from str: {}", e);
-                    error!("{}", msg);
-                    return Box::new(future::err::<_, _>(Error::from(msg)));
+                    return Box::new(future::err::<_, _>(Error::from(format!(
+                        "failed to parse url from string '{}': {}",
+                        ep, e
+                    ))));
                 }
             }
         };
@@ -144,36 +144,62 @@ impl Client {
             }
         };
 
-        let req = {
-            let mut req = match self.new_request(hyper::Method::HEAD, url.clone()) {
-                Ok(r) => r,
+        let mut accept_headers = header::HeaderMap::with_capacity(accept_types.len());
+        for accept_type in accept_types {
+            match header::HeaderValue::from_str(&accept_type.to_string()) {
+                Ok(header_value) => accept_headers.insert(header::ACCEPT, header_value),
                 Err(e) => {
-                    let msg = format!("new_request failed: {}", e);
-                    error!("{}", msg);
-                    return Box::new(future::err(Error::from(msg)));
+                    return Box::new(future::err::<_, _>(Error::from(format!(
+                        "failed to parse mime '{}' as accept_header: {}",
+                        accept_type, e
+                    ))));
                 }
             };
-            for v in accept_types {
-                let _ = header::HeaderValue::from_str(&v.to_string())
-                    .map(|hval| req.headers_mut().append(hyper::header::ACCEPT, hval));
-            }
-            req
-        };
-        let freq = self.hclient.request(req);
-        let fres = freq
-            .from_err()
+        }
+
+        let fres = self
+            .build_reqwest(reqwest::async::Client::new().get(url.clone()))
+            .headers(accept_headers)
+            .send()
+            .map_err(|e| Error::from(format!("{}", e)))
             .inspect(move |_| {
                 trace!("HEAD {:?}", url);
             })
             .and_then(|r| {
                 let status = r.status();
-                let mut ct = None;
-                if let Some(h) = r.headers().get(header::CONTENT_TYPE) {
-                    if let Ok(s) = h.to_str() {
-                        ct = mediatypes::MediaTypes::from_str(s).ok();
+                let ct = {
+                    let header_content_type = match r.headers().get(header::CONTENT_TYPE) {
+                        Some(header_value) => Some(header_value.to_str()?),
+                        None => None,
+                    };
+
+                    let is_pulp_based = r.url().path().starts_with("/pulp/docker/v2");
+
+                    match (header_content_type, is_pulp_based) {
+                        (Some(header_value), false) => mediatypes::MediaTypes::from_str(header_value).ok(),
+                        (None, false) => None,
+                        (Some(header_value), true)  =>  {
+                            // TODO: remove this workaround once Satellite returns a proper content-type here
+                            match header_value {
+                            "application/x-troff-man" => {
+                                trace!("Applying workaround for pulp-based registries, e.g. Satellite");
+                                mediatypes::MediaTypes::from_str("application/vnd.docker.distribution.manifest.v1+prettyjws").ok()
+                                },
+                                _ => {
+                                    debug!("Received content-type '{}' from pulp-based registry. Feeling lucky and trying to parse it...", header_value);
+                                    mediatypes::MediaTypes::from_str(header_value).ok()
+                                },
+                            }
+                        },
+                        (None, true) => {
+                            trace!("Applying workaround for pulp-based registries, e.g. Satellite");
+                            mediatypes::MediaTypes::from_str("application/vnd.docker.distribution.manifest.v1+prettyjws").ok()
+                        },
+
                     }
-                }
-                trace!("Manifest check result: {:?}", r.status());
+                };
+
+                trace!("Manifest check status '{:?}', headers '{:?}, content-type: {:?}", r.status(), r.headers(), ct);
                 let res = match status {
                     StatusCode::MOVED_PERMANENTLY
                     | StatusCode::TEMPORARY_REDIRECT

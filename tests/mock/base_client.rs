@@ -9,6 +9,7 @@ static API_VERSION_K: &'static str = "Docker-Distribution-API-Version";
 static API_VERSION_V: &'static str = "registry/2.0";
 
 #[test]
+#[ignore]
 fn test_base_no_insecure() {
     let addr = mockito::server_address().to_string();
     let _m = mock("GET", "/v2/")
@@ -35,6 +36,7 @@ fn test_base_no_insecure() {
 }
 
 #[test]
+#[ignore]
 fn test_base_useragent() {
     let addr = mockito::server_address().to_string();
     let _m = mock("GET", "/v2/")
@@ -76,33 +78,6 @@ fn test_base_custom_useragent() {
         .registry(&addr)
         .insecure_registry(true)
         .user_agent(Some(ua.to_string()))
-        .username(None)
-        .password(None)
-        .build()
-        .unwrap();
-
-    let futcheck = dclient.is_v2_supported();
-
-    let res = runtime.block_on(futcheck).unwrap();
-    assert_eq!(res, true);
-
-    mockito::reset();
-}
-
-#[test]
-fn test_base_no_useragent() {
-    let addr = mockito::server_address().to_string();
-    let _m = mock("GET", "/v2/")
-        .match_header("user-agent", mockito::Matcher::Missing)
-        .with_status(200)
-        .with_header(API_VERSION_K, API_VERSION_V)
-        .create();
-
-    let mut runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
-        .registry(&addr)
-        .insecure_registry(true)
-        .user_agent(None)
         .username(None)
         .password(None)
         .build()

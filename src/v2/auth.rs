@@ -1,10 +1,10 @@
 use base64;
-use futures::Stream;
+use futures::{future, prelude::*};
 use hyper::header;
 use v2::*;
 
 /// Convenience alias for future `TokenAuth` result.
-pub type FutureTokenAuth = Box<futures::Future<Item = TokenAuth, Error = Error> + 'static>;
+pub type FutureTokenAuth = Box<Future<Item = TokenAuth, Error = Error> + 'static>;
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct TokenAuth {
@@ -20,37 +20,32 @@ impl TokenAuth {
     }
 }
 
-type FutureString = Box<futures::Future<Item = String, Error = self::Error>>;
+type FutureString = Box<Future<Item = String, Error = self::Error>>;
 
 impl Client {
     fn get_token_provider(&self) -> FutureString {
         let url = {
-            let ep = format!("{}/v2/", self.base_url);
-            match hyper::Uri::from_str(ep.as_str()) {
+            let ep = format!("{}/v2/", self.base_url.clone(),);
+            match reqwest::Url::parse(&ep) {
                 Ok(url) => url,
                 Err(e) => {
-                    return Box::new(futures::future::err::<_, _>(Error::from(format!(
-                        "failed to parse url from string: {}",
-                        e
+                    return Box::new(future::err::<_, _>(Error::from(format!(
+                        "failed to parse url from string '{}': {}",
+                        ep, e
                     ))));
                 }
             }
         };
-        let req = match self.new_request(hyper::Method::GET, url) {
-            Ok(r) => r,
-            Err(e) => {
-                let msg = format!("new_request failed: {}", e);
-                error!("{}", msg);
-                return Box::new(futures::future::err::<_, _>(Error::from(msg)));
-            }
-        };
-        let freq = self.hclient.request(req);
-        let www_auth = freq
-            .from_err()
-            .and_then(|r| {
+
+        let fres = self
+            .build_reqwest(reqwest::async::Client::new().get(url.clone()))
+            .send()
+            .map_err(|e| Error::from(format!("{}", e)))
+            .and_then(move |r| {
+                trace!("GET '{}' status: {:?}", r.url(), r.status());
                 let a = r
                     .headers()
-                    .get(hyper::header::WWW_AUTHENTICATE)
+                    .get(reqwest::header::WWW_AUTHENTICATE)
                     .ok_or_else(|| Error::from("get_token: missing Auth header"))?;
                 let chal = String::from_utf8(a.as_bytes().to_vec())?;
                 Ok(chal)
@@ -64,7 +59,7 @@ impl Client {
                         (Some(&"realm"), Some(v)) => auth_ep = v.trim_matches('"').to_owned(),
                         (Some(&"service"), Some(v)) => service = Some(v.trim_matches('"')),
                         (Some(&"scope"), _) => {}
-                        (_, _) => return Err("unsupported key".to_owned().into()),
+                        (key, _) => return Err(format!("unsupported key '{:?}'", key).into()),
                     };
                 }
                 trace!("Token provider: {}", auth_ep);
@@ -74,7 +69,8 @@ impl Client {
                 }
                 Ok(auth_ep)
             });
-        Box::new(www_auth)
+
+        Box::new(fres)
     }
 
     /// Set the token to be used for further registry requests.
@@ -145,45 +141,50 @@ impl Client {
 
     /// Check whether the client is authenticated with the registry.
     pub fn is_auth(&self, token: Option<&str>) -> FutureBool {
-        let url = match hyper::Uri::from_str((self.base_url.clone() + "/v2/").as_str()) {
-            Ok(url) => url,
-            Err(e) => return Box::new(futures::future::err(e.into())),
-        };
-        let mut req = match self.new_request(hyper::Method::GET, url.clone()) {
-            Ok(r) => r,
-            Err(e) => {
-                let msg = format!("new_request failed: {}", e);
-                error!("{}", msg);
-                return Box::new(futures::future::err(Error::from(msg)));
+        let url = {
+            let ep = format!("{}/v2/", self.base_url.clone(),);
+            match reqwest::Url::parse(&ep) {
+                Ok(url) => url,
+                Err(e) => {
+                    return Box::new(future::err::<_, _>(Error::from(format!(
+                        "failed to parse url from string '{}': {}",
+                        ep, e
+                    ))));
+                }
             }
         };
+
+        let mut req = self.build_reqwest(reqwest::async::Client::new().get(url.clone()));
+
         if let Some(t) = token {
             let bearer = format!("Bearer {}", t);
-            if let Ok(basic_header) = header::HeaderValue::from_str(&bearer) {
-                req.headers_mut()
-                    .append(header::AUTHORIZATION, basic_header);
+            if let Ok(basic_header) = reqwest::header::HeaderValue::from_str(&bearer) {
+                req = req.header(reqwest::header::AUTHORIZATION, basic_header);
             } else {
                 let msg = format!("could not parse HeaderValue from '{}'", bearer);
                 error!("{}", msg);
-                return Box::new(futures::future::err(Error::from(msg)));
+                return Box::new(future::err(Error::from(msg)));
             };
+        } else {
+            debug!("is_auth called without token");
         };
 
-        let freq = self.hclient.request(req);
-        let fres = freq
-            .from_err()
-            .inspect(move |_| {
-                trace!("GET {:?}", url);
-            })
-            .and_then(move |r| {
-                let status = r.status();
-                trace!("Got status {}", status);
+        trace!("Sending reqwest '{:?}'", req);
+
+        let fres = req
+            .send()
+            .map_err(|e| Error::from(format!("{}", e)))
+            .and_then(move |resp| {
+                trace!("GET '{:?}'", resp);
+
+                let status = resp.status();
                 match status {
-                    hyper::StatusCode::OK => Ok(true),
-                    hyper::StatusCode::UNAUTHORIZED => Ok(false),
+                    reqwest::StatusCode::OK => Ok(true),
+                    reqwest::StatusCode::UNAUTHORIZED => Ok(false),
                     _ => Err(format!("is_auth: wrong HTTP status '{}'", status).into()),
                 }
             });
+
         Box::new(fres)
     }
 }

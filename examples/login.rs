@@ -37,9 +37,14 @@ fn run(
     user: Option<String>,
     passwd: Option<String>,
 ) -> Result<(), boxed::Box<error::Error>> {
+    env_logger::Builder::new()
+        .filter(Some("dkregistry"), log::LevelFilter::Trace)
+        .filter(Some("trace"), log::LevelFilter::Trace)
+        .try_init()?;
+
     let mut runtime = Runtime::new()?;
 
-    let mut client = dkregistry::v2::Client::configure()
+    let client = dkregistry::v2::Client::configure()
         .registry(host)
         .insecure_registry(false)
         .username(user)
@@ -48,7 +53,7 @@ fn run(
 
     let login_scope = "";
 
-    let futures = common::authenticate_client(&mut client, &login_scope)
+    let futures = common::authenticate_client(client, login_scope.to_string())
         .and_then(|dclient| dclient.is_v2_supported());
 
     match runtime.block_on(futures) {

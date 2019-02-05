@@ -44,8 +44,13 @@ fn run(
     passwd: Option<String>,
     image: &str,
 ) -> Result<(), boxed::Box<error::Error>> {
+    env_logger::Builder::new()
+        .filter(Some("dkregistry"), log::LevelFilter::Trace)
+        .filter(Some("trace"), log::LevelFilter::Trace)
+        .try_init()?;
+
     let mut runtime = Runtime::new()?;
-    let mut client = dkregistry::v2::Client::configure()
+    let client = dkregistry::v2::Client::configure()
         .registry(host)
         .insecure_registry(false)
         .username(user)
@@ -54,7 +59,7 @@ fn run(
 
     let login_scope = format!("repository:{}:pull", image);
 
-    let futures = common::authenticate_client(&mut client, &login_scope)
+    let futures = common::authenticate_client(client, login_scope)
         .and_then(|dclient| dclient.get_tags(&image, Some(7)).collect())
         .and_then(|tags| {
             for tag in tags {

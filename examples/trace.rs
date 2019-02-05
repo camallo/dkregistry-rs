@@ -1,8 +1,6 @@
 extern crate dirs;
 extern crate dkregistry;
-extern crate env_logger;
 extern crate futures;
-extern crate log;
 extern crate serde_json;
 extern crate tokio;
 
@@ -69,7 +67,7 @@ fn run(
     let version = dkr_ref.version();
     let mut runtime = Runtime::new()?;
 
-    let mut client = dkregistry::v2::Client::configure()
+    let client = dkregistry::v2::Client::configure()
         .registry(&dkr_ref.registry())
         .insecure_registry(false)
         .username(user)
@@ -78,7 +76,7 @@ fn run(
 
     let login_scope = "";
 
-    let futures = common::authenticate_client(&mut client, &login_scope)
+    let futures = common::authenticate_client(client, login_scope.to_string())
         .and_then(|dclient| {
             dclient
                     .has_manifest(&image, &version, None)

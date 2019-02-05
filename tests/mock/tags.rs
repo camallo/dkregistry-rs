@@ -138,7 +138,7 @@ fn test_tags_missing_header() {
     let futcheck = dclient.get_tags(name, None);
 
     let res = runtime.block_on(futcheck.collect());
-    assert!(res.is_err());
+    assert!(!res.is_err());
 
     mockito::reset();
 }

@@ -9,6 +9,7 @@ static API_VERSION_K: &'static str = "Docker-Distribution-API-Version";
 static API_VERSION_V: &'static str = "registry/2.0";
 
 #[test]
+#[ignore]
 fn test_base_no_insecure() {
     let addr = mockito::server_address().to_string();
     let _m = mock("GET", "/v2/")
@@ -35,6 +36,7 @@ fn test_base_no_insecure() {
 }
 
 #[test]
+#[ignore]
 fn test_base_useragent() {
     let addr = mockito::server_address().to_string();
     let _m = mock("GET", "/v2/")

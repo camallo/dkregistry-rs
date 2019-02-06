@@ -29,8 +29,15 @@
 // The `docker://` schema is not officially documented, but has a reference implementation:
 // https://github.com/docker/distribution/blob/v2.6.1/reference/reference.go
 
+use errors::Error;
+use regex;
+use std::collections::VecDeque;
 use std::str::FromStr;
 use std::{fmt, str};
+
+static DEFAULT_REGISTRY: &str = "registry-1.docker.io";
+static DEFAULT_TAG: &str = "latest";
+static DEFAULT_SCHEME: &str = "docker";
 
 /// Image version, either a tag or a digest.
 #[derive(Clone)]
@@ -96,8 +103,8 @@ pub struct Reference {
 
 impl Reference {
     pub fn new(registry: Option<String>, repository: String, version: Option<Version>) -> Self {
-        let reg = registry.unwrap_or_else(|| "registry-1.docker.io".to_string());
-        let ver = version.unwrap_or_else(|| Version::Tag("latest".to_string()));
+        let reg = registry.unwrap_or_else(|| DEFAULT_REGISTRY.to_string());
+        let ver = version.unwrap_or_else(|| Version::Tag(DEFAULT_TAG.to_string()));
         Self {
             has_schema: false,
             raw_input: "".into(),
@@ -126,8 +133,8 @@ impl Reference {
     //TODO(lucab): move this to a real URL type
     pub fn to_url(&self) -> String {
         format!(
-            "docker://{}/{}{:?}",
-            self.registry, self.repository, self.version
+            "{}://{}/{}{:?}",
+            DEFAULT_SCHEME, self.registry, self.repository, self.version
         )
     }
 }
@@ -145,40 +152,65 @@ impl str::FromStr for Reference {
     }
 }
 
-fn parse_url(s: &str) -> Result<Reference, ::errors::Error> {
-    // TODO(lucab): move to nom
-    let mut rest = s;
+fn parse_url(input: &str) -> Result<Reference, Error> {
+    // TODO(lucab): investigate using a grammar-based parser.
+    let mut rest = input;
+
+    // Detect and remove schema.
     let has_schema = rest.starts_with("docker://");
     if has_schema {
-        rest = s.trim_left_matches("docker://");
+        rest = input.trim_left_matches("docker://");
     };
-    let (rest, version) = match (rest.rfind('@'), rest.rfind(':')) {
+
+    // Split path components apart and retain non-empty ones.
+    let mut components: VecDeque<String> = rest
+        .split('/')
+        .filter(|s| !s.is_empty())
+        .map(String::from)
+        .collect();
+
+    // Take image name and extract tag or digest-ref, if any.
+    let last = components
+        .pop_back()
+        .ok_or(Error::from("missing image name"))?;
+    let (image_name, version) = match (last.rfind('@'), last.rfind(':')) {
         (Some(i), _) | (None, Some(i)) => {
-            let s = rest.split_at(i);
-            (s.0, Version::from_str(s.1)?)
+            let s = last.split_at(i);
+            (String::from(s.0), Version::from_str(s.1)?)
         }
-        (None, None) => (rest, Version::default()),
+        (None, None) => (last, Version::default()),
     };
-    if rest.is_empty() {
-        bail!("name too short");
+    ensure!(!image_name.is_empty(), "empty image name");
+
+    // Handle images in default library namespace, that is:
+    // `ubuntu` -> `library/ubuntu`
+    if components.is_empty() {
+        components.push_back("library".to_string());
     }
-    let mut reg = "registry-1.docker.io";
-    let split: Vec<&str> = rest.rsplitn(3, '/').collect();
-    let repository = match split.len() {
-        1 => "library/".to_string() + rest,
-        2 => rest.to_string(),
-        _ => {
-            reg = split[2];
-            split[1].to_string() + "/" + split[0]
-        }
+    components.push_back(image_name);
+
+    // Take first component and check if it is a hostname or a path component,
+    // according to regex at https://docs.docker.com/registry/spec/api/#overview.
+    let first = components
+        .pop_front()
+        .ok_or(Error::from("missing image name"))?;
+    let path_re = regex::Regex::new("^[a-z0-9]+(?:[._-][a-z0-9]+)*$")?;
+    let registry = if path_re.is_match(&first) {
+        components.push_front(first);
+        DEFAULT_REGISTRY.to_string()
+    } else {
+        first
     };
-    if repository.len() > 127 {
-        bail!("name too long");
-    }
+
+    // Re-assemble repository name.
+    let repository = components.into_iter().collect::<Vec<_>>().join("/");
+    ensure!(!repository.is_empty(), "empty repository name");
+    ensure!(repository.len() <= 127, "repository name too long");
+
     Ok(Reference {
         has_schema,
-        raw_input: s.to_string(),
-        registry: reg.to_string(),
+        raw_input: input.to_string(),
+        registry,
         repository,
         version,
     })

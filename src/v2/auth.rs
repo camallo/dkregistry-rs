@@ -1,4 +1,3 @@
-use base64;
 use futures::{future, prelude::*};
 use reqwest::{StatusCode, Url};
 use v2::*;

@@ -1,6 +1,6 @@
 use errors::{Error, Result};
-use futures::{self, Future, Stream};
-use hyper;
+use futures::{self, stream, Future, Stream};
+use reqwest::StatusCode;
 use serde_json;
 use std::str::FromStr;
 use v2;
@@ -21,33 +21,28 @@ impl v2::Client {
             } else {
                 "".to_string()
             };
-            let ep = format!("{}/v2/_catalog{}", self.base_url, suffix);
-            match hyper::Uri::from_str(ep.as_str()) {
+            let ep = format!("{}/v2/_catalog{}", self.base_url.clone(), suffix);
+            match reqwest::Url::parse(&ep) {
                 Ok(url) => url,
                 Err(e) => {
-                    let msg = format!("new_request failed: {}", e);
-                    error!("{}", msg);
-                    return Box::new(futures::stream::once::<_, Error>(Err(Error::from(msg))));
+                    return Box::new(stream::once::<_, _>(Err(Error::from(format!(
+                        "failed to parse url from string '{}': {}",
+                        ep, e
+                    )))));
                 }
             }
         };
 
-        let req = match self.new_request(hyper::Method::GET, url) {
-            Ok(r) => r,
-            Err(e) => {
-                let msg = format!("new_request failed: {}", e);
-                error!("{}", msg);
-                return Box::new(futures::stream::once::<_, Error>(Err(Error::from(msg))));
-            }
-        };
-        let freq = self.hclient.request(req);
-        let fres = freq
+        let req = self.build_reqwest(reqwest::async::Client::new().get(url));
+
+        let fres = req
+            .send()
             .from_err()
             .and_then(|r| {
                 let status = r.status();
                 trace!("Got status: {:?}", status);
                 match status {
-                    hyper::StatusCode::OK => Ok(r),
+                    StatusCode::OK => Ok(r),
                     _ => Err(format!("get_catalog: wrong HTTP status '{}'", status).into()),
                 }
             })
@@ -57,7 +52,7 @@ impl v2::Client {
                 })
             })
             .and_then(|body| -> Result<Catalog> {
-                serde_json::from_slice(&body.into_bytes()).map_err(|e| e.into())
+                serde_json::from_slice(&body).map_err(|e| e.into())
             })
             .map(|cat| futures::stream::iter_ok(cat.repositories.into_iter()))
             .flatten_stream();

@@ -1,6 +1,5 @@
-use base64;
 use futures::{future, prelude::*};
-use hyper::header;
+use reqwest::{StatusCode, Url};
 use v2::*;
 
 /// Convenience alias for future `TokenAuth` result.
@@ -85,7 +84,7 @@ impl Client {
     ///
     /// On success, the returned token will be valid for all requested scopes.
     pub fn login(&self, scopes: &[&str]) -> FutureTokenAuth {
-        let subclient = self.hclient.clone();
+        let subclient = self.clone();
         let creds = self.credentials.clone();
         let scope = scopes
             .iter()
@@ -95,32 +94,30 @@ impl Client {
             .and_then(move |token_ep| {
                 let auth_ep = token_ep + scope.as_str();
                 trace!("Token endpoint: {}", auth_ep);
-                hyper::Uri::from_str(auth_ep.as_str()).map_err(|e| e.into())
+
+                reqwest::Url::parse(&auth_ep).map_err(|e| {
+                    Error::from(format!(
+                        "failed to parse url from string '{}': {}",
+                        auth_ep, e
+                    ))
+                })
             })
             .and_then(move |u| {
-                let mut auth_req = hyper::Request::default();
-                *auth_req.method_mut() = hyper::Method::GET;
-                *auth_req.uri_mut() = u;
-                if let Some(c) = creds {
-                    let plain = format!("{}:{}", c.0, c.1);
-                    let basic = format!("Basic {}", base64::encode(&plain));
-                    if let Ok(basic_header) = header::HeaderValue::from_str(&basic) {
-                        auth_req
-                            .headers_mut()
-                            .append(header::AUTHORIZATION, basic_header);
+                let auth_req = {
+                    let auth_req = subclient.build_reqwest(reqwest::async::Client::new().get(u));
+                    if let Some(creds) = creds {
+                        auth_req.basic_auth(creds.0, Some(creds.1))
                     } else {
-                        let msg = format!("could not parse HeaderValue from '{}'", basic);
-                        error!("{}", msg);
-                        // TODO: return an error. seems difficult to match the error type for the whole closure
-                    };
+                        auth_req
+                    }
                 };
-                subclient.request(auth_req).map_err(|e| e.into())
+                auth_req.send().map_err(|e| e.into())
             })
             .and_then(|r| {
                 let status = r.status();
                 trace!("Got status {}", status);
                 match status {
-                    hyper::StatusCode::OK => Ok(r),
+                    StatusCode::OK => Ok(r),
                     _ => Err(format!("login: wrong HTTP status '{}'", status).into()),
                 }
             })
@@ -130,7 +127,7 @@ impl Client {
                     .map_err(|e| format!("login: failed to fetch the whole body: {}", e).into())
             })
             .and_then(|body| {
-                let s = String::from_utf8(body.into_bytes().to_vec())?;
+                let s = String::from_utf8(body.to_vec())?;
                 serde_json::from_slice(s.as_bytes()).map_err(|e| e.into())
             })
             .inspect(|_| {
@@ -143,7 +140,7 @@ impl Client {
     pub fn is_auth(&self, token: Option<&str>) -> FutureBool {
         let url = {
             let ep = format!("{}/v2/", self.base_url.clone(),);
-            match reqwest::Url::parse(&ep) {
+            match Url::parse(&ep) {
                 Ok(url) => url,
                 Err(e) => {
                     return Box::new(future::err::<_, _>(Error::from(format!(

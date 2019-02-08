@@ -1,10 +1,8 @@
-use hyper::client;
 use v2::*;
 
 /// Configuration for a `Client`.
 #[derive(Debug)]
 pub struct Config {
-    config: client::Client<hyper_rustls::HttpsConnector<client::HttpConnector>, hyper::Body>,
     index: String,
     insecure_registry: bool,
     user_agent: Option<String>,
@@ -15,10 +13,7 @@ pub struct Config {
 impl Config {
     /// Initialize `Config` with default values.
     pub fn default() -> Self {
-        let dns_threads = 4;
         Self {
-            config: hyper::client::Client::builder()
-                .build(hyper_rustls::HttpsConnector::new(dns_threads)),
             index: "registry-1.docker.io".into(),
             insecure_registry: false,
             user_agent: Some(::USER_AGENT.to_owned()),
@@ -89,7 +84,6 @@ impl Config {
         let c = Client {
             base_url: base,
             credentials: creds,
-            hclient: self.config,
             index: self.index,
             user_agent: self.user_agent,
             token: None,

@@ -38,8 +38,6 @@
 extern crate base64;
 extern crate futures;
 extern crate http;
-extern crate hyper;
-extern crate hyper_rustls;
 extern crate mime;
 extern crate serde;
 extern crate serde_json;

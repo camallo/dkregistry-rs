@@ -31,8 +31,7 @@
 
 use super::errors::*;
 use futures::prelude::*;
-use hyper::{self, client, header};
-use hyper_rustls;
+use reqwest::StatusCode;
 use serde_json;
 
 use std::str::FromStr;
@@ -59,7 +58,6 @@ pub use self::blobs::FutureBlob;
 pub struct Client {
     base_url: String,
     credentials: Option<(String, String)>,
-    hclient: client::Client<hyper_rustls::HttpsConnector<client::HttpConnector>>,
     index: String,
     user_agent: Option<String>,
     token: Option<String>,
@@ -77,30 +75,6 @@ pub type FutureManifestAndRef = Box<Future<Item = (Vec<u8>, Option<String>), Err
 impl Client {
     pub fn configure() -> Config {
         Config::default()
-    }
-
-    fn new_request(
-        &self,
-        method: hyper::Method,
-        url: hyper::Uri,
-    ) -> Result<hyper::Request<hyper::Body>> {
-        let mut req = hyper::Request::default();
-        *req.method_mut() = method;
-        *req.uri_mut() = url;
-        req.headers_mut()
-            .append(header::HOST, header::HeaderValue::from_str(&self.index)?);
-        if let Some(ref t) = self.token {
-            let bearer = format!("Bearer {}", t);
-            req.headers_mut().append(
-                header::AUTHORIZATION,
-                header::HeaderValue::from_str(&bearer)?,
-            );
-        };
-        if let Some(ref ua) = self.user_agent {
-            req.headers_mut()
-                .append(header::USER_AGENT, header::HeaderValue::from_str(ua)?);
-        };
-        Ok(req)
     }
 
     /// Ensure remote registry supports v2 API.
@@ -136,8 +110,8 @@ impl Client {
         // https://docs.docker.com/registry/spec/api/#api-version-check
         get_v2
             .and_then(move |r| match (r.status(), r.headers().get(api_header)) {
-                (hyper::StatusCode::OK, Some(x)) => Ok(x == api_version),
-                (hyper::StatusCode::UNAUTHORIZED, Some(x)) => Ok(x == api_version),
+                (StatusCode::OK, Some(x)) => Ok(x == api_version),
+                (StatusCode::UNAUTHORIZED, Some(x)) => Ok(x == api_version),
                 (s, v) => {
                     trace!("Got unexpected status {}, header version {:?}", s, v);
                     Ok(false)

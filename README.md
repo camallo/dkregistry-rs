@@ -12,6 +12,17 @@ conformant to the [Docker Registry HTTP API V2][registry-v2] specification.
 
 [registry-v2]: https://docs.docker.com/registry/spec/api/
 
+## Configurable features
+
+The following is a list of [Cargo features][cargo-features] that consumers can enable or disable:
+
+ * **reqwest-default-tls** *(enabled by default)*: provides TLS support via [system-specific library][native-tls] (OpenSSL on Linux)
+ * **reqwest-rustls**: provides TLS support via the [rustls][rustls] library
+
+[rustls]: https://docs.rs/rustls
+[native-tls]: https://docs.rs/native-tls
+[cargo-features]: https://doc.rust-lang.org/stable/cargo/reference/manifest.html#the-features-section
+
 ## Testing
 
 ### Integration tests
@@ -29,7 +40,7 @@ cargo test --features test-mock
 
 This library includes additional interoperability tests against some of the most common registries.
 
-Those tests are not run by default as they required network access and registry credentials.
+Those tests are not run by default as they require network access and registry credentials.
 
 They are gated behind a dedicated "test-net" feature and can be run as:
 ```

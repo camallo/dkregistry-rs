@@ -79,17 +79,17 @@ fn run(
     let futures = common::authenticate_client(client, login_scope.to_string())
         .and_then(|dclient| {
             dclient
-                    .has_manifest(&image, &version, None)
-                    .and_then(move |manifest_option| Ok((dclient, manifest_option)))
-                    .and_then(|(dclient, manifest_option)| match manifest_option {
-                        None => {
-                            return Err(
-                                format!("{}:{} doesn't have a manifest", &image, &version).into()
-                            )
-                        }
+                .has_manifest(&image, &version, None)
+                .and_then(move |manifest_option| Ok((dclient, manifest_option)))
+                .and_then(|(dclient, manifest_option)| match manifest_option {
+                    None => {
+                        return Err(
+                            format!("{}:{} doesn't have a manifest", &image, &version).into()
+                        )
+                    }
 
-                        Some(manifest_kind) => Ok((dclient, manifest_kind)),
-                    })
+                    Some(manifest_kind) => Ok((dclient, manifest_kind)),
+                })
         })
         .and_then(|(dclient, manifest_kind)| {
             let image = image.clone();

@@ -51,6 +51,8 @@ pub use self::tags::StreamTags;
 mod blobs;
 pub use self::blobs::FutureBlob;
 
+mod content_digest;
+
 /// A Client to make outgoing API requests to a registry.
 #[derive(Clone, Debug)]
 pub struct Client {

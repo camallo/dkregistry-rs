@@ -34,8 +34,6 @@ use futures::prelude::*;
 use reqwest::StatusCode;
 use serde_json;
 
-use std::str::FromStr;
-
 mod config;
 pub use self::config::Config;
 

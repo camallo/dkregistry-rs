@@ -40,7 +40,7 @@ pub fn unpack(layers: &[Vec<u8>], target_dir: &path::Path) -> Result<()> {
                         path::PathBuf::from("./".to_string() + &parent.to_string_lossy());
 
                     // Remove real file behind whiteout
-                    let real_name = wh_name.trim_left_matches(".wh.");
+                    let real_name = wh_name.trim_start_matches(".wh.");
                     let abs_real_path = target_dir.join(&rel_parent).join(real_name);
                     fs::remove_dir_all(abs_real_path)?;
 

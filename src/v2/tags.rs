@@ -123,7 +123,7 @@ fn parse_link(hdr: Option<header::HeaderValue>) -> Option<String> {
     };
 
     // Query parameters for next page URL.
-    let uri = sval.trim_right_matches(">; rel=\"next\"");
+    let uri = sval.trim_end_matches(">; rel=\"next\"");
     let query: Vec<&str> = uri.splitn(2, "next_page=").collect();
     let params = match query.get(1) {
         Some(v) if *v != "" => v,

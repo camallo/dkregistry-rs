@@ -5,6 +5,7 @@ use v2::*;
 use futures::{future, Stream};
 use mime;
 use reqwest::{self, header, StatusCode, Url};
+use std::str::FromStr;
 
 mod manifest_schema1;
 pub use self::manifest_schema1::*;

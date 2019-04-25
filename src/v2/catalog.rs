@@ -2,7 +2,6 @@ use errors::{Error, Result};
 use futures::{self, stream, Future, Stream};
 use reqwest::StatusCode;
 use serde_json;
-use std::str::FromStr;
 use v2;
 
 /// Convenience alias for a stream of `String` repos.

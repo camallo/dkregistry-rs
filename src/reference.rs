@@ -50,9 +50,9 @@ impl str::FromStr for Version {
     type Err = ::errors::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let v = match s.chars().nth(0) {
-            Some(':') => Version::Tag(s.trim_left_matches(':').to_string()),
+            Some(':') => Version::Tag(s.trim_start_matches(':').to_string()),
             Some('@') => {
-                let r: Vec<&str> = s.trim_left_matches('@').splitn(2, ':').collect();
+                let r: Vec<&str> = s.trim_start_matches('@').splitn(2, ':').collect();
                 if r.len() != 2 {
                     bail!("wrong digest format");
                 };
@@ -159,7 +159,7 @@ fn parse_url(input: &str) -> Result<Reference, Error> {
     // Detect and remove schema.
     let has_schema = rest.starts_with("docker://");
     if has_schema {
-        rest = input.trim_left_matches("docker://");
+        rest = input.trim_start_matches("docker://");
     };
 
     // Split path components apart and retain non-empty ones.

@@ -52,7 +52,7 @@ impl Client {
             .and_then(move |hdr| {
                 let mut auth_ep = "".to_owned();
                 let mut service = None;
-                for item in hdr.trim_left_matches("Bearer ").split(',') {
+                for item in hdr.trim_start_matches("Bearer ").split(',') {
                     let kv: Vec<&str> = item.split('=').collect();
                     match (kv.get(0), kv.get(1)) {
                         (Some(&"realm"), Some(v)) => auth_ep = v.trim_matches('"').to_owned(),

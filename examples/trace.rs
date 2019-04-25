@@ -82,12 +82,7 @@ fn run(
                 .has_manifest(&image, &version, None)
                 .and_then(move |manifest_option| Ok((dclient, manifest_option)))
                 .and_then(|(dclient, manifest_option)| match manifest_option {
-                    None => {
-                        return Err(
-                            format!("{}:{} doesn't have a manifest", &image, &version).into()
-                        )
-                    }
-
+                    None => Err(format!("{}:{} doesn't have a manifest", &image, &version).into()),
                     Some(manifest_kind) => Ok((dclient, manifest_kind)),
                 })
         })

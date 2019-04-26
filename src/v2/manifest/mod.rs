@@ -30,12 +30,14 @@ impl Client {
     /// The name and reference parameters identify the image.
     /// The reference may be either a tag or digest.
     pub fn get_manifest_and_ref(&self, name: &str, reference: &str) -> FutureManifestAndRef {
+        let reference = reference.to_owned();
+
         let url = {
             let ep = format!(
                 "{}/v2/{}/manifests/{}",
                 self.base_url.clone(),
                 name,
-                reference
+                reference,
             );
             match reqwest::Url::parse(&ep) {
                 Ok(url) => url,
@@ -48,6 +50,7 @@ impl Client {
             }
         };
 
+        // TODO(steveeJ): see if we can have the compiler do this type check
         let mtype = match header::HeaderValue::from_str(
             &mediatypes::MediaTypes::ManifestV2S2.to_string(),
         ) {
@@ -84,7 +87,7 @@ impl Client {
                 )
             })
             .map_err(|e| Error::from(format!("{}", e)))
-            .and_then(|(headers, body)| {
+            .and_then(move |(headers, body)| {
                 let content_digest = match headers.get("docker-content-digest") {
                     Some(content_digest_value) => Some(content_digest_value.to_str()?.to_string()),
                     None => {
@@ -92,8 +95,32 @@ impl Client {
                         None
                     }
                 };
+
+                let reference_as_digest = ContentDigest::try_new(reference.to_string());
+
+                // if called by digest reference and a digest was provided in the answer they have to match
+                if let (Some(content_digest), Ok(reference_as_digest)) =
+                    (&content_digest, &reference_as_digest)
+                {
+                    if content_digest != &format!("{}", reference_as_digest) {
+                        bail!("digest proposed by registry doesn't match the requested one");
+                    }
+                };
+
+                // if called by digest reference the calculated digest must match
+                if let Ok(reference_as_digest) = reference_as_digest {
+                    trace!("reference is a digest. verifying manifest...");
+                    reference_as_digest
+                        .try_verify(
+                            // TODO(steveeJ): differentiate between v2s1 and v2s2 since hashing the serialized bytes doesn't always work
+                            &body,
+                        )
+                        .chain_err(|| "digest verification failed")?;
+                };
+
                 Ok((body.to_vec(), content_digest))
             });
+
         Box::new(fres)
     }
 

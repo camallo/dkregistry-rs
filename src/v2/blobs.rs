@@ -36,24 +36,26 @@ impl Client {
 
     /// Retrieve blob.
     pub fn get_blob(&self, name: &str, digest: &str) -> FutureBlob {
-        let url = {
+        let fres_digest = futures::future::result(ContentDigest::try_new(digest.to_string()));
+
+        let fres_blob = {
             let ep = format!("{}/v2/{}/blobs/{}", self.base_url, name, digest);
-            match reqwest::Url::parse(&ep) {
-                Ok(url) => url,
-                Err(e) => {
-                    return Box::new(futures::future::err::<_, _>(Error::from(format!(
+            reqwest::Url::parse(&ep).map_err(|e|{
+                    ::errors::Error::from(format!(
                         "failed to parse url from string: {}",
                         e
-                    ))));
-                }
-            }
-        };
-
-        let fres = self.build_reqwest(reqwest::async::Client::new().get(url))
-            .send()
-            .map_err(|e| ::errors::Error::from(format!("{}", e)))
+                    ))
+            })
+            .map(|url|{
+                self.build_reqwest(reqwest::async::Client::new()
+                    .get(url))
+                    .send()
+                    .map_err(|e| ::errors::Error::from(format!("{}", e)))
+            })
+            .into_future()
+            .flatten()
             .and_then(|res| {
-                trace!("Blob GET status: {:?}", res.status());
+                trace!("GET {} status: {}", res.url(), res.status());
                 let status = res.status();
 
                 if status.is_success()
@@ -99,7 +101,14 @@ impl Client {
                         status
                     )))
                 }
-            });
+            })
+        };
+
+        let fres = fres_digest.join(fres_blob).and_then(|(digest, body)| {
+            digest.try_verify(&body)?;
+            Ok(body)
+        });
+
         Box::new(fres)
     }
 }

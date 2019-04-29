@@ -31,6 +31,7 @@ tar = "0.4"
 tokio = "0.1"
 dirs = "1.0"
 reqwest = { version = "^0.9.6", default-features = false }
+sha2 = "^0.8.0"
 
 [dev-dependencies]
 env_logger = "0.6"

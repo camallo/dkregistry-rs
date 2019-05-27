@@ -29,7 +29,7 @@ strum = "0.15"
 strum_macros = "0.15"
 tar = "0.4"
 tokio = "0.1"
-dirs = "1.0"
+dirs = "2.0"
 reqwest = { version = "^0.9.6", default-features = false }
 sha2 = "^0.8.0"
 

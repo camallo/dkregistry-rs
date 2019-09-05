@@ -84,7 +84,7 @@ impl Client {
             .get_token_provider()
             .and_then(move |token_ep| {
                 let auth_ep = token_ep + scope.as_str();
-                trace!("Token endpoint: {}", auth_ep);
+                trace!("login: token endpoint: {}", auth_ep);
 
                 reqwest::Url::parse(&auth_ep).map_err(|e| {
                     Error::from(format!(
@@ -106,7 +106,7 @@ impl Client {
             })
             .and_then(|r| {
                 let status = r.status();
-                trace!("Got status {}", status);
+                trace!("login: got status {}", status);
                 match status {
                     StatusCode::OK => Ok(r),
                     _ => Err(format!("login: wrong HTTP status '{}'", status).into()),
@@ -121,8 +121,24 @@ impl Client {
                 let s = String::from_utf8(body.to_vec())?;
                 serde_json::from_slice(s.as_bytes()).map_err(|e| e.into())
             })
-            .inspect(|_| {
-                trace!("Got token");
+            .and_then(|token_auth: TokenAuth| {
+                let mut t = token_auth.token().to_string();
+
+                if t == "unauthenticated" {
+                    bail!("received token with value '{}'", t)
+                } else if t.is_empty() {
+                    bail!("received an empty token")
+                };
+
+                // mask the token before logging it
+                let chars_count = t.chars().count();
+                let mask_start = std::cmp::min(1, chars_count - 1);
+                let mask_end = std::cmp::max(chars_count - 1, 1);
+                t.replace_range(mask_start..mask_end, &"*".repeat(mask_end - mask_start));
+
+                trace!("login: got token: {:?}", t);
+
+                Ok(token_auth)
             });
         Box::new(auth)
     }
@@ -142,22 +158,15 @@ impl Client {
             }
         };
 
-        let mut req = self.build_reqwest(reqwest::async::Client::new().get(url.clone()));
-
-        if let Some(t) = token {
-            let bearer = format!("Bearer {}", t);
-            if let Ok(basic_header) = reqwest::header::HeaderValue::from_str(&bearer) {
-                req = req.header(reqwest::header::AUTHORIZATION, basic_header);
-            } else {
-                let msg = format!("could not parse HeaderValue from '{}'", bearer);
-                error!("{}", msg);
-                return Box::new(future::err(Error::from(msg)));
-            };
+        let req = self.build_reqwest(reqwest::async::Client::new().get(url.clone()));
+        let req = if let Some(t) = token {
+            req.bearer_auth(t)
         } else {
             debug!("is_auth called without token");
+            req
         };
 
-        trace!("Sending reqwest '{:?}'", req);
+        trace!("Sending reqwest to '{}'", url);
 
         let fres = req
             .send()

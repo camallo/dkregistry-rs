@@ -15,6 +15,11 @@ fn main() {
         None => "registry-1.docker.io".into(),
     };
 
+    let login_scope = match std::env::args().nth(2) {
+        Some(x) => x,
+        None => "".into(),
+    };
+
     let user = std::env::var("DKREG_USER").ok();
     if user.is_none() {
         println!("[{}] no $DKREG_USER for login user", registry);
@@ -24,7 +29,7 @@ fn main() {
         println!("[{}] no $DKREG_PASSWD for login password", registry);
     }
 
-    let res = run(&registry, user, password);
+    let res = run(&registry, user, password, login_scope);
 
     if let Err(e) = res {
         println!("[{}] {}", registry, e);
@@ -36,6 +41,7 @@ fn run(
     host: &str,
     user: Option<String>,
     passwd: Option<String>,
+    login_scope: String,
 ) -> Result<(), boxed::Box<error::Error>> {
     env_logger::Builder::new()
         .filter(Some("dkregistry"), log::LevelFilter::Trace)
@@ -51,9 +57,7 @@ fn run(
         .password(passwd)
         .build()?;
 
-    let login_scope = "";
-
-    let futures = common::authenticate_client(client, login_scope.to_string())
+    let futures = common::authenticate_client(client, login_scope)
         .and_then(|dclient| dclient.is_v2_supported());
 
     match runtime.block_on(futures) {

@@ -50,17 +50,8 @@ impl Client {
                 Ok(chal)
             })
             .and_then(move |hdr| {
-                let mut auth_ep = "".to_owned();
-                let mut service = None;
-                for item in hdr.trim_start_matches("Bearer ").split(',') {
-                    let kv: Vec<&str> = item.split('=').collect();
-                    match (kv.get(0), kv.get(1)) {
-                        (Some(&"realm"), Some(v)) => auth_ep = v.trim_matches('"').to_owned(),
-                        (Some(&"service"), Some(v)) => service = Some(v.trim_matches('"')),
-                        (Some(&"scope"), _) => {}
-                        (key, _) => return Err(format!("unsupported key '{:?}'", key).into()),
-                    };
-                }
+                let (mut auth_ep, service) = parse_hdr_bearer(hdr.trim_start_matches("Bearer "))?;
+
                 trace!("Token provider: {}", auth_ep);
                 if let Some(sv) = service {
                     auth_ep += &format!("?service={}", sv);
@@ -183,5 +174,59 @@ impl Client {
             });
 
         Box::new(fres)
+    }
+}
+
+/// This parses a Www-Authenticate header of value Bearer.
+///
+/// We are only interested in the realm and service keys.
+fn parse_hdr_bearer(input: &str) -> Result<(String, Option<&str>)> {
+    let mut auth_ep = "".to_string();
+    let mut service = None;
+
+    let re = regex::Regex::new(r#"(([a-z]+)="([^"]*)")"#)?;
+    for capture in re.captures_iter(input) {
+        // The indices for this capture are as follows:
+        // 0: full match
+        // 1: outer group match
+        // 2: first nested group match
+        // 3: second nested group match
+        // Hence, we are interested in the sub-group matches i.e. in 2 and 3.
+        let key = capture.get(2).map(|m| m.as_str());
+        let value = capture.get(3).map(|m| m.as_str());
+
+        match (key, value) {
+            (Some("realm"), Some(v)) => auth_ep = v.trim_matches('"').to_owned(),
+            (Some("service"), Some(v)) => service = Some(v.trim_matches('"')),
+            (Some("scope"), _) => {}
+            (key, _) => return Err(format!("unsupported key '{:?}'", key).into()),
+        };
+    }
+
+    Ok((auth_ep, service))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bearer_realm_parses_correctly() -> Result<()> {
+        let realm = "https://sat-r220-02.lab.eng.rdu2.redhat.com/v2/token";
+        let service = "sat-r220-02.lab.eng.rdu2.redhat.com";
+        let scope = "repository:registry:pull,push";
+
+        let www_auth_header = format!(
+            r#"Bearer realm="{}",service="{}",scope=""{}"#,
+            realm, service, scope
+        );
+        let trimmed_header = www_auth_header.trim_start_matches("Bearer ");
+
+        assert_eq!(
+            parse_hdr_bearer(trimmed_header)?,
+            (String::from(realm), Some(service))
+        );
+
+        Ok(())
     }
 }

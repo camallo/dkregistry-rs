@@ -166,7 +166,7 @@ impl Client {
             req
         };
 
-        trace!("Sending reqwest to '{}'", url);
+        trace!("Sending request to '{}'", url);
 
         let fres = req
             .send()

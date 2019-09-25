@@ -33,6 +33,7 @@ use super::errors::*;
 use futures::prelude::*;
 use reqwest::StatusCode;
 use serde_json;
+use v2::manifest::Manifest;
 
 mod config;
 pub use self::config::Config;
@@ -64,15 +65,18 @@ pub struct Client {
     token: Option<String>,
 }
 
+/// Convenience alias for an arbitrary future type
+pub type FutureResult<T> = Box<dyn Future<Item = T, Error = Error> + Send>;
+
 /// Convenience alias for a future boolean result.
 pub type FutureBool = Box<dyn Future<Item = bool, Error = Error> + Send>;
 
 /// Convenience alias for a future manifest blob.
-pub type FutureManifest = Box<dyn Future<Item = Vec<u8>, Error = Error> + Send>;
+pub type FutureManifest = Box<dyn Future<Item = Manifest, Error = Error> + Send>;
 
 /// Convenience alias for a future manifest blob and ref.
 pub type FutureManifestAndRef =
-    Box<dyn Future<Item = (Vec<u8>, Option<String>), Error = Error> + Send>;
+    Box<dyn Future<Item = (Manifest, Option<String>), Error = Error> + Send>;
 
 impl Client {
     pub fn configure() -> Config {

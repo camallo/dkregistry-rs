@@ -1,8 +1,13 @@
+use futures::future::{self, Future};
+use futures::stream::Stream;
+use serde_json;
+use v2::{Error, FutureResult};
+
 /// Manifest version 2 schema 2.
 ///
 /// Specification is at https://docs.docker.com/registry/spec/manifest-v2-2/.
 #[derive(Debug, Default, Deserialize, Serialize)]
-pub struct ManifestSchema2 {
+pub struct ManifestSchema2Spec {
     #[serde(rename = "schemaVersion")]
     schema_version: u16,
     #[serde(rename = "mediaType")]
@@ -11,12 +16,29 @@ pub struct ManifestSchema2 {
     layers: Vec<S2Layer>,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+/// Super-type for combining a ManifestSchema2 with a ConfigBlob.
+#[derive(Debug, Default)]
+pub struct ManifestSchema2 {
+    pub manifest_spec: ManifestSchema2Spec,
+    pub config_blob: ConfigBlob,
+}
+
+#[derive(Debug, Default, Deserialize, Serialize, Clone)]
 pub struct Config {
     #[serde(rename = "mediaType")]
-    media_type: String,
-    size: u64,
-    digest: String,
+    pub media_type: String,
+    pub size: u64,
+    pub digest: String,
+}
+
+/// Partial representation of a container image (application/vnd.docker.container.image.v1+json).
+///
+/// The remaining fields according to [the image spec v1][image-spec-v1] are not covered.
+///
+/// [image-spec-v1]: https://github.com/moby/moby/blob/a30990b3c8d0d42280fa501287859e1d2393a951/image/spec/v1.md#image-json-description
+#[derive(Debug, Default, Deserialize, Serialize)]
+pub struct ConfigBlob {
+    architecture: String,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -61,16 +83,82 @@ pub struct Platform {
     pub features: Option<Vec<String>>,
 }
 
+impl ManifestSchema2Spec {
+    /// Get `Config` object referenced by this manifest.
+    pub fn config(&self) -> &Config {
+        &self.config
+    }
+
+    /// Fetch the config blob for this manifest
+    pub(crate) fn fetch_config_blob(
+        self,
+        client: crate::v2::Client,
+        repo: String,
+    ) -> FutureResult<ManifestSchema2> {
+        let url = {
+            let ep = format!(
+                "{}/v2/{}/blobs/{}",
+                client.base_url.clone(),
+                repo,
+                self.config.digest
+            );
+            match reqwest::Url::parse(&ep) {
+                Ok(url) => url,
+                Err(e) => {
+                    return Box::new(future::err::<_, _>(Error::from(format!(
+                        "failed to parse url from string '{}': {}",
+                        ep, e
+                    ))));
+                }
+            }
+        };
+
+        let manifest_future = client
+            .build_reqwest(reqwest::async::Client::new().get(url.clone()))
+            .send()
+            .map_err(|e| crate::v2::Error::from(format!("{}", e)))
+            .and_then(move |r| {
+                let status = r.status();
+                trace!("GET {:?}: {}", url, &status);
+
+                if status.is_success() {
+                    Ok(r)
+                } else {
+                    Err(format!("wrong HTTP status '{}'", status).into())
+                }
+            })
+            .and_then(|r| {
+                r.into_body()
+                    .concat2()
+                    .map_err(|e| Error::from(format!("{}", e)))
+            })
+            .and_then(|body| {
+                let config_blob = serde_json::from_slice::<ConfigBlob>(&body)?;
+
+                Ok(ManifestSchema2 {
+                    manifest_spec: self,
+                    config_blob,
+                })
+            });
+
+        Box::new(manifest_future)
+    }
+}
+
 impl ManifestSchema2 {
     /// List digests of all layers referenced by this manifest.
     ///
     /// The returned layers list is ordered starting with the base image first.
     pub fn get_layers(&self) -> Vec<String> {
-        self.layers.iter().map(|l| l.digest.clone()).collect()
+        self.manifest_spec
+            .layers
+            .iter()
+            .map(|l| l.digest.clone())
+            .collect()
     }
 
-    /// Get digest of the configuration object referenced by this manifest.
-    pub fn config(&self) -> String {
-        self.config.digest.clone()
+    /// Get the architecture from the config
+    pub fn architecture(&self) -> String {
+        self.config_blob.architecture.to_owned()
     }
 }

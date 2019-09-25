@@ -5,6 +5,7 @@ extern crate serde_json;
 extern crate tokio;
 
 use dkregistry::reference;
+use dkregistry::v2::manifest::Manifest;
 use futures::prelude::*;
 use std::result::Result;
 use std::str::FromStr;
@@ -73,51 +74,18 @@ fn run(
     let version = dkr_ref.version();
 
     let futures = common::authenticate_client(client, login_scope)
-        .and_then(|dclient| {
-            dclient
-                .has_manifest(&image, &version, None)
-                .and_then(move |manifest_option| Ok((dclient, manifest_option)))
-                .and_then(|(dclient, manifest_option)| match manifest_option {
-                    None => Err(format!("{}:{} doesn't have a manifest", &image, &version).into()),
-
-                    Some(manifest_kind) => Ok((dclient, manifest_kind)),
-                })
-        })
-        .and_then(|(dclient, manifest_kind)| {
-            let image = image.clone();
-            dclient
-                .get_manifest(&image, &version)
-                .and_then(move |manifest_body| {
-                    let m: Result<_, _> = match manifest_kind {
-                        dkregistry::mediatypes::MediaTypes::ManifestV2S1Signed => {
-                            let m = serde_json::from_slice::<
-                                dkregistry::v2::manifest::ManifestSchema1Signed,
-                            >(manifest_body.as_slice())?;
-                            Ok(m)
-                        }
-                        dkregistry::mediatypes::MediaTypes::ManifestV2S2 => {
-                            let _ = serde_json::from_slice::<
-                                dkregistry::v2::manifest::ManifestSchema2,
-                            >(manifest_body.as_slice())?;
-                            Err("manifest V2.1 not implemented".into())
-                        }
-                        _ => Err("unknown format".into()),
-                    };
-                    m
-                })
-        });
+        .and_then(|dclient| dclient.get_manifest(&image, &version));
 
     let manifest = match runtime.block_on(futures) {
         Ok(manifest) => Ok(manifest),
         Err(e) => Err(format!("Got error {}", e)),
     }?;
 
-    match manifest.get_labels(0) {
-        Some(labels) => {
-            println!("got labels: {:#?}", labels);
-            println!("channel label: {:#?}", labels.get("channel"));
-        }
-        None => println!("got no labels"),
+    if let Manifest::S1Signed(s1s) = manifest {
+        let labels = s1s.get_labels(0);
+        println!("got labels: {:#?}", labels);
+    } else {
+        println!("got no labels");
     }
 
     Ok(())

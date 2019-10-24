@@ -172,7 +172,7 @@ fn parse_url(input: &str) -> Result<Reference, Error> {
     // Take image name and extract tag or digest-ref, if any.
     let last = components
         .pop_back()
-        .ok_or(Error::from("missing image name"))?;
+        .ok_or_else(|| Error::from("missing image name"))?;
     let (image_name, version) = match (last.rfind('@'), last.rfind(':')) {
         (Some(i), _) | (None, Some(i)) => {
             let s = last.split_at(i);
@@ -193,7 +193,7 @@ fn parse_url(input: &str) -> Result<Reference, Error> {
     // according to regex at https://docs.docker.com/registry/spec/api/#overview.
     let first = components
         .pop_front()
-        .ok_or(Error::from("missing image name"))?;
+        .ok_or_else(|| Error::from("missing image name"))?;
     let path_re = regex::Regex::new("^[a-z0-9]+(?:[._-][a-z0-9]+)*$")?;
     let registry = if path_re.is_match(&first) {
         components.push_front(first);

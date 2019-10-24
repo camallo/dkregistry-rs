@@ -4,7 +4,7 @@ use reqwest::StatusCode;
 use v2::*;
 
 /// Convenience alias for future binary blob.
-pub type FutureBlob = Box<futures::Future<Item = Vec<u8>, Error = Error> + Send>;
+pub type FutureBlob = Box<dyn futures::Future<Item = Vec<u8>, Error = Error> + Send>;
 
 impl Client {
     /// Check if a blob exists.

@@ -3,7 +3,7 @@ use reqwest::{StatusCode, Url};
 use v2::*;
 
 /// Convenience alias for future `TokenAuth` result.
-pub type FutureTokenAuth = Box<Future<Item = TokenAuth, Error = Error> + Send>;
+pub type FutureTokenAuth = Box<dyn Future<Item = TokenAuth, Error = Error> + Send>;
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct TokenAuth {
@@ -19,7 +19,7 @@ impl TokenAuth {
     }
 }
 
-type FutureString = Box<Future<Item = String, Error = self::Error> + Send>;
+type FutureString = Box<dyn Future<Item = String, Error = self::Error> + Send>;
 
 impl Client {
     fn get_token_provider(&self) -> FutureString {

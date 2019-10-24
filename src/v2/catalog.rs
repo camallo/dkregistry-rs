@@ -5,7 +5,7 @@ use serde_json;
 use v2;
 
 /// Convenience alias for a stream of `String` repos.
-pub type StreamCatalog = Box<futures::Stream<Item = String, Error = Error>>;
+pub type StreamCatalog = Box<dyn futures::Stream<Item = String, Error = Error>>;
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 struct Catalog {

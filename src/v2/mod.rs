@@ -65,13 +65,14 @@ pub struct Client {
 }
 
 /// Convenience alias for a future boolean result.
-pub type FutureBool = Box<Future<Item = bool, Error = Error> + Send>;
+pub type FutureBool = Box<dyn Future<Item = bool, Error = Error> + Send>;
 
 /// Convenience alias for a future manifest blob.
-pub type FutureManifest = Box<Future<Item = Vec<u8>, Error = Error> + Send>;
+pub type FutureManifest = Box<dyn Future<Item = Vec<u8>, Error = Error> + Send>;
 
 /// Convenience alias for a future manifest blob and ref.
-pub type FutureManifestAndRef = Box<Future<Item = (Vec<u8>, Option<String>), Error = Error> + Send>;
+pub type FutureManifestAndRef =
+    Box<dyn Future<Item = (Vec<u8>, Option<String>), Error = Error> + Send>;
 
 impl Client {
     pub fn configure() -> Config {

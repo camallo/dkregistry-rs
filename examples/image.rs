@@ -66,7 +66,7 @@ fn run(
     version: &str,
     user: Option<String>,
     passwd: Option<String>,
-) -> Result<(), boxed::Box<error::Error>> {
+) -> Result<(), boxed::Box<dyn error::Error>> {
     env_logger::Builder::new()
         .filter(Some("dkregistry"), log::LevelFilter::Trace)
         .filter(Some("trace"), log::LevelFilter::Trace)
@@ -93,7 +93,7 @@ fn run(
                 })
         })
         .and_then(|(dclient, manifest_kind)| {
-            let image = image.clone();
+            let image = image.to_owned();
             dclient.get_manifest(&image, &version).and_then(
                 move |manifest_body| match manifest_kind {
                     dkregistry::mediatypes::MediaTypes::ManifestV2S1Signed => {
@@ -117,7 +117,7 @@ fn run(
             )
         })
         .and_then(|(dclient, layers)| {
-            let image = image.clone();
+            let image = image.to_owned();
 
             println!("{} -> got {} layer(s)", &image, layers.len(),);
 
@@ -147,7 +147,6 @@ fn run(
     let can_path = path.canonicalize().unwrap();
 
     println!("Unpacking layers to {:?}", &can_path);
-    let r = render::unpack(&blobs, &can_path).unwrap();
-
-    Ok(r)
+    render::unpack(&blobs, &can_path)?;
+    Ok(())
 }

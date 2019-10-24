@@ -18,7 +18,7 @@ fn main() {
     };
 }
 
-fn run(host: &str) -> Result<bool, boxed::Box<error::Error>> {
+fn run(host: &str) -> Result<bool, boxed::Box<dyn error::Error>> {
     let mut runtime = Runtime::new()?;
     let dclient = try!(dkregistry::v2::Client::configure()
         .registry(host)
@@ -27,9 +27,10 @@ fn run(host: &str) -> Result<bool, boxed::Box<error::Error>> {
     let futcheck = dclient.is_v2_supported();
 
     let supported = runtime.block_on(futcheck)?;
-    match supported {
-        false => println!("{} does NOT support v2", host),
-        true => println!("{} supports v2", host),
+    if supported {
+        println!("{} supports v2", host);
+    } else {
+        println!("{} does NOT support v2", host);
     }
     Ok(supported)
 }

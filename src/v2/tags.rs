@@ -3,7 +3,7 @@ use reqwest::{self, header, Url};
 use v2::*;
 
 /// Convenience alias for a stream of `String` tags.
-pub type StreamTags = Box<futures::Stream<Item = String, Error = Error>>;
+pub type StreamTags = Box<dyn futures::Stream<Item = String, Error = Error> + Send>;
 
 /// A chunk of tags for an image.
 ///

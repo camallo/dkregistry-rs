@@ -162,7 +162,7 @@ impl Client {
             .build_reqwest(reqwest::async::Client::new().get(url.clone()))
             .headers(accept_headers)
             .send()
-            .map_err(|e| Error::from(format!("{}", e)))
+            .map_err(Error::from)
             .inspect(move |_| {
                 trace!("HEAD {:?}", url);
             })
@@ -170,7 +170,10 @@ impl Client {
                 let status = r.status();
                 let ct = {
                     let header_content_type = match r.headers().get(header::CONTENT_TYPE) {
-                        Some(header_value) => Some(header_value.to_str()?),
+                        Some(header_value) => Some(header_value.to_str()
+                        .map_err(Error::from)
+                        ?
+                        ),
                         None => None,
                     };
 
@@ -201,13 +204,14 @@ impl Client {
                 };
 
                 trace!("Manifest check status '{:?}', headers '{:?}, content-type: {:?}", r.status(), r.headers(), ct);
+
                 let res = match status {
                     StatusCode::MOVED_PERMANENTLY
                     | StatusCode::TEMPORARY_REDIRECT
                     | StatusCode::FOUND
                     | StatusCode::OK => ct,
                     StatusCode::NOT_FOUND => None,
-                    _ => return Err(format!("has_manifest: wrong HTTP status '{}'", status).into()),
+                    _ => bail!("has_manifest: wrong HTTP status '{}'", &status),
                 };
                 Ok(res)
             });

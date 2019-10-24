@@ -67,7 +67,7 @@ use std::collections::HashMap;
 use std::io::Read;
 
 /// Default User-Agent client identity.
-pub static USER_AGENT: &'static str = "camallo-dkregistry/0.0";
+pub static USER_AGENT: &str = "camallo-dkregistry/0.0";
 
 /// Get registry credentials from a JSON config reader.
 ///

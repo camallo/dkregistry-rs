@@ -57,7 +57,7 @@ fn run(
     dkr_ref: &reference::Reference,
     user: Option<String>,
     passwd: Option<String>,
-) -> Result<(), boxed::Box<error::Error>> {
+) -> Result<(), boxed::Box<dyn error::Error>> {
     env_logger::Builder::new()
         .filter(Some("dkregistry"), log::LevelFilter::Trace)
         .filter(Some("trace"), log::LevelFilter::Trace)

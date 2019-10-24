@@ -42,7 +42,7 @@ fn run(
     user: Option<String>,
     passwd: Option<String>,
     login_scope: String,
-) -> Result<(), boxed::Box<error::Error>> {
+) -> Result<(), boxed::Box<dyn error::Error>> {
     env_logger::Builder::new()
         .filter(Some("dkregistry"), log::LevelFilter::Trace)
         .filter(Some("trace"), log::LevelFilter::Trace)

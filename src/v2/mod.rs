@@ -65,13 +65,14 @@ pub struct Client {
 }
 
 /// Convenience alias for a future boolean result.
-pub type FutureBool = Box<Future<Item = bool, Error = Error>>;
+pub type FutureBool = Box<dyn Future<Item = bool, Error = Error> + Send>;
 
 /// Convenience alias for a future manifest blob.
-pub type FutureManifest = Box<Future<Item = Vec<u8>, Error = Error>>;
+pub type FutureManifest = Box<dyn Future<Item = Vec<u8>, Error = Error> + Send>;
 
 /// Convenience alias for a future manifest blob and ref.
-pub type FutureManifestAndRef = Box<Future<Item = (Vec<u8>, Option<String>), Error = Error>>;
+pub type FutureManifestAndRef =
+    Box<dyn Future<Item = (Vec<u8>, Option<String>), Error = Error> + Send>;
 
 impl Client {
     pub fn configure() -> Config {
@@ -79,7 +80,7 @@ impl Client {
     }
 
     /// Ensure remote registry supports v2 API.
-    pub fn ensure_v2_registry(self) -> impl Future<Item = Self, Error = Error> {
+    pub fn ensure_v2_registry(self) -> impl Future<Item = Self, Error = Error> + Send {
         self.is_v2_supported()
             .map(move |ok| (ok, self))
             .and_then(|(ok, client)| {

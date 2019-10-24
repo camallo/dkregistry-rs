@@ -169,6 +169,27 @@ fn parse_url(input: &str) -> Result<Reference, Error> {
         .map(String::from)
         .collect();
 
+    // Figure out if the first component is a registry String, and assume the
+    // default registry if it's not.
+    let first = components
+        .pop_front()
+        .ok_or(Error::from("missing image name"))?;
+
+    let registry = if regex::Regex::new(r"(?x)
+        ^
+        # hostname
+        (([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)+([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])
+
+        # optional port
+        ([:][0-9]{1,6})?
+        $
+    ")?.is_match(&first) {
+        first
+    } else {
+        components.push_front(first);
+        DEFAULT_REGISTRY.to_string()
+    };
+
     // Take image name and extract tag or digest-ref, if any.
     let last = components
         .pop_back()
@@ -184,23 +205,27 @@ fn parse_url(input: &str) -> Result<Reference, Error> {
 
     // Handle images in default library namespace, that is:
     // `ubuntu` -> `library/ubuntu`
-    if components.is_empty() {
+    if components.is_empty() && &registry == DEFAULT_REGISTRY {
         components.push_back("library".to_string());
     }
     components.push_back(image_name);
 
-    // Take first component and check if it is a hostname or a path component,
-    // according to regex at https://docs.docker.com/registry/spec/api/#overview.
-    let first = components
-        .pop_front()
-        .ok_or_else(|| Error::from("missing image name"))?;
+    // Check if all path components conform to the regex at
+    // https://docs.docker.com/registry/spec/api/#overview.
     let path_re = regex::Regex::new("^[a-z0-9]+(?:[._-][a-z0-9]+)*$")?;
-    let registry = if path_re.is_match(&first) {
-        components.push_front(first);
-        DEFAULT_REGISTRY.to_string()
-    } else {
-        first
-    };
+    components
+        .iter()
+        .try_for_each(|component| -> Result<(), Error> {
+            if !path_re.is_match(component) {
+                bail!(
+                    "component '{}' doesn't conform to the regex '{}'",
+                    component,
+                    path_re.as_str()
+                )
+            };
+
+            Ok(())
+        })?;
 
     // Re-assemble repository name.
     let repository = components.into_iter().collect::<Vec<_>>().join("/");

@@ -35,7 +35,7 @@ use std::collections::VecDeque;
 use std::str::FromStr;
 use std::{fmt, str};
 
-static DEFAULT_REGISTRY: &str = "registry-1.docker.io";
+pub static DEFAULT_REGISTRY: &str = "registry-1.docker.io";
 static DEFAULT_TAG: &str = "latest";
 static DEFAULT_SCHEME: &str = "docker";
 

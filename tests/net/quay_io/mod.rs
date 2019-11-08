@@ -313,8 +313,7 @@ fn test_quayio_auth_layer_blob() {
                     .map(|manifest| (dclient, manifest))
             })
             .and_then(|(dclient, manifest)| {
-                let m: ManifestSchema1Signed = serde_json::from_slice(manifest.as_slice()).unwrap();
-                let layers = m.get_layers();
+                let layers: Vec<String> = manifest.layers_digests(None)?;
                 let num_layers = layers.len();
                 ensure!(num_layers == 1, "layers length: {}", num_layers);
                 let digest = layers[0].clone();

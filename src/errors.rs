@@ -19,5 +19,6 @@ error_chain! {
         Reqwest(reqwest::Error);
         UriParse(http::uri::InvalidUri);
         Utf8Parse(string::FromUtf8Error);
+        StrumParse(strum::ParseError);
     }
 }

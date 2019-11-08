@@ -84,48 +84,19 @@ fn run(
     let futures = common::authenticate_client(client, login_scope)
         .and_then(|dclient| {
             dclient
-                .has_manifest(&image, &version, None)
-                .and_then(move |manifest_option| Ok((dclient, manifest_option)))
-                .and_then(|(dclient, manifest_option)| match manifest_option {
-                    None => Err(format!("{}:{} doesn't have a manifest", &image, &version).into()),
-
-                    Some(manifest_kind) => Ok((dclient, manifest_kind)),
-                })
+                .get_manifest(&image, &version)
+                .and_then(|manifest| Ok((dclient, manifest.layers_digests(None)?)))
         })
-        .and_then(|(dclient, manifest_kind)| {
-            let image = image.to_owned();
-            dclient.get_manifest(&image, &version).and_then(
-                move |manifest_body| match manifest_kind {
-                    dkregistry::mediatypes::MediaTypes::ManifestV2S1Signed => {
-                        let m: dkregistry::v2::manifest::ManifestSchema1Signed =
-                            match serde_json::from_slice(manifest_body.as_slice()) {
-                                Ok(json) => json,
-                                Err(e) => return Err(e.into()),
-                            };
-                        Ok((dclient, m.get_layers()))
-                    }
-                    dkregistry::mediatypes::MediaTypes::ManifestV2S2 => {
-                        let m: dkregistry::v2::manifest::ManifestSchema2 =
-                            match serde_json::from_slice(manifest_body.as_slice()) {
-                                Ok(json) => json,
-                                Err(e) => return Err(e.into()),
-                            };
-                        Ok((dclient, m.get_layers()))
-                    }
-                    _ => Err("unknown format".into()),
-                },
-            )
-        })
-        .and_then(|(dclient, layers)| {
-            let image = image.to_owned();
+        .and_then(|(dclient, layers_digests)| {
+            let image = image.clone();
 
-            println!("{} -> got {} layer(s)", &image, layers.len(),);
+            println!("{} -> got {} layer(s)", &image, layers_digests.len(),);
 
-            futures::stream::iter_ok::<_, dkregistry::errors::Error>(layers)
-                .and_then(move |layer| {
-                    let get_blob_future = dclient.get_blob(&image, &layer);
+            futures::stream::iter_ok::<_, dkregistry::errors::Error>(layers_digests)
+                .and_then(move |layer_digest| {
+                    let get_blob_future = dclient.get_blob(&image, &layer_digest);
                     get_blob_future.inspect(move |blob| {
-                        println!("Layer {}, got {} bytes.\n", layer, blob.len());
+                        println!("Layer {}, got {} bytes.\n", layer_digest, blob.len());
                     })
                 })
                 .collect()

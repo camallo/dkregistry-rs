@@ -31,7 +31,7 @@ fn deserialize_manifest_v2s2_config(
     let config_blob = {
         let f = fs::File::open(format!(
             "tests/fixtures/quay.io_v2_openshift-release-dev_ocp-release_manifests_4.1.0-rc.9/{}",
-            &manifest_spec.config().digest
+            &manifest_spec.config().digest.replace(":", "_")
         ))
         .expect("Missing fixture");
         serde_json::from_reader::<_, dkregistry::v2::manifest::ConfigBlob>(f)?

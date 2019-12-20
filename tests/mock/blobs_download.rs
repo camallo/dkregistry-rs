@@ -5,7 +5,7 @@ extern crate tokio;
 
 use self::mockito::mock;
 use self::tokio::runtime::current_thread::Runtime;
-use mock::{self, blobs_download::sha2::Digest};
+use crate::mock::blobs_download::sha2::Digest;
 
 type Fallible<T> = Result<T, Box<std::error::Error>>;
 

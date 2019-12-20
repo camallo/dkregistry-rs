@@ -1,4 +1,3 @@
-extern crate dkregistry;
 extern crate tokio;
 
 use std::{boxed, error};
@@ -20,10 +19,10 @@ fn main() {
 
 fn run(host: &str) -> Result<bool, boxed::Box<dyn error::Error>> {
     let mut runtime = Runtime::new()?;
-    let dclient = try!(dkregistry::v2::Client::configure()
+    let dclient = dkregistry::v2::Client::configure()
         .registry(host)
         .insecure_registry(false)
-        .build());
+        .build()?;
     let futcheck = dclient.is_v2_supported();
 
     let supported = runtime.block_on(futcheck)?;

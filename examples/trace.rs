@@ -1,5 +1,4 @@
 extern crate dirs;
-extern crate dkregistry;
 extern crate futures;
 extern crate serde_json;
 extern crate tokio;

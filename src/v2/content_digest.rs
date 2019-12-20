@@ -1,6 +1,6 @@
+use crate::v2::*;
 /// Implements types and methods for content verification
 use sha2::{self, Digest};
-use v2::*;
 
 /// ContentDigest stores a digest and its DigestAlgorithm
 #[derive(Clone, Debug, PartialEq)]

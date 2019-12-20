@@ -1,4 +1,3 @@
-extern crate dkregistry;
 extern crate spectral;
 
 use dkregistry::reference::Reference;

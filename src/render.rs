@@ -3,7 +3,7 @@
 // Docker image format is specified at
 // https://github.com/moby/moby/blob/v17.05.0-ce/image/spec/v1.md
 
-use errors::*;
+use crate::errors::*;
 use libflate::gzip;
 use std::{fs, path};
 use tar;

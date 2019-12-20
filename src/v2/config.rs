@@ -1,4 +1,4 @@
-use v2::*;
+use crate::v2::*;
 
 /// Configuration for a `Client`.
 #[derive(Debug)]
@@ -16,7 +16,7 @@ impl Config {
         Self {
             index: "registry-1.docker.io".into(),
             insecure_registry: false,
-            user_agent: Some(::USER_AGENT.to_owned()),
+            user_agent: Some(crate::USER_AGENT.to_owned()),
             username: None,
             password: None,
         }
@@ -54,7 +54,7 @@ impl Config {
 
     /// Read credentials from a JSON config file
     pub fn read_credentials<T: ::std::io::Read>(mut self, reader: T) -> Self {
-        if let Ok(creds) = ::get_credentials(reader, &self.index) {
+        if let Ok(creds) = crate::get_credentials(reader, &self.index) {
             self.username = creds.0;
             self.password = creds.1;
         };

@@ -1,6 +1,5 @@
-use futures::prelude::*;
+use crate::v2::*;
 use reqwest::{self, header, Url};
-use v2::*;
 
 /// Convenience alias for a stream of `String` tags.
 pub type StreamTags = Box<dyn futures::Stream<Item = String, Error = Error> + Send>;
@@ -47,7 +46,7 @@ impl Client {
                     // receive the next page of tags
 
                     client
-                        .build_reqwest(reqwest::async::Client::new().get(url.clone()))
+                        .build_reqwest(reqwest::r#async::Client::new().get(url.clone()))
                         .header(header::ACCEPT, "application/json")
                         .send()
                         // ensure the status is OK

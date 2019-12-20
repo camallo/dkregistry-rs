@@ -1,8 +1,8 @@
-use errors::{Error, Result};
+use crate::errors::{Error, Result};
+use crate::v2;
 use futures::{self, stream, Future, Stream};
 use reqwest::StatusCode;
 use serde_json;
-use v2;
 
 /// Convenience alias for a stream of `String` repos.
 pub type StreamCatalog = Box<dyn futures::Stream<Item = String, Error = Error>>;
@@ -32,7 +32,7 @@ impl v2::Client {
             }
         };
 
-        let req = self.build_reqwest(reqwest::async::Client::new().get(url));
+        let req = self.build_reqwest(reqwest::r#async::Client::new().get(url));
 
         let fres = req
             .send()

@@ -30,10 +30,10 @@
 //! ```
 
 use super::errors::*;
+use crate::v2::manifest::Manifest;
 use futures::prelude::*;
 use reqwest::StatusCode;
 use serde_json;
-use v2::manifest::Manifest;
 
 mod config;
 pub use self::config::Config;
@@ -107,7 +107,7 @@ impl Client {
             .chain_err(|| format!("failed to parse url string '{}'", &v2_endpoint))
             .map(|url| {
                 trace!("GET {:?}", url);
-                self.build_reqwest(reqwest::async::Client::new().get(url))
+                self.build_reqwest(reqwest::r#async::Client::new().get(url))
             })
             .into_future()
             .and_then(|req| req.send().from_err());
@@ -131,8 +131,8 @@ impl Client {
     /// Takes reqwest's async RequestBuilder and injects an authentication header if a token is present
     fn build_reqwest(
         &self,
-        req_builder: reqwest::async::RequestBuilder,
-    ) -> reqwest::async::RequestBuilder {
+        req_builder: reqwest::r#async::RequestBuilder,
+    ) -> reqwest::r#async::RequestBuilder {
         let mut builder = req_builder;
 
         if let Some(token) = &self.token {

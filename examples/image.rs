@@ -4,13 +4,14 @@ extern crate serde_json;
 extern crate tokio;
 
 use dkregistry::render;
-use futures::prelude::*;
+use futures::future::join_all;
 use std::result::Result;
 use std::{boxed, env, error, fs, io};
 
 mod common;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let registry = match std::env::args().nth(1) {
         Some(x) => x,
         None => "quay.io".into(),
@@ -51,7 +52,7 @@ fn main() {
         }
     };
 
-    let res = run(&registry, &image, &version, user, password);
+    let res = run(&registry, &image, &version, user, password).await;
 
     if let Err(e) = res {
         println!("[{}] {}", registry, e);
@@ -59,7 +60,7 @@ fn main() {
     };
 }
 
-fn run(
+async fn run(
     registry: &str,
     image: &str,
     version: &str,
@@ -80,28 +81,23 @@ fn run(
 
     let login_scope = format!("repository:{}:pull", image);
 
-    let futures = common::authenticate_client(client, login_scope)
-        .and_then(|dclient| {
-            dclient
-                .get_manifest(&image, &version)
-                .and_then(|manifest| Ok((dclient, manifest.layers_digests(None)?)))
-        })
-        .and_then(|(dclient, layers_digests)| {
-            println!("{} -> got {} layer(s)", &image, layers_digests.len(),);
+    let dclient = common::authenticate_client(client, login_scope).await?;
+    let manifest = dclient.get_manifest(&image, &version).await?;
+    let layers_digests = manifest.layers_digests(None)?;
 
-            futures::stream::iter_ok::<_, dkregistry::errors::Error>(layers_digests)
-                .and_then(move |layer_digest| {
-                    let get_blob_future = dclient.get_blob(&image, &layer_digest);
-                    get_blob_future.inspect(move |blob| {
-                        println!("Layer {}, got {} bytes.\n", layer_digest, blob.len());
-                    })
-                })
-                .collect()
-        });
+    println!("{} -> got {} layer(s)", &image, layers_digests.len(),);
 
-    let blobs = tokio::runtime::current_thread::Runtime::new()
-        .unwrap()
-        .block_on(futures)?;
+    let blob_futures = layers_digests
+        .iter()
+        .map(|layer_digest| dclient.get_blob(&image, &layer_digest))
+        .collect::<Vec<_>>();
+
+    let (blobs, errors): (Vec<_>, Vec<_>) = join_all(blob_futures)
+        .await
+        .into_iter()
+        .partition(Result::is_ok);
+    let blobs: Vec<_> = blobs.into_iter().map(Result::unwrap).collect();
+    let _errors: Vec<_> = errors.into_iter().map(Result::unwrap_err).collect();
 
     println!("Downloaded {} layers", blobs.len());
 

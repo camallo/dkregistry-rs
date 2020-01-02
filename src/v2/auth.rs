@@ -1,9 +1,6 @@
+use crate::errors::{Error, Result};
 use crate::v2::*;
-use futures::future;
 use reqwest::{StatusCode, Url};
-
-/// Convenience alias for future `TokenAuth` result.
-pub type FutureTokenAuth = Box<dyn Future<Item = TokenAuth, Error = Error> + Send>;
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct TokenAuth {
@@ -19,48 +16,43 @@ impl TokenAuth {
     }
 }
 
-type FutureString = Box<dyn Future<Item = String, Error = self::Error> + Send>;
-
 impl Client {
-    fn get_token_provider(&self) -> FutureString {
+    async fn get_token_provider(&self) -> Result<String> {
         let url = {
             let ep = format!("{}/v2/", self.base_url.clone(),);
             match reqwest::Url::parse(&ep) {
                 Ok(url) => url,
                 Err(e) => {
-                    return Box::new(future::err::<_, _>(Error::from(format!(
+                    return Err(Error::from(format!(
                         "failed to parse url from string '{}': {}",
                         ep, e
-                    ))));
+                    )));
                 }
             }
         };
 
-        let fres = self
-            .build_reqwest(reqwest::r#async::Client::new().get(url.clone()))
+        let r = self
+            .build_reqwest(reqwest::Client::new().get(url.clone()))
             .send()
             .map_err(|e| Error::from(format!("{}", e)))
-            .and_then(move |r| {
-                trace!("GET '{}' status: {:?}", r.url(), r.status());
-                let a = r
-                    .headers()
-                    .get(reqwest::header::WWW_AUTHENTICATE)
-                    .ok_or_else(|| Error::from("get_token: missing Auth header"))?;
-                let chal = String::from_utf8(a.as_bytes().to_vec())?;
-                Ok(chal)
-            })
-            .and_then(move |hdr| {
-                let (mut auth_ep, service) = parse_hdr_bearer(hdr.trim_start_matches("Bearer "))?;
+            .await?;
 
-                trace!("Token provider: {}", auth_ep);
-                if let Some(sv) = service {
-                    auth_ep += &format!("?service={}", sv);
-                    trace!("Service identity: {}", sv);
-                }
-                Ok(auth_ep)
-            });
+        trace!("GET '{}' status: {:?}", r.url(), r.status());
+        let a = r
+            .headers()
+            .get(reqwest::header::WWW_AUTHENTICATE)
+            .ok_or_else(|| Error::from("get_token: missing Auth header"))?;
+        let chal = String::from_utf8(a.as_bytes().to_vec())?;
 
-        Box::new(fres)
+        let (mut auth_ep, service) = parse_hdr_bearer(chal.trim_start_matches("Bearer "))?;
+
+        trace!("Token provider: {}", auth_ep);
+        if let Some(sv) = service {
+            auth_ep += &format!("?service={}", sv);
+            trace!("Service identity: {}", sv);
+        }
+
+        Ok(auth_ep)
     }
 
     /// Set the token to be used for further registry requests.
@@ -74,91 +66,77 @@ impl Client {
     /// Perform registry authentication and return an authenticated token.
     ///
     /// On success, the returned token will be valid for all requested scopes.
-    pub fn login(&self, scopes: &[&str]) -> FutureTokenAuth {
+    pub async fn login(&self, scopes: &[&str]) -> Result<TokenAuth> {
         let subclient = self.clone();
         let creds = self.credentials.clone();
         let scope = scopes
             .iter()
             .fold("".to_string(), |acc, &s| acc + "&scope=" + s);
-        let auth = self
-            .get_token_provider()
-            .and_then(move |token_ep| {
-                let auth_ep = token_ep + scope.as_str();
-                trace!("login: token endpoint: {}", auth_ep);
 
-                reqwest::Url::parse(&auth_ep).map_err(|e| {
-                    Error::from(format!(
-                        "failed to parse url from string '{}': {}",
-                        auth_ep, e
-                    ))
-                })
-            })
-            .and_then(move |u| {
-                let auth_req = {
-                    let auth_req = subclient.build_reqwest(reqwest::r#async::Client::new().get(u));
-                    if let Some(creds) = creds {
-                        auth_req.basic_auth(creds.0, Some(creds.1))
-                    } else {
-                        auth_req
-                    }
-                };
-                auth_req.send().map_err(|e| e.into())
-            })
-            .and_then(|r| {
-                let status = r.status();
-                trace!("login: got status {}", status);
-                match status {
-                    StatusCode::OK => Ok(r),
-                    _ => Err(format!("login: wrong HTTP status '{}'", status).into()),
-                }
-            })
-            .and_then(|r| {
-                r.into_body()
-                    .concat2()
-                    .map_err(|e| format!("login: failed to fetch the whole body: {}", e).into())
-            })
-            .and_then(|body| {
-                let s = String::from_utf8(body.to_vec())?;
-                serde_json::from_slice(s.as_bytes()).map_err(|e| e.into())
-            })
-            .and_then(|token_auth: TokenAuth| {
-                let mut t = token_auth.token().to_string();
+        let token_ep = self.get_token_provider().await?;
+        let auth_ep = token_ep + scope.as_str();
+        trace!("login: token endpoint: {}", auth_ep);
 
-                if t == "unauthenticated" {
-                    bail!("received token with value '{}'", t)
-                } else if t.is_empty() {
-                    bail!("received an empty token")
-                };
+        let url = reqwest::Url::parse(&auth_ep).map_err(|e| {
+            Error::from(format!(
+                "failed to parse url from string '{}': {}",
+                auth_ep, e
+            ))
+        })?;
 
-                // mask the token before logging it
-                let chars_count = t.chars().count();
-                let mask_start = std::cmp::min(1, chars_count - 1);
-                let mask_end = std::cmp::max(chars_count - 1, 1);
-                t.replace_range(mask_start..mask_end, &"*".repeat(mask_end - mask_start));
+        let auth_req = {
+            let auth_req = subclient.build_reqwest(reqwest::Client::new().get(url));
+            if let Some(creds) = creds {
+                auth_req.basic_auth(creds.0, Some(creds.1))
+            } else {
+                auth_req
+            }
+        };
 
-                trace!("login: got token: {:?}", t);
+        let r = auth_req.send().await?;
+        let status = r.status();
+        trace!("login: got status {}", status);
+        match status {
+            StatusCode::OK => {}
+            _ => return Err(format!("login: wrong HTTP status '{}'", status).into()),
+        }
 
-                Ok(token_auth)
-            });
-        Box::new(auth)
+        let token_auth = r.json::<TokenAuth>().await?;
+        let mut t = token_auth.token().to_string();
+
+        if t == "unauthenticated" {
+            bail!("received token with value '{}'", t)
+        } else if t.is_empty() {
+            bail!("received an empty token")
+        };
+
+        // mask the token before logging it
+        let chars_count = t.chars().count();
+        let mask_start = std::cmp::min(1, chars_count - 1);
+        let mask_end = std::cmp::max(chars_count - 1, 1);
+        t.replace_range(mask_start..mask_end, &"*".repeat(mask_end - mask_start));
+
+        trace!("login: got token: {:?}", t);
+
+        Ok(token_auth)
     }
 
     /// Check whether the client is authenticated with the registry.
-    pub fn is_auth(&self, token: Option<&str>) -> FutureBool {
+    pub async fn is_auth(&self, token: Option<&str>) -> Result<bool> {
         let url = {
             let ep = format!("{}/v2/", self.base_url.clone(),);
             match Url::parse(&ep) {
                 Ok(url) => url,
                 Err(e) => {
-                    return Box::new(future::err::<_, _>(Error::from(format!(
+                    return Err(Error::from(format!(
                         "failed to parse url from string '{}': {}",
                         ep, e
-                    ))));
+                    )));
                 }
             }
         };
 
-        let req = self.build_reqwest(reqwest::r#async::Client::new().get(url.clone()));
+        let req = self.build_reqwest(reqwest::Client::new().get(url.clone()));
         let req = if let Some(t) = token {
             req.bearer_auth(t)
         } else {
@@ -168,21 +146,15 @@ impl Client {
 
         trace!("Sending request to '{}'", url);
 
-        let fres = req
-            .send()
-            .map_err(|e| Error::from(format!("{}", e)))
-            .and_then(move |resp| {
-                trace!("GET '{:?}'", resp);
+        let resp = req.send().await?;
+        trace!("GET '{:?}'", resp);
 
-                let status = resp.status();
-                match status {
-                    reqwest::StatusCode::OK => Ok(true),
-                    reqwest::StatusCode::UNAUTHORIZED => Ok(false),
-                    _ => Err(format!("is_auth: wrong HTTP status '{}'", status).into()),
-                }
-            });
-
-        Box::new(fres)
+        let status = resp.status();
+        match status {
+            reqwest::StatusCode::OK => Ok(true),
+            reqwest::StatusCode::UNAUTHORIZED => Ok(false),
+            _ => Err(format!("is_auth: wrong HTTP status '{}'", status).into()),
+        }
     }
 }
 

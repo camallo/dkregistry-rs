@@ -1,114 +1,92 @@
+use crate::errors::{Error, Result};
 use crate::v2::*;
-use futures::Stream;
 use reqwest;
 use reqwest::StatusCode;
 
-/// Convenience alias for future binary blob.
-pub type FutureBlob = Box<dyn futures::Future<Item = Vec<u8>, Error = Error> + Send>;
-
 impl Client {
     /// Check if a blob exists.
-    pub fn has_blob(&self, name: &str, digest: &str) -> FutureBool {
+    pub async fn has_blob(&self, name: &str, digest: &str) -> Result<bool> {
         let url = {
             let ep = format!("{}/v2/{}/blobs/{}", self.base_url, name, digest);
             match reqwest::Url::parse(&ep) {
                 Ok(url) => url,
                 Err(e) => {
-                    return Box::new(futures::future::err::<_, _>(Error::from(format!(
+                    return Err(Error::from(format!(
                         "failed to parse url from string: {}",
                         e
-                    ))));
+                    )));
                 }
             }
         };
 
-        let fres = self
-            .build_reqwest(reqwest::r#async::Client::new().head(url))
+        let res = self
+            .build_reqwest(reqwest::Client::new().head(url))
             .send()
-            .inspect(|res| trace!("Blob HEAD status: {:?}", res.status()))
-            .and_then(|res| match res.status() {
-                StatusCode::OK => Ok(true),
-                _ => Ok(false),
-            })
-            .map_err(|e| format!("{}", e).into());
-        Box::new(fres)
+            .await?;
+
+        trace!("Blob HEAD status: {:?}", res.status());
+
+        match res.status() {
+            StatusCode::OK => Ok(true),
+            _ => Ok(false),
+        }
     }
 
     /// Retrieve blob.
-    pub fn get_blob(&self, name: &str, digest: &str) -> FutureBlob {
-        let fres_digest = futures::future::result(ContentDigest::try_new(digest.to_string()));
+    pub async fn get_blob(&self, name: &str, digest: &str) -> Result<Vec<u8>> {
+        let digest = ContentDigest::try_new(digest.to_string())?;
 
-        let fres_blob = {
+        let blob = {
             let ep = format!("{}/v2/{}/blobs/{}", self.base_url, name, digest);
-            reqwest::Url::parse(&ep).map_err(|e|{
-                    crate::errors::Error::from(format!(
-                        "failed to parse url from string: {}",
-                        e
-                    ))
-            })
-            .map(|url|{
-                self.build_reqwest(reqwest::r#async::Client::new()
-                    .get(url))
-                    .send()
-                    .map_err(|e| crate::errors::Error::from(format!("{}", e)))
-            })
-            .into_future()
-            .flatten()
-            .and_then(|res| {
-                trace!("GET {} status: {}", res.url(), res.status());
-                let status = res.status();
+            let url = reqwest::Url::parse(&ep)
+                .map_err(|e| Error::from(format!("failed to parse url from string: {}", e)))?;
 
-                if status.is_success()
-                    // Let client errors through to populate them with the body
-                    || status.is_client_error()
-                {
-                    Ok(res)
-                } else {
-                    Err(crate::errors::Error::from(format!(
-                        "GET request failed with status '{}'",
-                        status
-                    )))
-                }
-            }).and_then(|mut res| {
-                std::mem::replace(res.body_mut(), reqwest::r#async::Decoder::empty())
-                    .concat2()
-                    .map_err(|e| crate::errors::Error::from(format!("{}", e)))
-                    .join(futures::future::ok(res))
-            }).map_err(|e| crate::errors::Error::from(format!("{}", e)))
-            .and_then(|(body, res)| {
-                let body_vec = body.to_vec();
-                let len = body_vec.len();
-                let status = res.status();
+            let res = self
+                .build_reqwest(reqwest::Client::new().get(url))
+                .send()
+                .await?;
 
-                if status.is_success() {
-                    trace!("Successfully received blob with {} bytes ", len);
-                    Ok(body_vec)
-                } else if status.is_client_error() {
-                    Err(Error::from(format!(
-                        "GET request failed with status '{}' and body of size {}: {:#?}",
-                        status,
-                        len,
-                        String::from_utf8_lossy(&body_vec)
-                    )))
-                } else {
-                    // We only want to handle success and client errors here
-                    error!(
-                        "Received unexpected HTTP status '{}' after fetching the body. Please submit a bug report.",
-                        status
-                    );
-                    Err(Error::from(format!(
-                        "GET request failed with status '{}'",
-                        status
-                    )))
-                }
-            })
-        };
+            trace!("GET {} status: {}", res.url(), res.status());
+            let status = res.status();
 
-        let fres = fres_digest.join(fres_blob).and_then(|(digest, body)| {
-            digest.try_verify(&body)?;
-            Ok(body)
-        });
+            if !(status.is_success()
+                // Let client errors through to populate them with the body
+                || status.is_client_error())
+            {
+                return Err(Error::from(format!(
+                    "GET request failed with status '{}'",
+                    status
+                )));
+            }
 
-        Box::new(fres)
+            let status = res.status();
+            let body_vec = res.bytes().await?.to_vec();
+            let len = body_vec.len();
+
+            if status.is_success() {
+                trace!("Successfully received blob with {} bytes ", len);
+                Ok(body_vec)
+            } else if status.is_client_error() {
+                Err(Error::from(format!(
+                    "GET request failed with status '{}' and body of size {}: {:#?}",
+                    status,
+                    len,
+                    String::from_utf8_lossy(&body_vec)
+                )))
+            } else {
+                // We only want to handle success and client errors here
+                error!(
+                    "Received unexpected HTTP status '{}' after fetching the body. Please submit a bug report.",
+                    status
+                );
+                Err(Error::from(format!(
+                    "GET request failed with status '{}'",
+                    status
+                )))
+            }
+        }?;
+
+        digest.try_verify(&blob)?;
+        Ok(blob.to_vec())
     }
 }

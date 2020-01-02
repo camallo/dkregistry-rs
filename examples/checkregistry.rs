@@ -1,15 +1,15 @@
 extern crate tokio;
 
 use std::{boxed, error};
-use tokio::runtime::current_thread::Runtime;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let registry = match std::env::args().nth(1) {
         Some(x) => x,
         None => "registry-1.docker.io".into(),
     };
 
-    let res = run(&registry);
+    let res = run(&registry).await;
 
     if let Err(e) = res {
         println!("[{}] {}", registry, e);
@@ -17,15 +17,13 @@ fn main() {
     };
 }
 
-fn run(host: &str) -> Result<bool, boxed::Box<dyn error::Error>> {
-    let mut runtime = Runtime::new()?;
+async fn run(host: &str) -> Result<bool, boxed::Box<dyn error::Error>> {
     let dclient = dkregistry::v2::Client::configure()
         .registry(host)
         .insecure_registry(false)
         .build()?;
-    let futcheck = dclient.is_v2_supported();
 
-    let supported = runtime.block_on(futcheck)?;
+    let supported = dclient.is_v2_supported().await?;
     if supported {
         println!("{} supports v2", host);
     } else {

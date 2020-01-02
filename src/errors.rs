@@ -4,7 +4,6 @@ use base64;
 use http;
 use regex;
 use reqwest;
-use serde_json;
 use std::{io, string};
 
 error_chain! {

@@ -3,9 +3,9 @@ extern crate futures;
 extern crate mockito;
 extern crate tokio;
 
-use self::futures::Stream;
+use self::futures::StreamExt;
 use self::mockito::mock;
-use self::tokio::runtime::current_thread::Runtime;
+use self::tokio::runtime::Runtime;
 
 #[test]
 fn test_catalog_simple() {
@@ -29,7 +29,11 @@ fn test_catalog_simple() {
 
     let futcheck = dclient.get_catalog(None);
 
-    let res = runtime.block_on(futcheck.collect()).unwrap();
+    let (res, _errors): (Vec<_>, Vec<_>) = runtime
+        .block_on(futcheck.collect::<Vec<_>>())
+        .into_iter()
+        .partition(Result::is_ok);
+    let res: Vec<_> = res.into_iter().map(Result::unwrap).collect();
     assert_eq!(res, vec!["r1/i1", "r2"]);
 
     mockito::reset();
@@ -70,15 +74,15 @@ fn test_catalog_paginate() {
 
     let next = dclient.get_catalog(Some(1));
 
-    let (page1, next) = runtime.block_on(next.into_future()).ok().unwrap();
-    assert_eq!(page1, Some("r1/i1".to_owned()));
+    let (page1, next) = runtime.block_on(next.into_future());
+    assert_eq!(page1.unwrap().unwrap(), "r1/i1".to_owned());
 
-    let (page2, next) = runtime.block_on(next.into_future()).ok().unwrap();
+    let (page2, next) = runtime.block_on(next.into_future());
     // TODO(lucab): implement pagination
-    assert_eq!(page2, None);
+    assert!(page2.is_none());
 
-    let (end, _) = runtime.block_on(next.into_future()).ok().unwrap();
-    assert_eq!(end, None);
+    let (end, _) = runtime.block_on(next.into_future());
+    assert!(end.is_none());
 
     mockito::reset();
 }

@@ -3,9 +3,9 @@ extern crate futures;
 extern crate mockito;
 extern crate tokio;
 
-use self::futures::Stream;
+use self::futures::StreamExt;
 use self::mockito::mock;
-use self::tokio::runtime::current_thread::Runtime;
+use self::tokio::runtime::Runtime;
 
 #[test]
 fn test_tags_simple() {
@@ -31,8 +31,9 @@ fn test_tags_simple() {
 
     let futcheck = dclient.get_tags(name, None);
 
-    let res = runtime.block_on(futcheck.collect()).unwrap();
-    assert_eq!(res, vec!["t1", "t2"]);
+    let res = runtime.block_on(futcheck.collect::<Vec<_>>());
+    assert_eq!(res.get(0).unwrap().as_ref().unwrap(), &String::from("t1"));
+    assert_eq!(res.get(1).unwrap().as_ref().unwrap(), &String::from("t2"));
 
     mockito::reset();
 }
@@ -75,14 +76,14 @@ fn test_tags_paginate() {
 
     let next = dclient.get_tags(name, Some(1));
 
-    let (first_tag, stream_rest) = runtime.block_on(next.into_future()).ok().unwrap();
-    assert_eq!(first_tag, Some("t1".to_owned()));
+    let (first_tag, stream_rest) = runtime.block_on(next.into_future());
+    assert_eq!(first_tag.unwrap().unwrap(), "t1".to_owned());
 
-    let (second_tag, stream_rest) = runtime.block_on(stream_rest.into_future()).ok().unwrap();
-    assert_eq!(second_tag, Some("t2".to_owned()));
+    let (second_tag, stream_rest) = runtime.block_on(stream_rest.into_future());
+    assert_eq!(second_tag.unwrap().unwrap(), "t2".to_owned());
 
-    let (end, _) = runtime.block_on(stream_rest.into_future()).ok().unwrap();
-    assert_eq!(end, None);
+    let (end, _) = runtime.block_on(stream_rest.into_future());
+    assert!(end.is_none());
 
     mockito::reset();
 }
@@ -108,8 +109,8 @@ fn test_tags_404() {
 
     let futcheck = dclient.get_tags(name, None);
 
-    let res = runtime.block_on(futcheck.collect());
-    assert!(res.is_err());
+    let res = runtime.block_on(futcheck.collect::<Vec<_>>());
+    assert!(res.get(0).unwrap().as_ref().is_err());
 
     mockito::reset();
 }
@@ -137,8 +138,8 @@ fn test_tags_missing_header() {
 
     let futcheck = dclient.get_tags(name, None);
 
-    let res = runtime.block_on(futcheck.collect());
-    assert!(!res.is_err());
+    let res = runtime.block_on(futcheck.collect::<Vec<_>>());
+    assert!(!res.get(0).unwrap().as_ref().is_err());
 
     mockito::reset();
 }

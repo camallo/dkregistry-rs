@@ -3,12 +3,12 @@ extern crate tokio;
 
 mod common;
 
-use futures::prelude::*;
+use futures::stream::StreamExt;
 use std::result::Result;
 use std::{boxed, error};
-use tokio::runtime::current_thread::Runtime;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let registry = match std::env::args().nth(1) {
         Some(x) => x,
         None => "registry-1.docker.io".into(),
@@ -29,7 +29,7 @@ fn main() {
         println!("[{}] no $DKREG_PASSWD for login password", registry);
     }
 
-    let res = run(&registry, user, password, &image);
+    let res = run(&registry, user, password, &image).await;
 
     if let Err(e) = res {
         println!("[{}] {}", registry, e);
@@ -37,7 +37,7 @@ fn main() {
     };
 }
 
-fn run(
+async fn run(
     host: &str,
     user: Option<String>,
     passwd: Option<String>,
@@ -48,7 +48,6 @@ fn run(
         .filter(Some("trace"), log::LevelFilter::Trace)
         .try_init()?;
 
-    let mut runtime = Runtime::new()?;
     let client = dkregistry::v2::Client::configure()
         .registry(host)
         .insecure_registry(false)
@@ -58,17 +57,18 @@ fn run(
 
     let login_scope = format!("repository:{}:pull", image);
 
-    let futures = common::authenticate_client(client, login_scope)
-        .and_then(|dclient| dclient.get_tags(&image, Some(7)).collect())
-        .and_then(|tags| {
-            for tag in tags {
-                println!("{:?}", tag);
-            }
-            Ok(())
-        });
+    let dclient = common::authenticate_client(client, login_scope).await?;
 
-    match runtime.block_on(futures) {
-        Ok(_) => Ok(()),
-        Err(e) => Err(Box::new(e)),
+    let (tags, _errors): (Vec<_>, Vec<_>) = dclient
+        .get_tags(&image, Some(7))
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .partition(Result::is_ok);
+
+    for tag in tags {
+        println!("{:?}", tag);
     }
+
+    Ok(())
 }

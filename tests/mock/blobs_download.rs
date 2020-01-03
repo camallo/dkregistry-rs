@@ -4,10 +4,10 @@ extern crate sha2;
 extern crate tokio;
 
 use self::mockito::mock;
-use self::tokio::runtime::current_thread::Runtime;
+use self::tokio::runtime::Runtime;
 use crate::mock::blobs_download::sha2::Digest;
 
-type Fallible<T> = Result<T, Box<std::error::Error>>;
+type Fallible<T> = Result<T, Box<dyn std::error::Error>>;
 
 #[test]
 fn test_blobs_has_layer() {

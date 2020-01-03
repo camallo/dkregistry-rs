@@ -9,31 +9,27 @@
 //! ```rust,no_run
 //! # extern crate dkregistry;
 //! # extern crate tokio;
-//! # fn main() {
-//! # fn run() -> dkregistry::errors::Result<()> {
+//! # #[tokio::main]
+//! # async fn main() {
+//! # async fn run() -> dkregistry::errors::Result<()> {
 //! #
-//! use tokio::runtime::current_thread::Runtime;
 //! use dkregistry::v2::Client;
 //!
 //! // Retrieve an image manifest.
-//! let mut runtime = Runtime::new()?;
 //! let dclient = Client::configure()
 //!                      .registry("quay.io")
 //!                      .build()?;
-//! let fetch = dclient.get_manifest("coreos/etcd", "v3.1.0");
-//! let manifest = runtime.block_on(fetch)?;
+//! let manifest = dclient.get_manifest("coreos/etcd", "v3.1.0").await?;
 //! #
 //! # Ok(())
 //! # };
-//! # run().unwrap();
+//! # run().await.unwrap();
 //! # }
 //! ```
 
-use super::errors::*;
-use crate::v2::manifest::Manifest;
+use crate::errors::*;
 use futures::prelude::*;
 use reqwest::StatusCode;
-use serde_json;
 
 mod config;
 pub use self::config::Config;
@@ -42,7 +38,7 @@ mod catalog;
 pub use self::catalog::StreamCatalog;
 
 mod auth;
-pub use self::auth::{FutureTokenAuth, TokenAuth};
+pub use self::auth::TokenAuth;
 
 pub mod manifest;
 
@@ -50,7 +46,6 @@ mod tags;
 pub use self::tags::StreamTags;
 
 mod blobs;
-pub use self::blobs::FutureBlob;
 
 mod content_digest;
 pub(crate) use self::content_digest::ContentDigest;
@@ -65,74 +60,52 @@ pub struct Client {
     token: Option<String>,
 }
 
-/// Convenience alias for an arbitrary future type
-pub type FutureResult<T> = Box<dyn Future<Item = T, Error = Error> + Send>;
-
-/// Convenience alias for a future boolean result.
-pub type FutureBool = Box<dyn Future<Item = bool, Error = Error> + Send>;
-
-/// Convenience alias for a future manifest blob.
-pub type FutureManifest = Box<dyn Future<Item = Manifest, Error = Error> + Send>;
-
-/// Convenience alias for a future manifest blob and ref.
-pub type FutureManifestAndRef =
-    Box<dyn Future<Item = (Manifest, Option<String>), Error = Error> + Send>;
-
 impl Client {
     pub fn configure() -> Config {
         Config::default()
     }
 
     /// Ensure remote registry supports v2 API.
-    pub fn ensure_v2_registry(self) -> impl Future<Item = Self, Error = Error> + Send {
-        self.is_v2_supported()
-            .map(move |ok| (ok, self))
-            .and_then(|(ok, client)| {
-                if !ok {
-                    bail!("remote server does not support docker-registry v2 API")
-                } else {
-                    Ok(client)
-                }
-            })
+    pub async fn ensure_v2_registry(self) -> Result<Self> {
+        if !self.is_v2_supported().await? {
+            bail!("remote server does not support docker-registry v2 API")
+        } else {
+            Ok(self)
+        }
     }
 
     /// Check whether remote registry supports v2 API.
-    pub fn is_v2_supported(&self) -> impl Future<Item = bool, Error = Error> {
+    pub async fn is_v2_supported(&self) -> Result<bool> {
         let api_header = "Docker-Distribution-API-Version";
         let api_version = "registry/2.0";
 
         // GET request to bare v2 endpoint.
         let v2_endpoint = format!("{}/v2/", self.base_url);
-        let get_v2 = reqwest::Url::parse(&v2_endpoint)
+        let request = reqwest::Url::parse(&v2_endpoint)
             .chain_err(|| format!("failed to parse url string '{}'", &v2_endpoint))
             .map(|url| {
                 trace!("GET {:?}", url);
-                self.build_reqwest(reqwest::r#async::Client::new().get(url))
-            })
-            .into_future()
-            .and_then(|req| req.send().from_err());
+                self.build_reqwest(reqwest::Client::new().get(url))
+            })?;
 
-        // Check status code and API headers according to spec:
-        // https://docs.docker.com/registry/spec/api/#api-version-check
-        get_v2
-            .and_then(move |r| match (r.status(), r.headers().get(api_header)) {
-                (StatusCode::OK, Some(x)) => Ok(x == api_version),
-                (StatusCode::UNAUTHORIZED, Some(x)) => Ok(x == api_version),
-                (s, v) => {
-                    trace!("Got unexpected status {}, header version {:?}", s, v);
-                    Ok(false)
-                }
-            })
-            .inspect(|b| {
-                trace!("v2 API supported: {}", b);
-            })
+        let response = request.send().await?;
+
+        let b = match (response.status(), response.headers().get(api_header)) {
+            (StatusCode::OK, Some(x)) => Ok(x == api_version),
+            (StatusCode::UNAUTHORIZED, Some(x)) => Ok(x == api_version),
+            (s, v) => {
+                trace!("Got unexpected status {}, header version {:?}", s, v);
+                Ok(false)
+            }
+        };
+
+        trace!("v2 API supported: {:?}", b);
+
+        b
     }
 
     /// Takes reqwest's async RequestBuilder and injects an authentication header if a token is present
-    fn build_reqwest(
-        &self,
-        req_builder: reqwest::r#async::RequestBuilder,
-    ) -> reqwest::r#async::RequestBuilder {
+    fn build_reqwest(&self, req_builder: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
         let mut builder = req_builder;
 
         if let Some(token) = &self.token {

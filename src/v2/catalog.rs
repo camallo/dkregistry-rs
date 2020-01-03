@@ -1,11 +1,14 @@
 use crate::errors::{Error, Result};
 use crate::v2;
-use futures::{self, stream, Future, Stream};
-use reqwest::StatusCode;
-use serde_json;
+use futures::{
+    self,
+    stream::{self, BoxStream, StreamExt},
+};
+use reqwest::{RequestBuilder, StatusCode};
+use std::pin::Pin;
 
 /// Convenience alias for a stream of `String` repos.
-pub type StreamCatalog = Box<dyn futures::Stream<Item = String, Error = Error>>;
+pub type StreamCatalog<'a> = BoxStream<'a, Result<String>>;
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 struct Catalog {
@@ -13,7 +16,7 @@ struct Catalog {
 }
 
 impl v2::Client {
-    pub fn get_catalog(&self, paginate: Option<u32>) -> StreamCatalog {
+    pub fn get_catalog<'a, 'b: 'a>(&'b self, paginate: Option<u32>) -> StreamCatalog<'a> {
         let url = {
             let suffix = if let Some(n) = paginate {
                 format!("?n={}", n)
@@ -24,37 +27,48 @@ impl v2::Client {
             match reqwest::Url::parse(&ep) {
                 Ok(url) => url,
                 Err(e) => {
-                    return Box::new(stream::once::<_, _>(Err(Error::from(format!(
+                    let b = Box::new(stream::iter(vec![Err(Error::from(format!(
                         "failed to parse url from string '{}': {}",
                         ep, e
-                    )))));
+                    )))]));
+                    return unsafe { Pin::new_unchecked(b) };
                 }
             }
         };
 
-        let req = self.build_reqwest(reqwest::r#async::Client::new().get(url));
+        let req = self.build_reqwest(reqwest::Client::new().get(url));
+        let inner = stream::once(fetch_catalog(req))
+            .map(|r| match r {
+                Ok(catalog) => stream::iter(
+                    catalog
+                        .repositories
+                        .into_iter()
+                        .map(|t| Ok(t))
+                        .collect::<Vec<_>>(),
+                ),
+                Err(err) => stream::iter(vec![Err(err)]),
+            })
+            .flatten();
 
-        let fres = req
-            .send()
-            .from_err()
-            .and_then(|r| {
-                let status = r.status();
-                trace!("Got status: {:?}", status);
-                match status {
-                    StatusCode::OK => Ok(r),
-                    _ => Err(format!("get_catalog: wrong HTTP status '{}'", status).into()),
-                }
-            })
-            .and_then(|r| {
-                r.into_body().concat2().map_err(|e| {
-                    format!("get_catalog: failed to fetch the whole body: {}", e).into()
-                })
-            })
-            .and_then(|body| -> Result<Catalog> {
-                serde_json::from_slice(&body).map_err(|e| e.into())
-            })
-            .map(|cat| futures::stream::iter_ok(cat.repositories.into_iter()))
-            .flatten_stream();
-        Box::new(fres)
+        let b = Box::new(inner);
+        unsafe { Pin::new_unchecked(b) }
     }
+}
+
+async fn fetch_catalog(req: RequestBuilder) -> Result<Catalog> {
+    match req.send().await {
+        Ok(r) => {
+            let status = r.status();
+            trace!("Got status: {:?}", status);
+            match status {
+                StatusCode::OK => r
+                    .json::<Catalog>()
+                    .await
+                    .map_err(|e| format!("get_catalog: failed to fetch the whole body: {}", e)),
+                _ => Err(format!("get_catalog: wrong HTTP status '{}'", status)),
+            }
+        }
+        Err(err) => Err(format!("{}", err)),
+    }
+    .map_err(|e| Error::from(e))
 }

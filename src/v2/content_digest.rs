@@ -1,4 +1,4 @@
-use crate::v2::*;
+use crate::errors::Result;
 /// Implements types and methods for content verification
 use sha2::{self, Digest};
 

@@ -3,12 +3,11 @@ extern crate tokio;
 
 mod common;
 
-use futures::prelude::*;
 use std::result::Result;
 use std::{boxed, error};
-use tokio::runtime::current_thread::Runtime;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let registry = match std::env::args().nth(1) {
         Some(x) => x,
         None => "registry-1.docker.io".into(),
@@ -28,7 +27,7 @@ fn main() {
         println!("[{}] no $DKREG_PASSWD for login password", registry);
     }
 
-    let res = run(&registry, user, password, login_scope);
+    let res = run(&registry, user, password, login_scope).await;
 
     if let Err(e) = res {
         println!("[{}] {}", registry, e);
@@ -36,7 +35,7 @@ fn main() {
     };
 }
 
-fn run(
+async fn run(
     host: &str,
     user: Option<String>,
     passwd: Option<String>,
@@ -47,8 +46,6 @@ fn run(
         .filter(Some("trace"), log::LevelFilter::Trace)
         .try_init()?;
 
-    let mut runtime = Runtime::new()?;
-
     let client = dkregistry::v2::Client::configure()
         .registry(host)
         .insecure_registry(false)
@@ -56,12 +53,7 @@ fn run(
         .password(passwd)
         .build()?;
 
-    let futures = common::authenticate_client(client, login_scope)
-        .and_then(|dclient| dclient.is_v2_supported());
-
-    match runtime.block_on(futures) {
-        Ok(login_successful) if login_successful => Ok(()),
-        Err(e) => Err(Box::new(e)),
-        _ => Err("Login unsucessful".into()),
-    }
+    let dclient = common::authenticate_client(client, login_scope).await?;
+    dclient.is_v2_supported().await?;
+    Ok(())
 }

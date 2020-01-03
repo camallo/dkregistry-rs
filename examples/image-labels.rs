@@ -5,15 +5,14 @@ extern crate tokio;
 
 use dkregistry::reference;
 use dkregistry::v2::manifest::Manifest;
-use futures::prelude::*;
 use std::result::Result;
 use std::str::FromStr;
 use std::{env, fs, io};
-use tokio::runtime::current_thread::Runtime;
 
 mod common;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let dkr_ref = match std::env::args().nth(1) {
         Some(ref x) => reference::Reference::from_str(x),
         None => reference::Reference::from_str("quay.io/steveej/cincinnati-test-labels:0.0.0"),
@@ -46,7 +45,7 @@ fn main() {
         }
     };
 
-    let res = run(&dkr_ref, user, password);
+    let res = run(&dkr_ref, user, password).await;
 
     if let Err(e) = res {
         println!("[{}] {}", registry, e);
@@ -54,13 +53,11 @@ fn main() {
     };
 }
 
-fn run(
+async fn run(
     dkr_ref: &reference::Reference,
     user: Option<String>,
     passwd: Option<String>,
 ) -> Result<(), dkregistry::errors::Error> {
-    let mut runtime = Runtime::new()?;
-
     let client = dkregistry::v2::Client::configure()
         .registry(&dkr_ref.registry())
         .insecure_registry(false)
@@ -72,10 +69,8 @@ fn run(
     let login_scope = format!("repository:{}:pull", image);
     let version = dkr_ref.version();
 
-    let futures = common::authenticate_client(client, login_scope)
-        .and_then(|dclient| dclient.get_manifest(&image, &version));
-
-    let manifest = match runtime.block_on(futures) {
+    let dclient = common::authenticate_client(client, login_scope).await?;
+    let manifest = match dclient.get_manifest(&image, &version).await {
         Ok(manifest) => Ok(manifest),
         Err(e) => Err(format!("Got error {}", e)),
     }?;

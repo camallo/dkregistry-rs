@@ -1,12 +1,8 @@
 //! Media-types for API objects.
 
-use crate::errors::*;
-use futures;
+use crate::errors::{Error, Result};
 use mime;
 use strum::EnumProperty;
-
-pub type FutureMediaType =
-    Box<dyn futures::Future<Item = Option<MediaTypes>, Error = Error> + Send>;
 
 // For schema1 types, see https://docs.docker.com/registry/spec/manifest-v2-1/
 // For schema2 types, see https://docs.docker.com/registry/spec/manifest-v2-2/

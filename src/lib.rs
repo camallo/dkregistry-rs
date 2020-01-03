@@ -8,37 +8,35 @@
 //! ```rust,no_run
 //! # extern crate dkregistry;
 //! # extern crate tokio;
-//! # fn main() {
-//! # fn run() -> dkregistry::errors::Result<()> {
+//! # #[tokio::main]
+//! # async fn main() {
+//! # async fn run() -> dkregistry::errors::Result<()> {
 //! #
-//! use tokio::runtime::current_thread::Runtime;
 //! use dkregistry::v2::Client;
 //!
 //! // Check whether a registry supports API v2.
 //! let host = "quay.io";
-//! let mut runtime = Runtime::new()?;
 //! let dclient = Client::configure()
 //!                      .insecure_registry(false)
 //!                      .registry(host)
 //!                      .build()?;
-//! let check = dclient.is_v2_supported();
-//! match runtime.block_on(check)? {
+//! match dclient.is_v2_supported().await? {
 //!     false => println!("{} does NOT support v2", host),
 //!     true => println!("{} supports v2", host),
 //! };
 //! #
 //! # Ok(())
 //! # };
-//! # run().unwrap();
+//! # run().await.unwrap();
 //! # }
 //! ```
 
 #![deny(missing_debug_implementations)]
 
 #[macro_use]
-extern crate error_chain;
+extern crate serde;
 #[macro_use]
-extern crate serde_derive;
+extern crate error_chain;
 #[macro_use]
 extern crate log;
 #[macro_use]

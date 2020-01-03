@@ -1,4 +1,3 @@
-use crate::v2::*;
 use std::collections::HashMap;
 
 /// Manifest version 2 schema 1, signed.

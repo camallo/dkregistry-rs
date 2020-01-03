@@ -6,12 +6,11 @@ extern crate tokio;
 mod common;
 
 use dkregistry::reference;
-use futures::prelude::*;
 use std::str::FromStr;
 use std::{boxed, env, error, fs, io};
-use tokio::runtime::current_thread::Runtime;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let dkr_ref = match std::env::args().nth(1) {
         Some(ref x) => reference::Reference::from_str(x),
         None => reference::Reference::from_str("quay.io/coreos/etcd"),
@@ -44,7 +43,7 @@ fn main() {
         }
     };
 
-    let res = run(&dkr_ref, user, password);
+    let res = run(&dkr_ref, user, password).await;
 
     if let Err(e) = res {
         println!("[{}] {:?}", registry, e);
@@ -52,7 +51,7 @@ fn main() {
     };
 }
 
-fn run(
+async fn run(
     dkr_ref: &reference::Reference,
     user: Option<String>,
     passwd: Option<String>,
@@ -64,7 +63,6 @@ fn run(
 
     let image = dkr_ref.repository();
     let version = dkr_ref.version();
-    let mut runtime = Runtime::new()?;
 
     let client = dkregistry::v2::Client::configure()
         .registry(&dkr_ref.registry())
@@ -75,33 +73,18 @@ fn run(
 
     let login_scope = "";
 
-    let futures = common::authenticate_client(client, login_scope.to_string())
-        .and_then(|dclient| {
-            dclient
-                .get_manifest(&image, &version)
-                .and_then(|manifest| Ok((dclient, manifest.layers_digests(None)?)))
-        })
-        .and_then(|(dclient, layers_digests)| {
-            let image = image.clone();
+    let dclient = common::authenticate_client(client, login_scope.to_string()).await?;
+    let manifest = dclient.get_manifest(&image, &version).await?;
 
-            println!("{} -> got {} layer(s)", &image, layers_digests.len(),);
+    let layers_digests = manifest.layers_digests(None)?;
+    println!("{} -> got {} layer(s)", &image, layers_digests.len(),);
 
-            futures::stream::iter_ok::<_, dkregistry::errors::Error>(layers_digests)
-                .and_then(move |layer_digest| {
-                    let get_blob_future = dclient.get_blob(&image, &layer_digest);
-                    get_blob_future.inspect(move |blob| {
-                        println!("Layer {}, got {} bytes.\n", layer_digest, blob.len());
-                    })
-                })
-                .collect()
-        });
+    for layer_digest in &layers_digests {
+        let blob = dclient.get_blob(&image, &layer_digest).await?;
+        println!("Layer {}, got {} bytes.\n", layer_digest, blob.len());
+    }
 
-    let blobs = match runtime.block_on(futures) {
-        Ok(blobs) => blobs,
-        Err(e) => return Err(Box::new(e)),
-    };
-
-    println!("Downloaded {} layers", blobs.len());
+    println!("Downloaded {} layers", layers_digests.len());
 
     Ok(())
 }

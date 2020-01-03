@@ -3,7 +3,7 @@ extern crate mockito;
 extern crate tokio;
 
 use self::mockito::mock;
-use self::tokio::runtime::current_thread::Runtime;
+use self::tokio::runtime::Runtime;
 
 static API_VERSION_K: &'static str = "Docker-Distribution-API-Version";
 static API_VERSION_V: &'static str = "registry/2.0";

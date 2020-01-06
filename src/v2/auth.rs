@@ -1,6 +1,6 @@
-use futures::{future, prelude::*};
+use crate::v2::*;
+use futures::future;
 use reqwest::{StatusCode, Url};
-use v2::*;
 
 /// Convenience alias for future `TokenAuth` result.
 pub type FutureTokenAuth = Box<dyn Future<Item = TokenAuth, Error = Error> + Send>;
@@ -37,7 +37,7 @@ impl Client {
         };
 
         let fres = self
-            .build_reqwest(reqwest::async::Client::new().get(url.clone()))
+            .build_reqwest(reqwest::r#async::Client::new().get(url.clone()))
             .send()
             .map_err(|e| Error::from(format!("{}", e)))
             .and_then(move |r| {
@@ -95,7 +95,7 @@ impl Client {
             })
             .and_then(move |u| {
                 let auth_req = {
-                    let auth_req = subclient.build_reqwest(reqwest::async::Client::new().get(u));
+                    let auth_req = subclient.build_reqwest(reqwest::r#async::Client::new().get(u));
                     if let Some(creds) = creds {
                         auth_req.basic_auth(creds.0, Some(creds.1))
                     } else {
@@ -158,7 +158,7 @@ impl Client {
             }
         };
 
-        let req = self.build_reqwest(reqwest::async::Client::new().get(url.clone()));
+        let req = self.build_reqwest(reqwest::r#async::Client::new().get(url.clone()));
         let req = if let Some(t) = token {
             req.bearer_auth(t)
         } else {

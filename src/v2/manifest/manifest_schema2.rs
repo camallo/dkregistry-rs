@@ -1,7 +1,7 @@
+use crate::v2::{Error, FutureResult};
 use futures::future::{self, Future};
 use futures::stream::Stream;
 use serde_json;
-use v2::{Error, FutureResult};
 
 /// Manifest version 2 schema 2.
 ///
@@ -114,7 +114,7 @@ impl ManifestSchema2Spec {
         };
 
         let manifest_future = client
-            .build_reqwest(reqwest::async::Client::new().get(url.clone()))
+            .build_reqwest(reqwest::r#async::Client::new().get(url.clone()))
             .send()
             .map_err(|e| crate::v2::Error::from(format!("{}", e)))
             .and_then(move |r| {

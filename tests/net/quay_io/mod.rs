@@ -53,6 +53,7 @@ fn test_quayio_base() {
 }
 
 #[test]
+#[ignore]
 fn test_quayio_insecure() {
     let mut runtime = Runtime::new().unwrap();
     let dclient = dkregistry::v2::Client::configure()

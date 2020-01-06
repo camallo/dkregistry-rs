@@ -1,6 +1,6 @@
 //! Media-types for API objects.
 
-use errors::*;
+use crate::errors::*;
 use futures;
 use mime;
 use strum::EnumProperty;

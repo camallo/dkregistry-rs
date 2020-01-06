@@ -1,5 +1,4 @@
 extern crate dirs;
-extern crate dkregistry;
 extern crate futures;
 extern crate serde_json;
 extern crate tokio;
@@ -88,8 +87,6 @@ fn run(
                 .and_then(|manifest| Ok((dclient, manifest.layers_digests(None)?)))
         })
         .and_then(|(dclient, layers_digests)| {
-            let image = image.clone();
-
             println!("{} -> got {} layer(s)", &image, layers_digests.len(),);
 
             futures::stream::iter_ok::<_, dkregistry::errors::Error>(layers_digests)

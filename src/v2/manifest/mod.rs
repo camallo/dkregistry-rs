@@ -1,6 +1,6 @@
 //! Manifest types.
-use mediatypes;
-use v2::*;
+use crate::mediatypes;
+use crate::v2::*;
 
 use futures::future::Either;
 use futures::{future, Stream};
@@ -78,7 +78,7 @@ impl Client {
 
         let fres = self
             .build_reqwest(
-                reqwest::async::Client::new()
+                reqwest::r#async::Client::new()
                     .get(url)
                     .headers(accept_headers),
             )
@@ -222,7 +222,7 @@ impl Client {
         }
 
         let fres = self
-            .build_reqwest(reqwest::async::Client::new().get(url.clone()))
+            .build_reqwest(reqwest::r#async::Client::new().get(url.clone()))
             .headers(accept_headers)
             .send()
             .map_err(Error::from)

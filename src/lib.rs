@@ -35,26 +35,14 @@
 
 #![deny(missing_debug_implementations)]
 
-extern crate base64;
-extern crate futures;
-extern crate http;
-extern crate mime;
-extern crate serde;
-extern crate serde_json;
 #[macro_use]
 extern crate error_chain;
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
 extern crate log;
-extern crate libflate;
-extern crate regex;
-extern crate strum;
-extern crate tar;
 #[macro_use]
 extern crate strum_macros;
-extern crate reqwest;
-extern crate sha2;
 
 pub mod errors;
 pub mod mediatypes;
@@ -77,17 +65,17 @@ pub fn get_credentials<T: Read>(
     reader: T,
     index: &str,
 ) -> Result<(Option<String>, Option<String>)> {
-    let map: Auths = try!(serde_json::from_reader(reader));
+    let map: Auths = serde_json::from_reader(reader)?;
     let real_index = match index {
         // docker.io has some special casing in config.json
         "docker.io" | "registry-1.docker.io" => "https://index.docker.io/v1/",
         other => other,
     };
     let auth = match map.auths.get(real_index) {
-        Some(x) => try!(base64::decode(x.auth.as_str())),
+        Some(x) => base64::decode(x.auth.as_str())?,
         None => bail!("no auth for index {}", real_index),
     };
-    let s = try!(String::from_utf8(auth));
+    let s = String::from_utf8(auth)?;
     let creds: Vec<&str> = s.splitn(2, ':').collect();
     let up = match (creds.get(0), creds.get(1)) {
         (Some(&""), Some(p)) => (None, Some(p.to_string())),

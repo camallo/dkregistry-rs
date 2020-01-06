@@ -1,4 +1,3 @@
-extern crate dkregistry;
 extern crate futures;
 extern crate tokio;
 

@@ -1,7 +1,7 @@
+use crate::v2::*;
 use futures::Stream;
 use reqwest;
 use reqwest::StatusCode;
-use v2::*;
 
 /// Convenience alias for future binary blob.
 pub type FutureBlob = Box<dyn futures::Future<Item = Vec<u8>, Error = Error> + Send>;
@@ -23,7 +23,7 @@ impl Client {
         };
 
         let fres = self
-            .build_reqwest(reqwest::async::Client::new().head(url))
+            .build_reqwest(reqwest::r#async::Client::new().head(url))
             .send()
             .inspect(|res| trace!("Blob HEAD status: {:?}", res.status()))
             .and_then(|res| match res.status() {
@@ -41,16 +41,16 @@ impl Client {
         let fres_blob = {
             let ep = format!("{}/v2/{}/blobs/{}", self.base_url, name, digest);
             reqwest::Url::parse(&ep).map_err(|e|{
-                    ::errors::Error::from(format!(
+                    crate::errors::Error::from(format!(
                         "failed to parse url from string: {}",
                         e
                     ))
             })
             .map(|url|{
-                self.build_reqwest(reqwest::async::Client::new()
+                self.build_reqwest(reqwest::r#async::Client::new()
                     .get(url))
                     .send()
-                    .map_err(|e| ::errors::Error::from(format!("{}", e)))
+                    .map_err(|e| crate::errors::Error::from(format!("{}", e)))
             })
             .into_future()
             .flatten()
@@ -64,17 +64,17 @@ impl Client {
                 {
                     Ok(res)
                 } else {
-                    Err(::errors::Error::from(format!(
+                    Err(crate::errors::Error::from(format!(
                         "GET request failed with status '{}'",
                         status
                     )))
                 }
             }).and_then(|mut res| {
-                std::mem::replace(res.body_mut(), reqwest::async::Decoder::empty())
+                std::mem::replace(res.body_mut(), reqwest::r#async::Decoder::empty())
                     .concat2()
-                    .map_err(|e| ::errors::Error::from(format!("{}", e)))
+                    .map_err(|e| crate::errors::Error::from(format!("{}", e)))
                     .join(futures::future::ok(res))
-            }).map_err(|e| ::errors::Error::from(format!("{}", e)))
+            }).map_err(|e| crate::errors::Error::from(format!("{}", e)))
             .and_then(|(body, res)| {
                 let body_vec = body.to_vec();
                 let len = body_vec.len();

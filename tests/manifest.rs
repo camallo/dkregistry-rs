@@ -1,4 +1,3 @@
-extern crate dkregistry;
 extern crate serde_json;
 
 use std::collections::HashMap;

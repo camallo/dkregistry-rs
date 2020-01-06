@@ -29,7 +29,7 @@
 // The `docker://` schema is not officially documented, but has a reference implementation:
 // https://github.com/docker/distribution/blob/v2.6.1/reference/reference.go
 
-use errors::Error;
+use crate::errors::Error;
 use regex;
 use std::collections::VecDeque;
 use std::str::FromStr;
@@ -47,7 +47,7 @@ pub enum Version {
 }
 
 impl str::FromStr for Version {
-    type Err = ::errors::Error;
+    type Err = Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let v = match s.chars().nth(0) {
             Some(':') => Version::Tag(s.trim_start_matches(':').to_string()),
@@ -146,7 +146,7 @@ impl fmt::Display for Reference {
 }
 
 impl str::FromStr for Reference {
-    type Err = ::errors::Error;
+    type Err = Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         parse_url(s)
     }

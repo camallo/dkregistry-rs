@@ -11,6 +11,7 @@ exclude = [
 ".gitignore",
 ".travis.yml",
 ]
+edition = "2018"
 
 [package.metadata.release]
 sign-commit = true

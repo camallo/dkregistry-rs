@@ -2,8 +2,8 @@ extern crate dkregistry;
 extern crate futures;
 extern crate tokio;
 
-use self::futures::stream::Stream;
-use self::tokio::runtime::current_thread::Runtime;
+use self::futures::stream::StreamExt;
+use self::tokio::runtime::Runtime;
 
 static REGISTRY: &'static str = "gcr.io";
 
@@ -78,8 +78,8 @@ fn test_gcrio_get_tags() {
 
     let image = "google_containers/mounttest";
     let fut_tags = dclient.get_tags(image, None);
-    let tags = runtime.block_on(fut_tags.collect()).unwrap();
-    let has_version = tags.iter().any(|t| t == "0.2");
+    let tags = runtime.block_on(fut_tags.collect::<Vec<_>>());
+    let has_version = tags.iter().map(|t| t.as_ref().unwrap()).any(|t| t == "0.2");
 
     assert_eq!(has_version, true);
 }
@@ -98,7 +98,9 @@ fn test_gcrio_has_manifest() {
     let image = "google_containers/mounttest";
     let tag = "0.2";
     let manifest_type = dkregistry::mediatypes::MediaTypes::ManifestV2S1Signed.to_string();
-    let fut = dclient.has_manifest(image, tag, Some(vec![manifest_type.as_str()].as_slice()));
+    let manifest_type_str = manifest_type.as_str();
+    let manifest_type_vec = vec![manifest_type_str];
+    let fut = dclient.has_manifest(image, tag, Some(manifest_type_vec.as_slice()));
     let has_manifest = runtime.block_on(fut).unwrap();
 
     assert_eq!(

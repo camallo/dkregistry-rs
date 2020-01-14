@@ -1,5 +1,4 @@
 use dkregistry::mediatypes::MediaTypes;
-use dkregistry::v2::authenticate_client;
 use futures::future::FutureExt;
 use futures::future::TryFutureExt;
 use futures::prelude::*;
@@ -32,16 +31,16 @@ fn common_init(
     };
 
     let dclient = runtime
-        .block_on(authenticate_client(
+        .block_on(
             dkregistry::v2::Client::configure()
                 .registry(REGISTRY)
                 .insecure_registry(false)
                 .username(user)
                 .password(password)
                 .build()
-                .unwrap(),
-            login_scope,
-        ))
+                .unwrap()
+                .authenticate(login_scope),
+        )
         .unwrap();
 
     Some((runtime, dclient))
@@ -217,30 +216,17 @@ fn test_quayio_has_manifest() {
     assert_eq!(has_manifest, Some(MediaTypes::ManifestV2S1Signed));
 }
 
+#[cfg(feature = "test-net-private")]
 #[test]
 fn test_quayio_auth_manifest() {
     let image = "steveej/cincinnati-test";
     let reference = "0.0.1";
     let login_scope = format!("repository:{}:pull", image);
-    let (user, password) = match get_env() {
-        Some(t) => t,
-        None => return,
+    let (mut runtime, dclient) = if let Some(x) = common_init(Some(&login_scope)) {
+        x
+    } else {
+        return;
     };
-
-    let mut runtime = Runtime::new().unwrap();
-
-    let dclient = runtime
-        .block_on(authenticate_client(
-            dkregistry::v2::Client::configure()
-                .registry(REGISTRY)
-                .insecure_registry(false)
-                .username(Some(user))
-                .password(Some(password))
-                .build()
-                .unwrap(),
-            login_scope,
-        ))
-        .unwrap();
 
     let fut_has_manifest = dclient.has_manifest(image, reference, None);
 
@@ -275,24 +261,11 @@ fn test_quayio_auth_layer_blob() {
     let layer0_len: usize = 198;
 
     let login_scope = format!("repository:{}:pull", image);
-    let (user, password) = match get_env() {
-        Some(t) => t,
-        None => return,
+    let (mut runtime, dclient) = if let Some(x) = common_init(Some(&login_scope)) {
+        x
+    } else {
+        return;
     };
-
-    let mut runtime = Runtime::new().unwrap();
-    let dclient = runtime
-        .block_on(authenticate_client(
-            dkregistry::v2::Client::configure()
-                .registry(REGISTRY)
-                .insecure_registry(false)
-                .username(Some(user))
-                .password(Some(password))
-                .build()
-                .unwrap(),
-            login_scope,
-        ))
-        .unwrap();
 
     let fut_layer0_blob = async {
         let digest = dclient

@@ -156,6 +156,26 @@ impl Client {
             _ => Err(format!("is_auth: wrong HTTP status '{}'", status).into()),
         }
     }
+
+    pub async fn authenticate(mut self, login_scope: String) -> Result<Self> {
+        if !self.is_v2_supported().await? {
+            return Err("API v2 not supported".into());
+        }
+
+        if self.is_auth(None).await? {
+            return Ok(self);
+        }
+
+        let token = self.login(&[login_scope.as_str()]).await?;
+
+        if !self.is_auth(Some(token.token())).await? {
+            Err("login failed".into())
+        } else {
+            trace!("login succeeded");
+            self.set_token(Some(token.token()));
+            Ok(self)
+        }
+    }
 }
 
 /// This parses a Www-Authenticate header of value Bearer.

@@ -1,7 +1,7 @@
 extern crate dkregistry;
 extern crate tokio;
 
-use self::tokio::runtime::current_thread::Runtime;
+use self::tokio::runtime::Runtime;
 
 static REGISTRY: &'static str = "registry-1.docker.io";
 

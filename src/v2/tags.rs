@@ -1,12 +1,8 @@
 use crate::errors::{Error, Result};
 use crate::v2::*;
-use futures::stream::{self, BoxStream, StreamExt};
+use async_stream::try_stream;
 use reqwest::{self, header, Url};
 use std::fmt::Debug;
-use std::pin::Pin;
-
-/// Convenience alias for a stream of `String` tags.
-pub type StreamTags<'a> = BoxStream<'a, Result<String>>;
 
 /// A chunk of tags for an image.
 ///
@@ -26,42 +22,30 @@ impl Client {
         &'b self,
         name: &'c str,
         paginate: Option<u32>,
-    ) -> StreamTags<'a> {
-        let inner = stream::unfold(Some(String::new()), move |last| async move {
-            let base_url = format!("{}/v2/{}/tags/list", self.base_url, name);
+    ) -> impl Stream<Item = Result<String>> + 'a {
+        let base_url = format!("{}/v2/{}/tags/list", self.base_url, name);
+        let mut link: Option<String> = None;
 
-            // Stream ends when response has no `Link` header.
-            let link = match last {
-                None => return None,
-                Some(ref s) if s == "" => None,
-                s => s,
-            };
+        try_stream! {
+            loop {
+                let (tags_chunk, last) = self.fetch_tags_chunk(paginate, &base_url, &link).await?;
+                for tag in tags_chunk.tags {
+                    yield tag;
+                }
 
-            match self.fetch_tag(paginate, &base_url, &link).await {
-                Ok((tags_chunk, next)) => Some((Ok(tags_chunk), next)),
-                Err(err) => Some((Err(err), None)),
+                link = match last {
+                    None => break,
+                    Some(ref s) if s == "" => None,
+                    s => s,
+                };
             }
-        })
-        .map(|r| match r {
-            Ok(tags_chunk) => stream::iter(
-                tags_chunk
-                    .tags
-                    .into_iter()
-                    .map(|t| Ok(t))
-                    .collect::<Vec<_>>(),
-            ),
-            Err(err) => stream::iter(vec![Err(err)]),
-        })
-        .flatten();
-
-        let b = Box::new(inner);
-        unsafe { Pin::new_unchecked(b) }
+        }
     }
 
-    async fn fetch_tag(
+    async fn fetch_tags_chunk(
         &self,
         paginate: Option<u32>,
-        base_url: &String,
+        base_url: &str,
         link: &Option<String>,
     ) -> Result<(TagsChunk, Option<String>)> {
         let url_paginated = match (paginate, link) {

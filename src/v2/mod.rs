@@ -35,7 +35,6 @@ mod config;
 pub use self::config::Config;
 
 mod catalog;
-pub use self::catalog::StreamCatalog;
 
 mod auth;
 pub use self::auth::TokenAuth;
@@ -43,7 +42,6 @@ pub use self::auth::TokenAuth;
 pub mod manifest;
 
 mod tags;
-pub use self::tags::StreamTags;
 
 mod blobs;
 

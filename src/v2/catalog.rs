@@ -1,14 +1,9 @@
 use crate::errors::{Error, Result};
 use crate::v2;
-use futures::{
-    self,
-    stream::{self, BoxStream, StreamExt},
-};
+use async_stream::try_stream;
+use futures::stream::Stream;
+use futures::{self};
 use reqwest::{RequestBuilder, StatusCode};
-use std::pin::Pin;
-
-/// Convenience alias for a stream of `String` repos.
-pub type StreamCatalog<'a> = BoxStream<'a, Result<String>>;
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 struct Catalog {
@@ -16,7 +11,10 @@ struct Catalog {
 }
 
 impl v2::Client {
-    pub fn get_catalog<'a, 'b: 'a>(&'b self, paginate: Option<u32>) -> StreamCatalog<'a> {
+    pub fn get_catalog<'a, 'b: 'a>(
+        &'b self,
+        paginate: Option<u32>,
+    ) -> impl Stream<Item = Result<String>> + 'a {
         let url = {
             let suffix = if let Some(n) = paginate {
                 format!("?n={}", n)
@@ -24,34 +22,20 @@ impl v2::Client {
                 "".to_string()
             };
             let ep = format!("{}/v2/_catalog{}", self.base_url.clone(), suffix);
-            match reqwest::Url::parse(&ep) {
-                Ok(url) => url,
-                Err(e) => {
-                    let b = Box::new(stream::iter(vec![Err(Error::from(format!(
-                        "failed to parse url from string '{}': {}",
-                        ep, e
-                    )))]));
-                    return unsafe { Pin::new_unchecked(b) };
-                }
-            }
+
+            reqwest::Url::parse(&ep)
+                .chain_err(|| format!("failed to parse url from string '{}'", ep))
         };
 
-        let req = self.build_reqwest(reqwest::Client::new().get(url));
-        let inner = stream::once(fetch_catalog(req))
-            .map(|r| match r {
-                Ok(catalog) => stream::iter(
-                    catalog
-                        .repositories
-                        .into_iter()
-                        .map(|t| Ok(t))
-                        .collect::<Vec<_>>(),
-                ),
-                Err(err) => stream::iter(vec![Err(err)]),
-            })
-            .flatten();
+        try_stream! {
+            let req = self.build_reqwest(reqwest::Client::new().get(url?));
 
-        let b = Box::new(inner);
-        unsafe { Pin::new_unchecked(b) }
+            let catalog = fetch_catalog(req).await?;
+
+            for repo in catalog.repositories {
+                yield repo;
+            }
+        }
     }
 }
 
@@ -70,5 +54,5 @@ async fn fetch_catalog(req: RequestBuilder) -> Result<Catalog> {
         }
         Err(err) => Err(format!("{}", err)),
     }
-    .map_err(|e| Error::from(e))
+    .map_err(Error::from)
 }

@@ -74,7 +74,7 @@ fn test_tags_paginate() {
         .build()
         .unwrap();
 
-    let next = dclient.get_tags(name, Some(1));
+    let next = Box::pin(dclient.get_tags(name, Some(1)));
 
     let (first_tag, stream_rest) = runtime.block_on(next.into_future());
     assert_eq!(first_tag.unwrap().unwrap(), "t1".to_owned());

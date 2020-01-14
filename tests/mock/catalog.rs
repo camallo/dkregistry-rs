@@ -72,7 +72,7 @@ fn test_catalog_paginate() {
         .build()
         .unwrap();
 
-    let next = dclient.get_catalog(Some(1));
+    let next = Box::pin(dclient.get_catalog(Some(1)));
 
     let (page1, next) = runtime.block_on(next.into_future());
     assert_eq!(page1.unwrap().unwrap(), "r1/i1".to_owned());

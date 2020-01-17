@@ -1,4 +1,4 @@
-use crate::errors::{Error, Result};
+use crate::errors::{Result, ResultExt};
 use crate::v2;
 use async_stream::try_stream;
 use futures::stream::Stream;
@@ -40,19 +40,14 @@ impl v2::Client {
 }
 
 async fn fetch_catalog(req: RequestBuilder) -> Result<Catalog> {
-    match req.send().await {
-        Ok(r) => {
-            let status = r.status();
-            trace!("Got status: {:?}", status);
-            match status {
-                StatusCode::OK => r
-                    .json::<Catalog>()
-                    .await
-                    .map_err(|e| format!("get_catalog: failed to fetch the whole body: {}", e)),
-                _ => Err(format!("get_catalog: wrong HTTP status '{}'", status)),
-            }
-        }
-        Err(err) => Err(format!("{}", err)),
+    let r = req.send().await?;
+    let status = r.status();
+    trace!("Got status: {:?}", status);
+    match status {
+        StatusCode::OK => r
+            .json::<Catalog>()
+            .await
+            .chain_err(|| "get_catalog: failed to fetch the whole body"),
+        _ => bail!("get_catalog: wrong HTTP status '{}'", status),
     }
-    .map_err(Error::from)
 }

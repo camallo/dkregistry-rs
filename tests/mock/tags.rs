@@ -74,13 +74,13 @@ fn test_tags_paginate() {
         .build()
         .unwrap();
 
-    let next = Box::pin(dclient.get_tags(name, Some(1)));
+    let next = Box::pin(dclient.get_tags(name, Some(1)).map(Result::unwrap));
 
     let (first_tag, stream_rest) = runtime.block_on(next.into_future());
-    assert_eq!(first_tag.unwrap().unwrap(), "t1".to_owned());
+    assert_eq!(first_tag.unwrap(), "t1".to_owned());
 
     let (second_tag, stream_rest) = runtime.block_on(stream_rest.into_future());
-    assert_eq!(second_tag.unwrap().unwrap(), "t2".to_owned());
+    assert_eq!(second_tag.unwrap(), "t2".to_owned());
 
     let (end, _) = runtime.block_on(stream_rest.into_future());
     if end.is_some() {
@@ -112,7 +112,7 @@ fn test_tags_404() {
     let futcheck = dclient.get_tags(name, None);
 
     let res = runtime.block_on(futcheck.collect::<Vec<_>>());
-    assert!(res.get(0).unwrap().as_ref().is_err());
+    assert!(res.get(0).unwrap().is_err());
 
     mockito::reset();
 }
@@ -140,8 +140,8 @@ fn test_tags_missing_header() {
 
     let futcheck = dclient.get_tags(name, None);
 
-    let res = runtime.block_on(futcheck.collect::<Vec<_>>());
-    assert!(!res.get(0).unwrap().as_ref().is_err());
+    let res = runtime.block_on(futcheck.map(Result::unwrap).collect::<Vec<_>>());
+    assert_eq!(vec!["t1", "t2"], res);
 
     mockito::reset();
 }

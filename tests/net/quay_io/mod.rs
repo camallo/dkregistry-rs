@@ -16,6 +16,7 @@ fn get_env() -> Option<(String, String)> {
     }
 }
 
+#[cfg(feature = "test-net-private")]
 fn common_init(
     login_scope: Option<&str>,
 ) -> Option<(tokio::runtime::Runtime, dkregistry::v2::Client)> {
@@ -96,14 +97,11 @@ fn test_quayio_insecure() {
     assert_eq!(res, true);
 }
 
+#[cfg(feature = "test-net-private")]
 #[test]
 fn test_quayio_auth_login() {
     let login_scope = "";
-    let (mut runtime, dclient) = if let Some(x) = common_init(Some(&login_scope)) {
-        x
-    } else {
-        return;
-    };
+    let (mut runtime, dclient) = common_init(Some(&login_scope)).unwrap();
 
     let futlogin = dclient.is_auth(None);
     let res = runtime.block_on(futlogin).unwrap();
@@ -176,16 +174,12 @@ fn test_quayio_get_tags_pagination() {
     assert_eq!(has_version, true);
 }
 
+#[cfg(feature = "test-net-private")]
 #[test]
 fn test_quayio_auth_tags() {
     let image = "steveej/cincinnati-test";
     let login_scope = format!("repository:{}:pull", image);
-
-    let (mut runtime, dclient) = if let Some(x) = common_init(Some(&login_scope)) {
-        x
-    } else {
-        return;
-    };
+    let (mut runtime, dclient) = common_init(Some(&login_scope)).unwrap();
 
     let tags = runtime
         .block_on(dclient.get_tags(image, None).collect::<Vec<_>>())
@@ -222,11 +216,7 @@ fn test_quayio_auth_manifest() {
     let image = "steveej/cincinnati-test";
     let reference = "0.0.1";
     let login_scope = format!("repository:{}:pull", image);
-    let (mut runtime, dclient) = if let Some(x) = common_init(Some(&login_scope)) {
-        x
-    } else {
-        return;
-    };
+    let (mut runtime, dclient) = common_init(Some(&login_scope)).unwrap();
 
     let fut_has_manifest = dclient.has_manifest(image, reference, None);
 
@@ -253,6 +243,7 @@ fn test_quayio_has_no_manifest() {
     assert_eq!(has_manifest, None);
 }
 
+#[cfg(feature = "test-net-private")]
 #[test]
 fn test_quayio_auth_layer_blob() {
     let image = "steveej/cincinnati-test";
@@ -261,11 +252,7 @@ fn test_quayio_auth_layer_blob() {
     let layer0_len: usize = 198;
 
     let login_scope = format!("repository:{}:pull", image);
-    let (mut runtime, dclient) = if let Some(x) = common_init(Some(&login_scope)) {
-        x
-    } else {
-        return;
-    };
+    let (mut runtime, dclient) = common_init(Some(&login_scope)).unwrap();
 
     let fut_layer0_blob = async {
         let digest = dclient

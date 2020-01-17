@@ -23,10 +23,7 @@ impl Client {
             match reqwest::Url::parse(&ep) {
                 Ok(url) => url,
                 Err(e) => {
-                    return Err(Error::from(format!(
-                        "failed to parse url from string '{}': {}",
-                        ep, e
-                    )));
+                    bail!("failed to parse url from string '{}': {}", ep, e);
                 }
             }
         };

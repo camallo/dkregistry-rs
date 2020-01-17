@@ -4,7 +4,7 @@ extern crate serde_json;
 extern crate tokio;
 
 use dkregistry::render;
-use futures::future::join_all;
+use futures::future::try_join_all;
 use std::result::Result;
 use std::{boxed, env, error, fs, io};
 
@@ -92,12 +92,7 @@ async fn run(
         .map(|layer_digest| dclient.get_blob(&image, &layer_digest))
         .collect::<Vec<_>>();
 
-    let (blobs, errors): (Vec<_>, Vec<_>) = join_all(blob_futures)
-        .await
-        .into_iter()
-        .partition(Result::is_ok);
-    let blobs: Vec<_> = blobs.into_iter().map(Result::unwrap).collect();
-    let _errors: Vec<_> = errors.into_iter().map(Result::unwrap_err).collect();
+    let blobs = try_join_all(blob_futures).await?;
 
     println!("Downloaded {} layers", blobs.len());
 

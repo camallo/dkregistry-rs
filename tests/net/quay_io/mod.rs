@@ -1,7 +1,4 @@
 use dkregistry::mediatypes::MediaTypes;
-use futures::future::FutureExt;
-use futures::future::TryFutureExt;
-use futures::prelude::*;
 use futures::stream::StreamExt;
 use tokio::runtime::Runtime;
 

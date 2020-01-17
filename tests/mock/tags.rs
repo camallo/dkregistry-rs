@@ -31,9 +31,9 @@ fn test_tags_simple() {
 
     let futcheck = dclient.get_tags(name, None);
 
-    let res = runtime.block_on(futcheck.collect::<Vec<_>>());
-    assert_eq!(res.get(0).unwrap().as_ref().unwrap(), &String::from("t1"));
-    assert_eq!(res.get(1).unwrap().as_ref().unwrap(), &String::from("t2"));
+    let res = runtime.block_on(futcheck.map(Result::unwrap).collect::<Vec<_>>());
+    assert_eq!(res.get(0).unwrap(), &String::from("t1"));
+    assert_eq!(res.get(1).unwrap(), &String::from("t2"));
 
     mockito::reset();
 }
@@ -83,7 +83,9 @@ fn test_tags_paginate() {
     assert_eq!(second_tag.unwrap().unwrap(), "t2".to_owned());
 
     let (end, _) = runtime.block_on(stream_rest.into_future());
-    assert!(end.is_none());
+    if end.is_some() {
+        panic!("end is some: {:?}", end);
+    }
 
     mockito::reset();
 }

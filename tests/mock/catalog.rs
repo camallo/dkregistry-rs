@@ -29,11 +29,7 @@ fn test_catalog_simple() {
 
     let futcheck = dclient.get_catalog(None);
 
-    let (res, _errors): (Vec<_>, Vec<_>) = runtime
-        .block_on(futcheck.collect::<Vec<_>>())
-        .into_iter()
-        .partition(Result::is_ok);
-    let res: Vec<_> = res.into_iter().map(Result::unwrap).collect();
+    let res = runtime.block_on(futcheck.map(Result::unwrap).collect::<Vec<_>>());
     assert_eq!(res, vec!["r1/i1", "r2"]);
 
     mockito::reset();
@@ -79,10 +75,14 @@ fn test_catalog_paginate() {
 
     let (page2, next) = runtime.block_on(next.into_future());
     // TODO(lucab): implement pagination
-    assert!(page2.is_none());
+    if page2.is_some() {
+        panic!("end is some: {:?}", page2);
+    }
 
     let (end, _) = runtime.block_on(next.into_future());
-    assert!(end.is_none());
+    if end.is_some() {
+        panic!("end is some: {:?}", end);
+    }
 
     mockito::reset();
 }

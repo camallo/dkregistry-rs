@@ -59,16 +59,15 @@ async fn run(
 
     let dclient = common::authenticate_client(client, login_scope).await?;
 
-    let (tags, _errors): (Vec<_>, Vec<_>) = dclient
+    dclient
         .get_tags(&image, Some(7))
         .collect::<Vec<_>>()
         .await
         .into_iter()
-        .partition(Result::is_ok);
-
-    for tag in tags {
-        println!("{:?}", tag);
-    }
+        .map(Result::unwrap)
+        .for_each(|tag| {
+            println!("{:?}", tag);
+        });
 
     Ok(())
 }

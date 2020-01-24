@@ -25,31 +25,31 @@ tag-prefix = ""
 [dependencies]
 base64 = "0.11"
 error-chain = { version = "0.12", default-features = false }
-futures = "0.1"
-http = "0.1"
+futures = "0.3"
+http = "0.2"
 libflate = "0.1"
 log = "0.4"
 mime = "0.3"
-mockito = { version = "0.22", optional = true }
 regex = "^1.1.0"
-serde = "1"
-serde_derive = "1"
+serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 strum = "0.16"
 strum_macros = "0.16"
 tar = "0.4"
-tokio = "0.1"
-dirs = "2.0"
-reqwest = { version = "^0.9.6", default-features = false }
+tokio = "0.2"
+reqwest = { version = "0.10", default-features = false, features = ["json"] }
 sha2 = "^0.8.0"
 
 [dev-dependencies]
+dirs = "2.0"
 env_logger = "0.7"
+mockito = "0.22"
 spectral = "0.6"
+tokio = { version = "0.2", features = ["macros"] }
 
 [features]
 default = ["reqwest-default-tls"]
 reqwest-default-tls = ["reqwest/default-tls"]
 reqwest-rustls = ["reqwest/rustls-tls"]
 test-net = []
-test-mock = ["mockito"]
+test-mock = []

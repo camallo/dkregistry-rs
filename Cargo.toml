@@ -44,7 +44,7 @@ async-stream = "0.2"
 [dev-dependencies]
 dirs = "2.0"
 env_logger = "0.7"
-mockito = "0.22"
+mockito = "0.23"
 spectral = "0.6"
 tokio = { version = "0.2", features = ["macros"] }
 

@@ -32,45 +32,9 @@ impl Client {
         name: &str,
         reference: &str,
     ) -> Result<(Manifest, Option<String>)> {
-        let url = {
-            let ep = format!(
-                "{}/v2/{}/manifests/{}",
-                self.base_url.clone(),
-                name,
-                reference
-            );
-            match reqwest::Url::parse(&ep) {
-                Ok(url) => url,
-                Err(e) => {
-                    return Err(Error::from(format!(
-                        "failed to parse url from string '{}': {}",
-                        ep, e
-                    )));
-                }
-            }
-        };
+        let url = self.build_url(name, reference)?;
 
-        let accept_headers = header::HeaderMap::from_iter(
-            [
-                // accept header types and their q value, as documented in
-                // https://tools.ietf.org/html/rfc7231#section-5.3.2
-                (mediatypes::MediaTypes::ManifestV2S2, 0.5),
-                (mediatypes::MediaTypes::ManifestV2S1Signed, 0.4),
-                // TODO(steveeJ): uncomment this when all the Manifest methods work for it
-                // mediatypes::MediaTypes::ManifestList,
-            ]
-            .iter()
-            .filter_map(|(ty, q)| {
-                match header::HeaderValue::from_str(&format!("{}; q={}", ty.to_string(), q)) {
-                    Ok(header_value) => Some((header::ACCEPT, header_value)),
-                    Err(e) => {
-                        let msg = format!("failed to parse HeaderValue from str: {}:", e);
-                        error!("{}", msg);
-                        None
-                    }
-                }
-            }),
-        );
+        let accept_headers = build_accept_headers();
 
         let client_spare0 = self.clone();
 
@@ -141,6 +105,52 @@ impl Client {
         }
     }
 
+    fn build_url(&self, name: &str, reference: &str) -> Result<Url> {
+        let ep = format!(
+            "{}/v2/{}/manifests/{}",
+            self.base_url.clone(),
+            name,
+            reference
+        );
+        reqwest::Url::parse(&ep)
+            .map_err(|e| format!("failed to parse url from string '{}': {}", ep, e).into())
+    }
+
+    /// Fetch content digest for a particular tag.
+    pub async fn get_manifestref(&self, name: &str, reference: &str) -> Result<Option<String>> {
+        let url = self.build_url(name, reference)?;
+
+        let accept_headers = build_accept_headers();
+
+        let res = self
+            .build_reqwest(reqwest::Client::new().head(url).headers(accept_headers))
+            .send()
+            .await?;
+
+        let status = res.status();
+        trace!("HEAD '{}' status: {:?}", res.url(), status);
+
+        match status {
+            StatusCode::OK => {}
+            _ => return Err(format!("HEAD {}: wrong HTTP status '{}'", res.url(), status).into()),
+        }
+
+        let headers = res.headers();
+        let content_digest = match headers.get("docker-content-digest") {
+            Some(content_digest_value) => Some(
+                content_digest_value
+                    .to_str()
+                    .map_err(|e| Error::from(format!("{}", e)))?
+                    .to_string(),
+            ),
+            None => {
+                debug!("cannot find manifestref in headers");
+                None
+            }
+        };
+        Ok(content_digest)
+    }
+
     /// Check if an image manifest exists.
     ///
     /// The name and reference parameters identify the image.
@@ -151,23 +161,7 @@ impl Client {
         reference: &str,
         mediatypes: Option<&[&str]>,
     ) -> Result<Option<mediatypes::MediaTypes>> {
-        let url = {
-            let ep = format!(
-                "{}/v2/{}/manifests/{}",
-                self.base_url.clone(),
-                name,
-                reference
-            );
-            match Url::parse(&ep) {
-                Ok(url) => url,
-                Err(e) => {
-                    return Err(Error::from(format!(
-                        "failed to parse url from string '{}': {}",
-                        ep, e
-                    )));
-                }
-            }
-        };
+        let url = self.build_url(name, reference)?;
         let accept_types = match {
             match mediatypes {
                 None => {
@@ -292,6 +286,30 @@ fn evaluate_media_type(
             .map_err(Into::into)
         }
     }
+}
+
+fn build_accept_headers() -> header::HeaderMap {
+    header::HeaderMap::from_iter(
+        [
+            // accept header types and their q value, as documented in
+            // https://tools.ietf.org/html/rfc7231#section-5.3.2
+            (mediatypes::MediaTypes::ManifestV2S2, 0.5),
+            (mediatypes::MediaTypes::ManifestV2S1Signed, 0.4),
+            // TODO(steveeJ): uncomment this when all the Manifest methods work for it
+            // mediatypes::MediaTypes::ManifestList,
+        ]
+        .iter()
+        .filter_map(|(ty, q)| {
+            match header::HeaderValue::from_str(&format!("{}; q={}", ty.to_string(), q)) {
+                Ok(header_value) => Some((header::ACCEPT, header_value)),
+                Err(e) => {
+                    let msg = format!("failed to parse HeaderValue from str: {}:", e);
+                    error!("{}", msg);
+                    None
+                }
+            }
+        }),
+    )
 }
 
 /// Umbrella type for common actions on the different manifest schema types

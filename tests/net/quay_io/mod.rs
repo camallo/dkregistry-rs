@@ -240,6 +240,33 @@ fn test_quayio_has_no_manifest() {
     assert_eq!(has_manifest, None);
 }
 
+#[test]
+fn test_quayio_auth_manifestref_missing() {
+    let image = "steveej/cincinnati-test";
+    let tag = "no-such-tag";
+
+    let login_scope = format!("repository:{}:pull", image);
+    let (mut runtime, dclient) = common_init(Some(&login_scope)).unwrap();
+    let fut_actual = async { dclient.get_manifestref(image, tag).await };
+    let actual = runtime.block_on(fut_actual);
+    assert!(actual.is_err());
+}
+
+#[cfg(feature = "test-net-private")]
+#[test]
+fn test_quayio_auth_manifestref() {
+    let image = "steveej/cincinnati-test";
+    let tag = "0.0.1";
+    let expected =
+        String::from("sha256:cc1f79c6a6fc92982a10ced91bddeefb8fbd037a01ae106a64d0a7e79d0e4813");
+
+    let login_scope = format!("repository:{}:pull", image);
+    let (mut runtime, dclient) = common_init(Some(&login_scope)).unwrap();
+    let fut_actual = async { dclient.get_manifestref(image, tag).await.unwrap() };
+    let actual = runtime.block_on(fut_actual).unwrap();
+    assert_eq!(actual, expected);
+}
+
 #[cfg(feature = "test-net-private")]
 #[test]
 fn test_quayio_auth_layer_blob() {

@@ -27,7 +27,7 @@ base64 = "0.12"
 error-chain = { version = "0.12", default-features = false }
 futures = "0.3"
 http = "0.2"
-libflate = "0.1"
+libflate = "1.0"
 log = "0.4"
 mime = "0.3"
 regex = "^1.1.0"

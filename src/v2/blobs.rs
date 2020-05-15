@@ -33,10 +33,13 @@ impl Client {
         }
     }
 
-    /// Retrieve blob.
-    pub async fn get_blob(&self, name: &str, digest: &str) -> Result<Vec<u8>> {
+    pub async fn get_blob_ref(
+        &self,
+        name: &str,
+        digest: &str,
+        bytes_container: &mut Bytes,
+    ) -> Result<()> {
         let digest = ContentDigest::try_new(digest.to_string())?;
-        let mut body_vec = Bytes::new();
 
         let ep = format!("{}/v2/{}/blobs/{}", self.base_url, name, digest);
         let url = reqwest::Url::parse(&ep)
@@ -61,19 +64,19 @@ impl Client {
         }
 
         let status = res.status();
-        body_vec = res.bytes().await?;
-        let len = body_vec.len();
+        *bytes_container = res.bytes().await?;
+        let len = bytes_container.len();
 
         if status.is_success() {
             trace!("Successfully received blob with {} bytes ", len);
-            digest.try_verify(&body_vec)?;
-            return Ok(body_vec.to_vec());
+            digest.try_verify(bytes_container)?;
+            return Ok(());
         } else if status.is_client_error() {
             return Err(Error::from(format!(
                 "GET request failed with status '{}' and body of size {}: {:#?}",
                 status,
                 len,
-                String::from_utf8_lossy(&body_vec)
+                String::from_utf8_lossy(bytes_container)
             )));
         } else {
             // We only want to handle success and client errors here
@@ -86,5 +89,14 @@ impl Client {
                 status
             )));
         };
+    }
+
+    /// Retrieve blob.
+    pub async fn get_blob(&self, name: &str, digest: &str) -> Result<Vec<u8>> {
+        let mut body_vec = Bytes::new();
+        match self.get_blob_ref(name, digest, &mut body_vec).await {
+            Err(e) => Err(e),
+            Ok(_) => Ok(body_vec.to_vec()),
+        }
     }
 }

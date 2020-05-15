@@ -1,4 +1,5 @@
 use crate::errors::{Error, Result};
+use reqwest::Method;
 
 /// Manifest version 2 schema 2.
 ///
@@ -111,7 +112,7 @@ impl ManifestSchema2Spec {
         };
 
         let r = client
-            .build_reqwest(reqwest::Client::new().get(url.clone()))
+            .build_reqwest(Method::GET, url.clone())
             .send()
             .await?;
 

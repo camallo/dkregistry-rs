@@ -57,7 +57,7 @@ impl Client {
         let url = Url::parse(&url_paginated).map_err(|e| Error::from(format!("{}", e)))?;
 
         let resp = self
-            .build_reqwest(reqwest::Client::new().get(url.clone()))
+            .build_reqwest(Method::GET, url.clone())
             .header(header::ACCEPT, "application/json")
             .send()
             .await?

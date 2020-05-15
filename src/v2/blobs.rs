@@ -1,7 +1,7 @@
 use crate::errors::{Error, Result};
 use crate::v2::*;
 use reqwest;
-use reqwest::StatusCode;
+use reqwest::{Method, StatusCode};
 
 impl Client {
     /// Check if a blob exists.
@@ -19,10 +19,7 @@ impl Client {
             }
         };
 
-        let res = self
-            .build_reqwest(reqwest::Client::new().head(url))
-            .send()
-            .await?;
+        let res = self.build_reqwest(Method::HEAD, url.clone()).send().await?;
 
         trace!("Blob HEAD status: {:?}", res.status());
 
@@ -41,10 +38,7 @@ impl Client {
             let url = reqwest::Url::parse(&ep)
                 .map_err(|e| Error::from(format!("failed to parse url from string: {}", e)))?;
 
-            let res = self
-                .build_reqwest(reqwest::Client::new().get(url))
-                .send()
-                .await?;
+            let res = self.build_reqwest(Method::GET, url.clone()).send().await?;
 
             trace!("GET {} status: {}", res.url(), res.status());
             let status = res.status();

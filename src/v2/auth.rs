@@ -29,7 +29,7 @@ impl Client {
         };
 
         let r = self
-            .build_reqwest(reqwest::Client::new().get(url.clone()))
+            .build_reqwest(Method::GET, url.clone())
             .send()
             .map_err(|e| Error::from(format!("{}", e)))
             .await?;
@@ -82,7 +82,7 @@ impl Client {
         })?;
 
         let auth_req = {
-            let auth_req = subclient.build_reqwest(reqwest::Client::new().get(url));
+            let auth_req = subclient.build_reqwest(Method::GET, url);
             if let Some(creds) = creds {
                 auth_req.basic_auth(creds.0, Some(creds.1))
             } else {
@@ -133,7 +133,7 @@ impl Client {
             }
         };
 
-        let req = self.build_reqwest(reqwest::Client::new().get(url.clone()));
+        let req = self.build_reqwest(Method::GET, url.clone());
         let req = if let Some(t) = token {
             req.bearer_auth(t)
         } else {

@@ -81,12 +81,15 @@ impl Config {
                 p.unwrap_or_else(|| "".into()),
             )),
         };
+        let client = reqwest::ClientBuilder::new().build()?;
+
         let c = Client {
             base_url: base,
             credentials: creds,
             index: self.index,
             user_agent: self.user_agent,
             token: None,
+            client: client,
         };
         Ok(c)
     }

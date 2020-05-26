@@ -39,11 +39,8 @@ impl Client {
         let client_spare0 = self.clone();
 
         let res = self
-            .build_reqwest(
-                reqwest::Client::new()
-                    .get(url.clone())
-                    .headers(accept_headers),
-            )
+            .build_reqwest(Method::GET, url.clone())
+            .headers(accept_headers)
             .send()
             .await?;
 
@@ -123,7 +120,8 @@ impl Client {
         let accept_headers = build_accept_headers();
 
         let res = self
-            .build_reqwest(reqwest::Client::new().head(url).headers(accept_headers))
+            .build_reqwest(Method::HEAD, url)
+            .headers(accept_headers)
             .send()
             .await?;
 
@@ -196,7 +194,7 @@ impl Client {
         trace!("HEAD {:?}", url);
 
         let r = self
-            .build_reqwest(reqwest::Client::new().get(url.clone()))
+            .build_reqwest(Method::GET, url.clone())
             .headers(accept_headers)
             .send()
             .await

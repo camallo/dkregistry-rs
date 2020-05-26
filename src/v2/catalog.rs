@@ -3,7 +3,7 @@ use crate::v2;
 use async_stream::try_stream;
 use futures::stream::Stream;
 use futures::{self};
-use reqwest::{RequestBuilder, StatusCode};
+use reqwest::{Method, RequestBuilder, StatusCode};
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 struct Catalog {
@@ -28,7 +28,7 @@ impl v2::Client {
         };
 
         try_stream! {
-            let req = self.build_reqwest(reqwest::Client::new().get(url?));
+            let req = self.build_reqwest(Method::GET, url?);
 
             let catalog = fetch_catalog(req).await?;
 

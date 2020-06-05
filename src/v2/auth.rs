@@ -155,13 +155,13 @@ impl Client {
     }
 
     pub async fn authenticate(mut self, login_scope: String) -> Result<Self> {
-        if !self.is_v2_supported().await? {
-            return Err("API v2 not supported".into());
-        }
+        //if !self.is_v2_supported().await? {
+        //    return Err("API v2 not supported".into());
+        //}
 
-        if self.is_auth(None).await? {
-            return Ok(self);
-        }
+        //if self.is_auth(None).await? {
+        //    return Ok(self);
+        //}
 
         let token = self.login(&[login_scope.as_str()]).await?;
 

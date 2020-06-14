@@ -100,15 +100,7 @@ impl ManifestSchema2Spec {
                 repo,
                 self.config.digest
             );
-            match reqwest::Url::parse(&ep) {
-                Ok(url) => url,
-                Err(e) => {
-                    return Err(Error::from(format!(
-                        "failed to parse url from string '{}': {}",
-                        ep, e
-                    )));
-                }
-            }
+            reqwest::Url::parse(&ep)?
         };
 
         let r = client
@@ -120,7 +112,7 @@ impl ManifestSchema2Spec {
         trace!("GET {:?}: {}", url, &status);
 
         if !status.is_success() {
-            return Err(format!("wrong HTTP status '{}'", status).into());
+            return Err(Error::UnexpectedHttpStatus(status));
         }
 
         let config_blob = r.json::<ConfigBlob>().await?;

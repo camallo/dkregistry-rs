@@ -1,7 +1,6 @@
 use crate::errors::{Error, Result};
 use crate::v2::*;
 use reqwest::{header::HeaderValue, RequestBuilder, StatusCode, Url};
-use std::iter::FromIterator;
 
 /// Represents all supported authentication schemes and is stored by `Client`.
 #[derive(Debug, Clone)]
@@ -41,12 +40,7 @@ impl BearerAuth {
         let auth_ep = bearer_header_content.auth_ep(scopes);
         trace!("authenticate: token endpoint: {}", auth_ep);
 
-        let url = reqwest::Url::parse(&auth_ep).map_err(|e| {
-            Error::from(format!(
-                "failed to parse url from string '{}': {}",
-                auth_ep, e
-            ))
-        })?;
+        let url = reqwest::Url::parse(&auth_ep)?;
 
         let auth_req = {
             Client {
@@ -65,14 +59,13 @@ impl BearerAuth {
         let status = r.status();
         trace!("authenticate: got status {}", status);
         if status != StatusCode::OK {
-            bail!("authenticate: wrong HTTP status '{}'", status);
+            return Err(Error::UnexpectedHttpStatus(status));
         }
 
         let bearer_auth = r.json::<BearerAuth>().await?;
 
         match bearer_auth.token.as_str() {
-            "unauthenticated" => bail!("token is unauthenticated"),
-            "" => bail!("received an empty token"),
+            "unauthenticated" | "" => return Err(Error::InvalidAuthToken(bearer_auth.token)),
             _ => {}
         };
 
@@ -103,6 +96,27 @@ pub(crate) enum WwwAuthenticateHeaderContent {
     Basic(WwwAuthenticateHeaderContentBasic),
 }
 
+const REGEX: &str = r#"(?x)\s*
+((?P<method>[A-Z][a-z]+)\s*)?
+(
+    \s*
+        (?P<key>[a-z]+)
+    \s*
+        =
+    \s*
+        "(?P<value>[^"]+)"
+    \s*
+)
+"#;
+
+#[derive(Debug, thiserror::Error)]
+pub enum WwwHeaderParseError {
+    #[error("header value must conform to {}", REGEX)]
+    InvalidValue,
+    #[error("'method' field missing")]
+    FieldMethodMissing,
+}
+
 impl WwwAuthenticateHeaderContent {
     /// Create a `WwwAuthenticateHeaderContent` by parsing a `HeaderValue` instance.
     pub(crate) fn from_www_authentication_header(header_value: HeaderValue) -> Result<Self> {
@@ -110,29 +124,14 @@ impl WwwAuthenticateHeaderContent {
 
         // This regex will result in multiple captures which will contain one key-value pair each.
         // The first capture will be the only one with the "method" group set.
-        let re = regex::Regex::new(
-            r#"(?x)\s*
-            ((?P<method>[A-Z][a-z]+)\s*)?
-            (
-                \s*
-                    (?P<key>[a-z]+)
-                \s*
-                    =
-                \s*
-                    "(?P<value>[^"]+)"
-                \s*
-            )
-        "#,
-        )?;
+        let re = regex::Regex::new(REGEX).expect("this static regex is valid");
         let captures = re.captures_iter(&header).collect::<Vec<_>>();
 
         let method = captures
             .get(0)
-            .ok_or_else(|| {
-                Error::from(format!("regex '{}' didn't match '{}'", re.as_str(), header))
-            })?
+            .ok_or(WwwHeaderParseError::InvalidValue)?
             .name("method")
-            .ok_or_else(|| Error::from(format!("method not found in {}", header)))?
+            .ok_or(WwwHeaderParseError::FieldMethodMissing)?
             .as_str()
             .to_string();
 
@@ -229,25 +228,15 @@ impl Client {
     async fn get_www_authentication_header(&self) -> Result<HeaderValue> {
         let url = {
             let ep = format!("{}/v2/", self.base_url.clone(),);
-            reqwest::Url::parse(&ep)
-                .map_err(|e| format!("failed to parse url from string '{}': {}", ep, e))?
+            reqwest::Url::parse(&ep)?
         };
 
-        let r = self
-            .build_reqwest(Method::GET, url.clone())
-            .send()
-            .map_err(|e| Error::from(format!("{}", e)))
-            .await?;
+        let r = self.build_reqwest(Method::GET, url.clone()).send().await?;
 
         trace!("GET '{}' status: {:?}", r.url(), r.status());
         r.headers()
             .get(reqwest::header::WWW_AUTHENTICATE)
-            .ok_or_else(|| {
-                Error::from(format!(
-                    "missing {:?} header",
-                    reqwest::header::WWW_AUTHENTICATE
-                ))
-            })
+            .ok_or(Error::MissingAuthHeader("WWW-Authenticate"))
             .map(ToOwned::to_owned)
     }
 
@@ -272,7 +261,7 @@ impl Client {
                         user,
                         password: Some(password),
                     })
-                    .ok_or("cannot authenticate without credentials")?;
+                    .ok_or(Error::NoCredentials)?;
 
                 Auth::Basic(basic_auth)
             }
@@ -301,15 +290,7 @@ impl Client {
     pub async fn is_auth(&self) -> Result<bool> {
         let url = {
             let ep = format!("{}/v2/", self.base_url.clone(),);
-            match Url::parse(&ep) {
-                Ok(url) => url,
-                Err(e) => {
-                    return Err(Error::from(format!(
-                        "failed to parse url from string '{}': {}",
-                        ep, e
-                    )));
-                }
-            }
+            Url::parse(&ep)?
         };
 
         let req = self.build_reqwest(Method::GET, url.clone());
@@ -322,7 +303,7 @@ impl Client {
         match status {
             reqwest::StatusCode::OK => Ok(true),
             reqwest::StatusCode::UNAUTHORIZED => Ok(false),
-            _ => Err(format!("is_auth: wrong HTTP status '{}'", status).into()),
+            _ => Err(Error::UnexpectedHttpStatus(status)),
         }
     }
 }
@@ -340,7 +321,7 @@ mod tests {
         let header_value = HeaderValue::from_str(&format!(
             r#"Bearer realm="{}",service="{}",scope="{}""#,
             realm, service, scope
-        ))?;
+        )).expect("this statically known header value only contains ASCII chars so it is correct header value");
 
         let content = WwwAuthenticateHeaderContent::from_www_authentication_header(header_value)?;
 
@@ -368,7 +349,7 @@ mod tests {
     fn basic_realm_parses_correctly() -> Result<()> {
         let realm = "Registry realm";
 
-        let header_value = HeaderValue::from_str(&format!(r#"Basic realm="{}""#, realm))?;
+        let header_value = HeaderValue::from_str(&format!(r#"Basic realm="{}""#, realm)).unwrap();
 
         let content = WwwAuthenticateHeaderContent::from_www_authentication_header(header_value)?;
 

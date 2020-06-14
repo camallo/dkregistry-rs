@@ -53,7 +53,7 @@ impl ManifestSchema1Signed {
     /// Get a collection of all image labels stored in the history array of this manifest.
     ///
     /// Note that for this manifest type any `layer` beyond 0 probably returns None.
-    pub fn get_labels(&self, layer: usize) -> Option<(HashMap<String, String>)> {
+    pub fn get_labels(&self, layer: usize) -> Option<HashMap<String, String>> {
         Some(
             serde_json::from_str::<serde_json::Value>(&self.history.get(layer)?.v1_compat)
                 .ok()?

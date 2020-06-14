@@ -29,7 +29,6 @@
 // The `docker://` schema is not officially documented, but has a reference implementation:
 // https://github.com/docker/distribution/blob/v2.6.1/reference/reference.go
 
-use crate::errors::Error;
 use regex;
 use std::collections::VecDeque;
 use std::str::FromStr;
@@ -46,20 +45,30 @@ pub enum Version {
     Digest(String, String),
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum VersionParseError {
+    #[error("wrong digest format: checksum missing")]
+    WrongDigestFormat,
+    #[error("unknown prefix: digest must start from : or @")]
+    UnknownPrefix,
+    #[error("empty string is invalid digest")]
+    Empty,
+}
+
 impl str::FromStr for Version {
-    type Err = Error;
+    type Err = VersionParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let v = match s.chars().nth(0) {
             Some(':') => Version::Tag(s.trim_start_matches(':').to_string()),
             Some('@') => {
                 let r: Vec<&str> = s.trim_start_matches('@').splitn(2, ':').collect();
                 if r.len() != 2 {
-                    bail!("wrong digest format");
+                    return Err(VersionParseError::WrongDigestFormat);
                 };
                 Version::Digest(r[0].to_string(), r[1].to_string())
             }
-            Some(_) => bail!("unknown prefix"),
-            None => bail!("too short"),
+            Some(_) => return Err(VersionParseError::UnknownPrefix),
+            None => return Err(VersionParseError::Empty),
         };
         Ok(v)
     }
@@ -146,13 +155,32 @@ impl fmt::Display for Reference {
 }
 
 impl str::FromStr for Reference {
-    type Err = Error;
+    type Err = ReferenceParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         parse_url(s)
     }
 }
 
-fn parse_url(input: &str) -> Result<Reference, Error> {
+#[derive(thiserror::Error, Debug)]
+pub enum ReferenceParseError {
+    #[error("missing image name")]
+    MissingImageName,
+    #[error("version parse error")]
+    VersionParse(#[from] VersionParseError),
+    #[error("empty image name")]
+    EmptyImageName,
+    #[error("component '{component}' does not conform to regex '{regex}'")]
+    RegexViolation {
+        regex: &'static str,
+        component: String,
+    },
+    #[error("empty repository name")]
+    EmptyRepositoryName,
+    #[error("repository name too long")]
+    RepositoryNameTooLong,
+}
+
+fn parse_url(input: &str) -> Result<Reference, ReferenceParseError> {
     // TODO(lucab): investigate using a grammar-based parser.
     let mut rest = input;
 
@@ -173,7 +201,7 @@ fn parse_url(input: &str) -> Result<Reference, Error> {
     // default registry if it's not.
     let first = components
         .pop_front()
-        .ok_or(Error::from("missing image name"))?;
+        .ok_or(ReferenceParseError::MissingImageName)?;
 
     let registry = if regex::Regex::new(r"(?x)
         ^
@@ -183,7 +211,7 @@ fn parse_url(input: &str) -> Result<Reference, Error> {
         # optional port
         ([:][0-9]{1,6})?
         $
-    ")?.is_match(&first) {
+    ").expect("hardcoded regex is invalid").is_match(&first) {
         first
     } else {
         components.push_front(first);
@@ -193,7 +221,7 @@ fn parse_url(input: &str) -> Result<Reference, Error> {
     // Take image name and extract tag or digest-ref, if any.
     let last = components
         .pop_back()
-        .ok_or_else(|| Error::from("missing image name"))?;
+        .ok_or(ReferenceParseError::MissingImageName)?;
     let (image_name, version) = match (last.rfind('@'), last.rfind(':')) {
         (Some(i), _) | (None, Some(i)) => {
             let s = last.split_at(i);
@@ -201,7 +229,9 @@ fn parse_url(input: &str) -> Result<Reference, Error> {
         }
         (None, None) => (last, Version::default()),
     };
-    ensure!(!image_name.is_empty(), "empty image name");
+    if image_name.is_empty() {
+        return Err(ReferenceParseError::EmptyImageName);
+    }
 
     // Handle images in default library namespace, that is:
     // `ubuntu` -> `library/ubuntu`
@@ -212,25 +242,27 @@ fn parse_url(input: &str) -> Result<Reference, Error> {
 
     // Check if all path components conform to the regex at
     // https://docs.docker.com/registry/spec/api/#overview.
-    let path_re = regex::Regex::new("^[a-z0-9]+(?:[._-][a-z0-9]+)*$")?;
-    components
-        .iter()
-        .try_for_each(|component| -> Result<(), Error> {
-            if !path_re.is_match(component) {
-                bail!(
-                    "component '{}' doesn't conform to the regex '{}'",
-                    component,
-                    path_re.as_str()
-                )
-            };
+    const REGEX: &'static str = "^[a-z0-9]+(?:[._-][a-z0-9]+)*$";
+    let path_re = regex::Regex::new(REGEX).expect("hardcoded regex is invalid");
+    components.iter().try_for_each(|component| {
+        if !path_re.is_match(component) {
+            return Err(ReferenceParseError::RegexViolation {
+                component: component.clone(),
+                regex: REGEX,
+            });
+        };
 
-            Ok(())
-        })?;
+        Ok(())
+    })?;
 
     // Re-assemble repository name.
     let repository = components.into_iter().collect::<Vec<_>>().join("/");
-    ensure!(!repository.is_empty(), "empty repository name");
-    ensure!(repository.len() <= 127, "repository name too long");
+    if repository.is_empty() {
+        return Err(ReferenceParseError::EmptyRepositoryName);
+    }
+    if repository.len() > 127 {
+        return Err(ReferenceParseError::RepositoryNameTooLong);
+    }
 
     Ok(Reference {
         has_schema,

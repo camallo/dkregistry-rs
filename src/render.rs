@@ -3,18 +3,25 @@
 // Docker image format is specified at
 // https://github.com/moby/moby/blob/v17.05.0-ce/image/spec/v1.md
 
-use crate::errors::*;
 use libflate::gzip;
 use std::{fs, path};
 use tar;
+
+#[derive(Debug, thiserror::Error)]
+pub enum RenderError {
+    #[error("wrong target path {}: must be absolute path to existing directory", _0.display())]
+    WrongTargetPath(path::PathBuf),
+    #[error("io error")]
+    Io(#[from] std::io::Error)
+}
 
 /// Unpack an ordered list of layers to a target directory.
 ///
 /// Layers must be provided as gzip-compressed tar archives, with lower layers
 /// coming first. Target directory must be an existing absolute path.
-pub fn unpack(layers: &[Vec<u8>], target_dir: &path::Path) -> Result<()> {
+pub fn unpack(layers: &[Vec<u8>], target_dir: &path::Path) -> Result<(), RenderError> {
     if !target_dir.is_absolute() || !target_dir.exists() || !target_dir.is_dir() {
-        bail!("wrong target path");
+        return Err(RenderError::WrongTargetPath(target_dir.to_path_buf()));
     }
     for l in layers {
         // Unpack layers

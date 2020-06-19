@@ -5,13 +5,14 @@ extern crate tokio;
 
 use dkregistry::render;
 use futures::future::try_join_all;
+use std::path::Path;
 use std::result::Result;
 use std::{boxed, env, error, fs, io};
 
 mod common;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), boxed::Box<dyn error::Error>> {
     let registry = match std::env::args().nth(1) {
         Some(x) => x,
         None => "quay.io".into(),
@@ -25,6 +26,19 @@ async fn main() {
     let version = match std::env::args().nth(3) {
         Some(x) => x,
         None => "latest".into(),
+    };
+
+    let path_string = format!("{}:{}", &image, &version).replace("/", "_");
+    let path = Path::new(&path_string);
+    if path.exists() {
+        let msg = format!("path {:?} already exists", &path);
+        match std::env::var("IMAGE_OVERWRITE") {
+            Ok(value) if value == "true" => {
+                std::fs::remove_dir_all(path)?;
+                eprintln!("{}, removing.", msg);
+            }
+            _ => return Err(format!("{}, exiting.", msg).into()),
+        }
     };
 
     println!("[{}] downloading image {}:{}", registry, image, version);
@@ -52,12 +66,14 @@ async fn main() {
         }
     };
 
-    let res = run(&registry, &image, &version, user, password).await;
+    let res = run(&registry, &image, &version, user, password, &path).await;
 
     if let Err(e) = res {
         println!("[{}] {}", registry, e);
         std::process::exit(1);
     };
+
+    Ok(())
 }
 
 async fn run(
@@ -66,6 +82,7 @@ async fn run(
     version: &str,
     user: Option<String>,
     passwd: Option<String>,
+    path: &Path,
 ) -> Result<(), boxed::Box<dyn error::Error>> {
     env_logger::Builder::new()
         .filter(Some("dkregistry"), log::LevelFilter::Trace)
@@ -96,11 +113,6 @@ async fn run(
 
     println!("Downloaded {} layers", blobs.len());
 
-    let path = &format!("{}:{}", &image, &version).replace("/", "_");
-    let path = std::path::Path::new(&path);
-    if path.exists() {
-        return Err(format!("path {:?} already exists, exiting", &path).into());
-    }
     // TODO: use async io
     std::fs::create_dir(&path).unwrap();
     let can_path = path.canonicalize().unwrap();

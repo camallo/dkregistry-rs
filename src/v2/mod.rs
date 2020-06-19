@@ -37,7 +37,6 @@ pub use self::config::Config;
 mod catalog;
 
 mod auth;
-pub use self::auth::TokenAuth;
 
 pub mod manifest;
 
@@ -55,7 +54,7 @@ pub struct Client {
     credentials: Option<(String, String)>,
     index: String,
     user_agent: Option<String>,
-    token: Option<String>,
+    auth: Option<auth::Auth>,
     client: reqwest::Client,
 }
 
@@ -107,9 +106,10 @@ impl Client {
     fn build_reqwest(&self, method: Method, url: Url) -> reqwest::RequestBuilder {
         let mut builder = self.client.request(method, url);
 
-        if let Some(token) = &self.token {
-            builder = builder.header(reqwest::header::AUTHORIZATION, format!("Bearer {}", token))
-        }
+        if let Some(auth) = &self.auth {
+            builder = auth.add_auth_headers(builder);
+        };
+
         if let Some(ua) = &self.user_agent {
             builder = builder.header(reqwest::header::USER_AGENT, ua.as_str());
         };

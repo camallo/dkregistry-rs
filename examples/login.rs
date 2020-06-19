@@ -53,7 +53,7 @@ async fn run(
         .password(passwd)
         .build()?;
 
-    let dclient = common::authenticate_client(client, login_scope).await?;
-    dclient.is_v2_supported().await?;
+    let dclient = client.authenticate(&[&login_scope]).await?;
+    dclient.is_auth().await?;
     Ok(())
 }

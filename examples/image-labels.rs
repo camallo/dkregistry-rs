@@ -69,7 +69,7 @@ async fn run(
     let login_scope = format!("repository:{}:pull", image);
     let version = dkr_ref.version();
 
-    let dclient = common::authenticate_client(client, login_scope).await?;
+    let dclient = client.authenticate(&[&login_scope]).await?;
     let manifest = match dclient.get_manifest(&image, &version).await {
         Ok(manifest) => Ok(manifest),
         Err(e) => Err(format!("Got error {}", e)),

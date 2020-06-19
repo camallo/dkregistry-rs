@@ -98,7 +98,7 @@ async fn run(
 
     let login_scope = format!("repository:{}:pull", image);
 
-    let dclient = common::authenticate_client(client, login_scope).await?;
+    let dclient = client.authenticate(&[&login_scope]).await?;
     let manifest = dclient.get_manifest(&image, &version).await?;
     let layers_digests = manifest.layers_digests(None)?;
 

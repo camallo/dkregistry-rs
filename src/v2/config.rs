@@ -8,6 +8,7 @@ pub struct Config {
     user_agent: Option<String>,
     username: Option<String>,
     password: Option<String>,
+    accept_invalid_certs: bool,
 }
 
 impl Config {
@@ -16,6 +17,7 @@ impl Config {
         Self {
             index: "registry-1.docker.io".into(),
             insecure_registry: false,
+            accept_invalid_certs: false,
             user_agent: Some(crate::USER_AGENT.to_owned()),
             username: None,
             password: None,
@@ -31,6 +33,12 @@ impl Config {
     /// Whether to use an insecure HTTP connection to the registry.
     pub fn insecure_registry(mut self, insecure: bool) -> Self {
         self.insecure_registry = insecure;
+        self
+    }
+
+    /// Set whether or not to accept invalid certificates.
+    pub fn accept_invalid_certs(mut self, accept_invalid_certs: bool) -> Self {
+        self.accept_invalid_certs = accept_invalid_certs;
         self
     }
 
@@ -81,7 +89,9 @@ impl Config {
                 p.unwrap_or_else(|| "".into()),
             )),
         };
-        let client = reqwest::ClientBuilder::new().build()?;
+        let client = reqwest::ClientBuilder::new()
+            .danger_accept_invalid_certs(self.accept_invalid_certs)
+            .build()?;
 
         let c = Client {
             base_url: base,

@@ -37,7 +37,7 @@ fn common_init(
                 .password(password)
                 .build()
                 .unwrap()
-                .authenticate(login_scope),
+                .authenticate(&[&login_scope]),
         )
         .unwrap();
 
@@ -100,7 +100,7 @@ fn test_quayio_auth_login() {
     let login_scope = "";
     let (mut runtime, dclient) = common_init(Some(&login_scope)).unwrap();
 
-    let futlogin = dclient.is_auth(None);
+    let futlogin = dclient.is_auth();
     let res = runtime.block_on(futlogin).unwrap();
     assert_eq!(res, true);
 }

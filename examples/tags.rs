@@ -57,7 +57,7 @@ async fn run(
 
     let login_scope = format!("repository:{}:pull", image);
 
-    let dclient = common::authenticate_client(client, login_scope).await?;
+    let dclient = client.authenticate(&[&login_scope]).await?;
 
     dclient
         .get_tags(&image, Some(7))

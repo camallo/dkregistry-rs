@@ -98,7 +98,7 @@ impl Config {
             credentials: creds,
             index: self.index,
             user_agent: self.user_agent,
-            token: None,
+            auth: None,
             client: client,
         };
         Ok(c)

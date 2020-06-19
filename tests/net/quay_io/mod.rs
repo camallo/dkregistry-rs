@@ -13,7 +13,7 @@ fn get_env() -> Option<(String, String)> {
     }
 }
 
-#[cfg(feature = "test-net-private")]
+#[cfg(any(feature = "test-net", feature = "test-net-private"))]
 fn common_init(
     login_scope: Option<&str>,
 ) -> Option<(tokio::runtime::Runtime, dkregistry::v2::Client)> {
@@ -240,6 +240,7 @@ fn test_quayio_has_no_manifest() {
     assert_eq!(has_manifest, None);
 }
 
+#[cfg(feature = "test-net-private")]
 #[test]
 fn test_quayio_auth_manifestref_missing() {
     let image = "steveej/cincinnati-test";

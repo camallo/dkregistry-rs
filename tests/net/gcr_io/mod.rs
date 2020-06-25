@@ -108,3 +108,23 @@ fn test_gcrio_has_manifest() {
         Some(dkregistry::mediatypes::MediaTypes::ManifestV2S1Signed)
     );
 }
+
+#[test]
+fn test_gcrio_get_manifest() {
+    let mut runtime = Runtime::new().unwrap();
+    let dclient = dkregistry::v2::Client::configure()
+        .registry(REGISTRY)
+        .insecure_registry(false)
+        .username(None)
+        .password(None)
+        .build()
+        .unwrap();
+
+    let image = "google_containers/mounttest";
+    let tag = "0.2";
+
+    let fut = dclient.get_manifest(image, tag);
+    runtime
+        .block_on(fut)
+        .expect("check that manifest was downloaded successfully");
+}

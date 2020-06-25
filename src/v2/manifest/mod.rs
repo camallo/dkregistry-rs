@@ -34,7 +34,7 @@ impl Client {
     ) -> Result<(Manifest, Option<String>)> {
         let url = self.build_url(name, reference)?;
 
-        let accept_headers = build_accept_headers();
+        let accept_headers = build_accept_headers(&self.index);
 
         let client_spare0 = self.clone();
 
@@ -117,7 +117,7 @@ impl Client {
     pub async fn get_manifestref(&self, name: &str, reference: &str) -> Result<Option<String>> {
         let url = self.build_url(name, reference)?;
 
-        let accept_headers = build_accept_headers();
+        let accept_headers = build_accept_headers(&self.index);
 
         let res = self
             .build_reqwest(Method::HEAD, url)
@@ -286,28 +286,43 @@ fn evaluate_media_type(
     }
 }
 
-fn build_accept_headers() -> header::HeaderMap {
-    header::HeaderMap::from_iter(
-        [
-            // accept header types and their q value, as documented in
-            // https://tools.ietf.org/html/rfc7231#section-5.3.2
-            (mediatypes::MediaTypes::ManifestV2S2, 0.5),
-            (mediatypes::MediaTypes::ManifestV2S1Signed, 0.4),
-            // TODO(steveeJ): uncomment this when all the Manifest methods work for it
-            // mediatypes::MediaTypes::ManifestList,
-        ]
-        .iter()
-        .filter_map(|(ty, q)| {
-            match header::HeaderValue::from_str(&format!("{}; q={}", ty.to_string(), q)) {
-                Ok(header_value) => Some((header::ACCEPT, header_value)),
-                Err(e) => {
-                    let msg = format!("failed to parse HeaderValue from str: {}:", e);
-                    error!("{}", msg);
-                    None
+fn build_accept_headers(registry: &str) -> header::HeaderMap {
+    // GCR incorrectly parses `q` parameters, so we use special Accept for it.
+    // Bug: https://issuetracker.google.com/issues/159827510.
+    // TODO: when bug is fixed, this workaround should be removed.
+    let no_q = registry == "gcr.io" || registry.ends_with(".gcr.io");
+
+    let accepted_types = vec![
+        // accept header types and their q value, as documented in
+        // https://tools.ietf.org/html/rfc7231#section-5.3.2
+        (mediatypes::MediaTypes::ManifestV2S2, 0.5),
+        (mediatypes::MediaTypes::ManifestV2S1Signed, 0.4),
+        // TODO(steveeJ): uncomment this when all the Manifest methods work for it
+        // mediatypes::MediaTypes::ManifestList,
+    ];
+
+    let accepted_types_string = accepted_types
+        .into_iter()
+        .map(|(ty, q)| {
+            format!(
+                "{}{}",
+                ty.to_string(),
+                if no_q {
+                    String::default()
+                } else {
+                    format!("; q={}", q)
                 }
-            }
-        }),
-    )
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(",");
+
+    header::HeaderMap::from_iter(vec![(
+        header::ACCEPT,
+        header::HeaderValue::from_str(&accepted_types_string).expect(
+            "should be always valid because both float and mime type only use allowed ASCII chard",
+        ),
+    )])
 }
 
 /// Umbrella type for common actions on the different manifest schema types

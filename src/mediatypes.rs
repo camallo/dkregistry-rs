@@ -16,6 +16,7 @@ pub enum MediaTypes {
     /// Signed manifest, version 2 schema 1.
     #[strum(
         serialize = "application/vnd.docker.distribution.manifest.v1+prettyjws",
+        to_string = "application/vnd.docker.distribution.manifest.v1+prettyjws",
 
         // TODO(steveeJ) find a generic way to handle this form
         serialize = "application/vnd.docker.distribution.manifest.v1+prettyjws; charset=utf-8",

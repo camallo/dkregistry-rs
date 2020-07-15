@@ -35,7 +35,7 @@ impl BearerAuth {
     async fn try_from_header_content(
         client: Client,
         scopes: &[&str],
-        credentials: (String, String),
+        credentials: Option<(String, String)>,
         bearer_header_content: WwwAuthenticateHeaderContentBearer,
     ) -> Result<Self> {
         let auth_ep = bearer_header_content.auth_ep(scopes);
@@ -48,12 +48,16 @@ impl BearerAuth {
             ))
         })?;
 
-        let auth_req = Client {
-            auth: Some(Auth::Basic(BasicAuth {
-                user: credentials.0,
-                password: Some(credentials.1),
-            })),
-            ..client
+        let auth_req = {
+            Client {
+                auth: credentials.map(|(user, password)| {
+                    Auth::Basic(BasicAuth {
+                        user,
+                        password: Some(password),
+                    })
+                }),
+                ..client
+            }
         }
         .build_reqwest(Method::GET, url);
 
@@ -251,10 +255,7 @@ impl Client {
     ///
     /// If Bearer authentication is used the returned client will be authorized for the requested scopes.
     pub async fn authenticate(mut self, scopes: &[&str]) -> Result<Self> {
-        let credentials = self
-            .credentials
-            .clone()
-            .ok_or("cannot authenticate without credentials")?;
+        let credentials = self.credentials.clone();
 
         let client = Client {
             auth: None,
@@ -266,9 +267,13 @@ impl Client {
             authentication_header,
         )? {
             WwwAuthenticateHeaderContent::Basic(_) => {
-                let basic_auth = BasicAuth {
-                    user: credentials.0,
-                    password: Some(credentials.1),
+                let basic_auth = {
+                    let (user, password) =
+                        credentials.expect("cannot authenticate without credentials");
+                    BasicAuth {
+                        user,
+                        password: Some(password),
+                    }
                 };
 
                 Auth::Basic(basic_auth)

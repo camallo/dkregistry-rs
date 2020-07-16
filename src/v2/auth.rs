@@ -267,14 +267,12 @@ impl Client {
             authentication_header,
         )? {
             WwwAuthenticateHeaderContent::Basic(_) => {
-                let basic_auth = {
-                    let (user, password) =
-                        credentials.expect("cannot authenticate without credentials");
-                    BasicAuth {
+                let basic_auth = credentials
+                    .map(|(user, password)| BasicAuth {
                         user,
                         password: Some(password),
-                    }
-                };
+                    })
+                    .ok_or("cannot authenticate without credentials")?;
 
                 Auth::Basic(basic_auth)
             }

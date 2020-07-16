@@ -64,7 +64,7 @@ fn test_dockerio_insecure() {
 }
 
 #[test]
-fn test_dockerio_unauthed() {
+fn test_dockerio_anonymous_auth() {
     let mut runtime = Runtime::new().unwrap();
     let image = "library/alpine";
     let version = "latest";

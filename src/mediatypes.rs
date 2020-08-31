@@ -1,6 +1,6 @@
 //! Media-types for API objects.
 
-use crate::errors::{Error, Result};
+use crate::errors::{Result};
 use mime;
 use strum::EnumProperty;
 
@@ -62,13 +62,13 @@ impl MediaTypes {
                     }
                     ("vnd.docker.image.rootfs.diff.tar.gzip", _) => Ok(MediaTypes::ImageLayerTgz),
                     ("vnd.docker.container.image.v1", "json") => Ok(MediaTypes::ContainerConfigV1),
-                    _ => bail!("unknown mediatype {:?}", mtype),
+                    _ => return Err(crate::Error::UnknownMimeType(mtype.clone())),
                 }
             }
-            _ => bail!("unknown mediatype {:?}", mtype),
+            _ => return Err(crate::Error::UnknownMimeType(mtype.clone())),
         }
     }
-    pub fn to_mime(&self) -> Result<mime::Mime> {
+    pub fn to_mime(&self) -> mime::Mime {
         match self {
             &MediaTypes::ApplicationJson => Ok(mime::APPLICATION_JSON),
             ref m => {
@@ -79,6 +79,6 @@ impl MediaTypes {
                 }
             }
         }
-        .map_err(|e| Error::from(e.to_string()))
+        .expect("to_mime should be always successful")
     }
 }

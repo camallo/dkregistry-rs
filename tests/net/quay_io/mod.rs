@@ -286,9 +286,9 @@ fn test_quayio_auth_layer_blob() {
             .and_then(|manifest| {
                 let layers: Vec<String> = manifest.layers_digests(None)?;
                 let num_layers = layers.len();
-                ensure!(num_layers == 1, "layers length: {}", num_layers);
+                assert!(num_layers == 1, "layers length: {}", num_layers);
                 let digest = layers[0].clone();
-                ensure!(digest == layer0_sha, "layer0 digest: {}", digest);
+                assert!(digest == layer0_sha, "layer0 digest: {}", digest);
                 Ok(digest)
             })
             .unwrap();

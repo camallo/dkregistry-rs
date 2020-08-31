@@ -30,7 +30,7 @@ fn test_base_no_insecure() {
 
     // This relies on the fact that mockito is HTTP-only and
     // trying to speak TLS to it results in garbage/errors.
-    runtime.block_on(futcheck).is_err();
+    runtime.block_on(futcheck).unwrap_err();
 
     mockito::reset();
 }

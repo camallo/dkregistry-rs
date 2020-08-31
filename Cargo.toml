@@ -24,7 +24,6 @@ tag-prefix = ""
 
 [dependencies]
 base64 = "0.12"
-error-chain = { version = "0.12", default-features = false }
 futures = "0.3"
 http = "0.2"
 libflate = "1.0"
@@ -41,6 +40,8 @@ tokio = "0.2"
 reqwest = { version = "0.10", default-features = false, features = ["json"] }
 sha2 = "^0.9.0"
 async-stream = "0.3"
+thiserror = "1.0.19"
+url = "2.1.1"
 
 [dev-dependencies]
 dirs = "3.0"

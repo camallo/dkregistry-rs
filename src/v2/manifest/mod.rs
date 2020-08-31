@@ -49,17 +49,12 @@ impl Client {
 
         match status {
             StatusCode::OK => {}
-            _ => return Err(format!("GET {}: wrong HTTP status '{}'", res.url(), status).into()),
+            _ => return Err(Error::UnexpectedHttpStatus(status)),
         }
 
         let headers = res.headers();
         let content_digest = match headers.get("docker-content-digest") {
-            Some(content_digest_value) => Some(
-                content_digest_value
-                    .to_str()
-                    .map_err(|e| Error::from(format!("{}", e)))?
-                    .to_string(),
-            ),
+            Some(content_digest_value) => Some(content_digest_value.to_str()?.to_string()),
             None => {
                 debug!("cannot find manifestref in headers");
                 None
@@ -95,10 +90,7 @@ impl Client {
                 res.json::<ManifestList>().await.map(Manifest::ML)?,
                 content_digest,
             )),
-            unsupported => Err(Error::from(format!(
-                "unsupported mediatype '{:?}'",
-                unsupported
-            ))),
+            unsupported => Err(Error::UnsupportedMediaType(unsupported)),
         }
     }
 
@@ -109,8 +101,7 @@ impl Client {
             name,
             reference
         );
-        reqwest::Url::parse(&ep)
-            .map_err(|e| format!("failed to parse url from string '{}': {}", ep, e).into())
+        reqwest::Url::parse(&ep).map_err(|e| Error::from(e))
     }
 
     /// Fetch content digest for a particular tag.
@@ -130,17 +121,12 @@ impl Client {
 
         match status {
             StatusCode::OK => {}
-            _ => return Err(format!("HEAD {}: wrong HTTP status '{}'", res.url(), status).into()),
+            _ => return Err(Error::UnexpectedHttpStatus(status)),
         }
 
         let headers = res.headers();
         let content_digest = match headers.get("docker-content-digest") {
-            Some(content_digest_value) => Some(
-                content_digest_value
-                    .to_str()
-                    .map_err(|e| Error::from(format!("{}", e)))?
-                    .to_string(),
-            ),
+            Some(content_digest_value) => Some(content_digest_value.to_str()?.to_string()),
             None => {
                 debug!("cannot find manifestref in headers");
                 None
@@ -160,35 +146,19 @@ impl Client {
         mediatypes: Option<&[&str]>,
     ) -> Result<Option<mediatypes::MediaTypes>> {
         let url = self.build_url(name, reference)?;
-        let accept_types = match {
-            match mediatypes {
-                None => {
-                    if let Ok(m) = mediatypes::MediaTypes::ManifestV2S2.to_mime() {
-                        Ok(vec![m])
-                    } else {
-                        Err(Error::from("to_mime failed"))
-                    }
-                }
-                Some(ref v) => to_mimes(v),
+        let accept_types = match mediatypes {
+            None => {
+                let m = mediatypes::MediaTypes::ManifestV2S2.to_mime();
+                vec![m]
             }
-        } {
-            Ok(x) => x,
-            Err(e) => {
-                return Err(Error::from(format!("failed to match mediatypes: {}", e)));
-            }
+            Some(ref v) => to_mimes(v),
         };
 
         let mut accept_headers = header::HeaderMap::with_capacity(accept_types.len());
         for accept_type in accept_types {
-            match header::HeaderValue::from_str(&accept_type.to_string()) {
-                Ok(header_value) => accept_headers.insert(header::ACCEPT, header_value),
-                Err(e) => {
-                    return Err(Error::from(format!(
-                        "failed to parse mime '{}' as accept_header: {}",
-                        accept_type, e
-                    )));
-                }
-            };
+            let header_value = header::HeaderValue::from_str(&accept_type.to_string())
+                .expect("mime type is always valid header value");
+            accept_headers.insert(header::ACCEPT, header_value);
         }
 
         trace!("HEAD {:?}", url);
@@ -216,30 +186,24 @@ impl Client {
             | StatusCode::FOUND
             | StatusCode::OK => Some(media_type),
             StatusCode::NOT_FOUND => None,
-            _ => bail!("has_manifest: wrong HTTP status '{}'", &status),
+            _ => return Err(Error::UnexpectedHttpStatus(status)),
         };
         Ok(res)
     }
 }
 
-fn to_mimes(v: &[&str]) -> Result<Vec<mime::Mime>> {
+fn to_mimes(v: &[&str]) -> Vec<mime::Mime> {
     let res = v
         .iter()
         .filter_map(|x| {
             let mtype = mediatypes::MediaTypes::from_str(x);
             match mtype {
-                Ok(m) => Some(match m.to_mime() {
-                    Ok(mime) => mime,
-                    Err(e) => {
-                        error!("to_mime failed: {}", e);
-                        return None;
-                    }
-                }),
+                Ok(m) => Some(m.to_mime()),
                 _ => None,
             }
         })
         .collect();
-    Ok(res)
+    res
 }
 
 // Evaluate the `MediaTypes` from the the request header.
@@ -257,9 +221,7 @@ fn evaluate_media_type(
         (Some(header_value), false) => {
             mediatypes::MediaTypes::from_str(header_value).map_err(Into::into)
         }
-        (None, false) => Err(Error::from(
-            "no header_content_type given and no workaround to apply".to_string(),
-        )),
+        (None, false) => Err(Error::MediaTypeSniff),
         (Some(header_value), true) => {
             // TODO: remove this workaround once Satellite returns a proper content-type here
             match header_value {
@@ -333,6 +295,18 @@ pub enum Manifest {
     ML(manifest_schema2::ManifestList),
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum ManifestError {
+    #[error("no architecture in manifest")]
+    NoArchitecture,
+    #[error("architecture mismatch")]
+    ArchitectureMismatch,
+    #[error("manifest {0} does not support the 'layer_digests' method")]
+    LayerDigestsUnsupported(String),
+    #[error("manifest {0} does not support the 'architecture' method")]
+    ArchitectureNotSupported(String),
+}
+
 impl Manifest {
     /// List digests of all layers referenced by this manifest, if available.
     ///
@@ -344,23 +318,23 @@ impl Manifest {
             (Manifest::S1Signed(m), Ok(ref self_architectures), Some(ref a)) => {
                 let self_a = self_architectures
                     .first()
-                    .ok_or("no architecture in manifest")?;
-                ensure!(self_a == a, "architecture mismatch");
+                    .ok_or(ManifestError::NoArchitecture)?;
+                if self_a != a {
+                    return Err(ManifestError::ArchitectureMismatch.into());
+                }
                 Ok(m.get_layers())
             }
             (Manifest::S2(m), Ok(ref self_architectures), Some(ref a)) => {
                 let self_a = self_architectures
                     .first()
-                    .ok_or("no architecture in manifest")?;
-                ensure!(self_a == a, "architecture mismatch");
+                    .ok_or(ManifestError::NoArchitecture)?;
+                if self_a != a {
+                    return Err(ManifestError::ArchitectureMismatch.into());
+                }
                 Ok(m.get_layers())
             }
             // Manifest::ML(_) => TODO(steveeJ),
-            _ => Err(format!(
-                "Manifest {:?} doesn't support the 'layer_digests' method",
-                self
-            )
-            .into()),
+            _ => Err(ManifestError::LayerDigestsUnsupported(format!("{:?}", self)).into()),
         }
     }
 
@@ -370,11 +344,7 @@ impl Manifest {
             Manifest::S1Signed(m) => Ok([m.architecture.clone()].to_vec()),
             Manifest::S2(m) => Ok([m.architecture()].to_vec()),
             // Manifest::ML(_) => TODO(steveeJ),
-            _ => Err(format!(
-                "Manifest {:?} doesn't support the 'architecture' method",
-                self
-            )
-            .into()),
+            _ => Err(ManifestError::ArchitectureNotSupported(format!("{:?}", self)).into()),
         }
     }
 }

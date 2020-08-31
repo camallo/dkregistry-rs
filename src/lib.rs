@@ -36,8 +36,6 @@
 #[macro_use]
 extern crate serde;
 #[macro_use]
-extern crate error_chain;
-#[macro_use]
 extern crate log;
 #[macro_use]
 extern crate strum_macros;
@@ -48,9 +46,10 @@ pub mod reference;
 pub mod render;
 pub mod v2;
 
-use errors::Result;
+use errors::{Result, Error};
 use std::collections::HashMap;
 use std::io::Read;
+
 
 /// Default User-Agent client identity.
 pub static USER_AGENT: &str = "camallo-dkregistry/0.0";
@@ -71,7 +70,7 @@ pub fn get_credentials<T: Read>(
     };
     let auth = match map.auths.get(real_index) {
         Some(x) => base64::decode(x.auth.as_str())?,
-        None => bail!("no auth for index {}", real_index),
+        None => return Err(Error::AuthInfoMissing(real_index.to_string())),
     };
     let s = String::from_utf8(auth)?;
     let creds: Vec<&str> = s.splitn(2, ':').collect();

@@ -1,4 +1,4 @@
-use crate::errors::{Error, Result};
+use crate::errors::Result;
 use crate::v2::*;
 use async_stream::try_stream;
 use reqwest::{self, header, Url};
@@ -54,15 +54,14 @@ impl Client {
             (Some(p), Some(l)) => format!("{}?n={}&next_page={}", base_url, p, l),
             _ => base_url.to_string(),
         };
-        let url = Url::parse(&url_paginated).map_err(|e| Error::from(format!("{}", e)))?;
+        let url = Url::parse(&url_paginated)?;
 
         let resp = self
             .build_reqwest(Method::GET, url.clone())
             .header(header::ACCEPT, "application/json")
             .send()
             .await?
-            .error_for_status()
-            .map_err(|e| Error::from(format!("{}", e)))?;
+            .error_for_status()?;
 
         // ensure the CONTENT_TYPE header is application/json
         let ct_hdr = resp.headers().get(header::CONTENT_TYPE).cloned();
@@ -71,10 +70,7 @@ impl Client {
 
         let ok = match ct_hdr {
             None => false,
-            Some(ref ct) => ct
-                .to_str()
-                .map_err(|e| Error::from(format!("{}", e)))?
-                .starts_with("application/json"),
+            Some(ref ct) => ct.to_str()?.starts_with("application/json"),
         };
         if !ok {
             // TODO:(steveeJ): Make this an error once Satellite

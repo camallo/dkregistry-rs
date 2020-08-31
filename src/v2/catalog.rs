@@ -1,4 +1,4 @@
-use crate::errors::{Result, ResultExt};
+use crate::errors::Result;
 use crate::v2;
 use async_stream::try_stream;
 use futures::stream::Stream;
@@ -23,8 +23,7 @@ impl v2::Client {
             };
             let ep = format!("{}/v2/_catalog{}", self.base_url.clone(), suffix);
 
-            reqwest::Url::parse(&ep)
-                .chain_err(|| format!("failed to parse url from string '{}'", ep))
+            reqwest::Url::parse(&ep).map_err(|err| crate::Error::from(err))
         };
 
         try_stream! {
@@ -46,8 +45,7 @@ async fn fetch_catalog(req: RequestBuilder) -> Result<Catalog> {
     match status {
         StatusCode::OK => r
             .json::<Catalog>()
-            .await
-            .chain_err(|| "get_catalog: failed to fetch the whole body"),
-        _ => bail!("get_catalog: wrong HTTP status '{}'", status),
+            .await.map_err(Into::into),
+        _ => Err(crate::Error::UnexpectedHttpStatus(status)),
     }
 }

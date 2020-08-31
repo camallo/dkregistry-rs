@@ -70,10 +70,7 @@ async fn run(
     let version = dkr_ref.version();
 
     let dclient = client.authenticate(&[&login_scope]).await?;
-    let manifest = match dclient.get_manifest(&image, &version).await {
-        Ok(manifest) => Ok(manifest),
-        Err(e) => Err(format!("Got error {}", e)),
-    }?;
+    let manifest = dclient.get_manifest(&image, &version).await?;
 
     if let Manifest::S1Signed(s1s) = manifest {
         let labels = s1s.get_labels(0);

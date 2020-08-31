@@ -8,15 +8,7 @@ impl Client {
     pub async fn has_blob(&self, name: &str, digest: &str) -> Result<bool> {
         let url = {
             let ep = format!("{}/v2/{}/blobs/{}", self.base_url, name, digest);
-            match reqwest::Url::parse(&ep) {
-                Ok(url) => url,
-                Err(e) => {
-                    return Err(Error::from(format!(
-                        "failed to parse url from string: {}",
-                        e
-                    )));
-                }
-            }
+            reqwest::Url::parse(&ep)?
         };
 
         let res = self.build_reqwest(Method::HEAD, url.clone()).send().await?;
@@ -35,8 +27,7 @@ impl Client {
 
         let blob = {
             let ep = format!("{}/v2/{}/blobs/{}", self.base_url, name, digest);
-            let url = reqwest::Url::parse(&ep)
-                .map_err(|e| Error::from(format!("failed to parse url from string: {}", e)))?;
+            let url = reqwest::Url::parse(&ep)?;
 
             let res = self.build_reqwest(Method::GET, url.clone()).send().await?;
 
@@ -47,10 +38,7 @@ impl Client {
                 // Let client errors through to populate them with the body
                 || status.is_client_error())
             {
-                return Err(Error::from(format!(
-                    "GET request failed with status '{}'",
-                    status
-                )));
+                return Err(Error::UnexpectedHttpStatus(status));
             }
 
             let status = res.status();
@@ -61,22 +49,18 @@ impl Client {
                 trace!("Successfully received blob with {} bytes ", len);
                 Ok(body_vec)
             } else if status.is_client_error() {
-                Err(Error::from(format!(
-                    "GET request failed with status '{}' and body of size {}: {:#?}",
+                Err(Error::Client {
                     status,
                     len,
-                    String::from_utf8_lossy(&body_vec)
-                )))
+                    body: body_vec,
+                })
             } else {
                 // We only want to handle success and client errors here
                 error!(
                     "Received unexpected HTTP status '{}' after fetching the body. Please submit a bug report.",
                     status
                 );
-                Err(Error::from(format!(
-                    "GET request failed with status '{}'",
-                    status
-                )))
+                Err(Error::UnexpectedHttpStatus(status))
             }
         }?;
 

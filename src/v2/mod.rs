@@ -37,6 +37,7 @@ pub use self::config::Config;
 mod catalog;
 
 mod auth;
+pub use auth::WwwHeaderParseError;
 
 pub mod manifest;
 
@@ -46,6 +47,7 @@ mod blobs;
 
 mod content_digest;
 pub(crate) use self::content_digest::ContentDigest;
+pub use self::content_digest::ContentDigestError;
 
 /// A Client to make outgoing API requests to a registry.
 #[derive(Clone, Debug)]
@@ -66,7 +68,7 @@ impl Client {
     /// Ensure remote registry supports v2 API.
     pub async fn ensure_v2_registry(self) -> Result<Self> {
         if !self.is_v2_supported().await? {
-            bail!("remote server does not support docker-registry v2 API")
+            return Err(Error::V2NotSupported)
         } else {
             Ok(self)
         }
@@ -80,7 +82,6 @@ impl Client {
         // GET request to bare v2 endpoint.
         let v2_endpoint = format!("{}/v2/", self.base_url);
         let request = reqwest::Url::parse(&v2_endpoint)
-            .chain_err(|| format!("failed to parse url string '{}'", &v2_endpoint))
             .map(|url| {
                 trace!("GET {:?}", url);
                 self.build_reqwest(Method::GET, url)

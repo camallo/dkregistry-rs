@@ -18,7 +18,7 @@ pub enum MediaTypes {
         serialize = "application/vnd.docker.distribution.manifest.v1+prettyjws",
         to_string = "application/vnd.docker.distribution.manifest.v1+prettyjws",
 
-        // TODO(steveeJ) find a generic way to handle this form
+        // TODO(steveeJ) find a generic way to handle this form (see also ApplicationJson)
         serialize = "application/vnd.docker.distribution.manifest.v1+prettyjws; charset=utf-8",
     )]
     #[strum(props(Sub = "vnd.docker.distribution.manifest.v1+prettyjws"))]
@@ -40,7 +40,11 @@ pub enum MediaTypes {
     #[strum(props(Sub = "vnd.docker.container.image.v1+json"))]
     ContainerConfigV1,
     /// Generic JSON
-    #[strum(serialize = "application/json")]
+    #[strum(
+        serialize = "application/json",
+        to_string = "application/json",
+        serialize = "application/json; charset=utf-8",
+    )]
     #[strum(props(Sub = "json"))]
     ApplicationJson,
 }

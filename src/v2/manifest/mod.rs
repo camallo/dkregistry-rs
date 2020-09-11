@@ -171,24 +171,26 @@ impl Client {
             .map_err(Error::from)?;
 
         let status = r.status();
-        let media_type = evaluate_media_type(r.headers().get(header::CONTENT_TYPE), &r.url())?;
 
         trace!(
-            "Manifest check status '{:?}', headers '{:?}, media-type: {:?}",
+            "Manifest check status '{:?}', headers '{:?}",
             r.status(),
             r.headers(),
-            media_type
         );
 
-        let res = match status {
+        match status {
             StatusCode::MOVED_PERMANENTLY
             | StatusCode::TEMPORARY_REDIRECT
             | StatusCode::FOUND
-            | StatusCode::OK => Some(media_type),
-            StatusCode::NOT_FOUND => None,
-            _ => return Err(Error::UnexpectedHttpStatus(status)),
-        };
-        Ok(res)
+            | StatusCode::OK => {
+                let media_type =
+                    evaluate_media_type(r.headers().get(header::CONTENT_TYPE), &r.url())?;
+                trace!("Manifest media-type: {:?}", media_type);
+                Ok(Some(media_type))
+            }
+            StatusCode::NOT_FOUND => Ok(None),
+            _ => Err(Error::UnexpectedHttpStatus(status)),
+        }
     }
 }
 

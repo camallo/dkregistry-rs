@@ -201,7 +201,7 @@ impl WwwAuthenticateHeaderContentBearer {
             .iter()
             .enumerate()
             .fold(String::new(), |acc, (i, &s)| {
-                let separator = if i > 1 { "&" } else { "" };
+                let separator = if i > 0 { "&" } else { "" };
                 acc + separator + "scope=" + s
             });
 
@@ -311,6 +311,7 @@ impl Client {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use test_case::test_case;
 
     #[test]
     fn bearer_realm_parses_correctly() -> Result<()> {
@@ -361,5 +362,47 @@ mod tests {
         );
 
         Ok(())
+    }
+
+    // The following test checks the url construction within the 'auth_ep'
+    // method of WwwAuthenticateHeaderContentBearer.
+    // Tests that the result is correctly parsed by Url::parse and that the
+    // scopes in the query string are as expected in three situations.
+    // Tests combination of scopes with service query param also.
+    #[test_case(&[], true; "Test with no scopes and with service")]
+    #[test_case(&["repository:test:pull"], true; "Test with single scope and service")]
+    #[test_case(&["repository:test:pull", "repository:example:pull,push", "repository:another:*"], false;
+                "Test with multiple scopes")]
+    fn bearer_auth_ep_scope_construction(scopes: &[&str], include_service: bool) {
+        let realm = "https://sat-r220-02.lab.eng.rdu2.redhat.com/v2/token";
+        let service = "sat-r220-02.lab.eng.rdu2.redhat.com";
+
+        let bearer_header_content = WwwAuthenticateHeaderContentBearer {
+            realm: realm.to_string(),
+            service: if include_service {
+                Some(service.to_string())
+            } else {
+                None
+            },
+            scope: None,
+        };
+
+        // build list of expected headers
+        let mut expected_headers: Vec<(String, String)> = scopes
+            .iter()
+            .map(|a| ("scope".to_owned(), a.to_string()))
+            .collect();
+        // first one is the service header if specified
+        if include_service {
+            expected_headers.insert(0, ("service".to_owned(), service.to_string()));
+        }
+
+        let result = bearer_header_content.auth_ep(scopes);
+        let url = Url::parse(&result).unwrap();
+
+        assert_eq!(
+            url.query_pairs().into_owned().collect::<Vec<_>>(),
+            expected_headers
+        );
     }
 }

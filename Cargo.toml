@@ -23,7 +23,7 @@ pro-release-commit-message = "cargo: development version bump"
 tag-prefix = ""
 
 [dependencies]
-base64 = "0.12"
+base64 = "0.13"
 futures = "0.3"
 http = "0.2"
 libflate = "1.0"

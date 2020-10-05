@@ -68,7 +68,7 @@ impl Client {
     /// Ensure remote registry supports v2 API.
     pub async fn ensure_v2_registry(self) -> Result<Self> {
         if !self.is_v2_supported().await? {
-            return Err(Error::V2NotSupported)
+            Err(Error::V2NotSupported)
         } else {
             Ok(self)
         }

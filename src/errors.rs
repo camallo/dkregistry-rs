@@ -52,7 +52,7 @@ pub enum Error {
     #[error("reference is invalid")]
     ReferenceParse(#[from] crate::reference::ReferenceParseError),
     #[error("requested operation requires that credentials are available")]
-    NoCredentials
+    NoCredentials,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

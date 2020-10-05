@@ -9,7 +9,7 @@ pub enum Error {
     HeaderParse(#[from] http::header::ToStrError),
     #[error("json error")]
     Json(#[from] serde_json::Error),
-    #[error("http transport error")]
+    #[error("http transport error: {0}")]
     Reqwest(#[from] reqwest::Error),
     #[error("URI parse error")]
     Uri(#[from] url::ParseError),

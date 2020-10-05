@@ -76,29 +76,36 @@ impl Client {
 
     /// Check whether remote registry supports v2 API.
     pub async fn is_v2_supported(&self) -> Result<bool> {
+        match self.is_v2_supported_and_authorized().await {
+            Ok((v2_supported, _)) => Ok(v2_supported),
+            Err(crate::Error::UnexpectedHttpStatus(_)) => Ok(false),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Check whether remote registry supports v2 API and `self` is authorized.
+    /// Authorized means to successfully GET the `/v2` endpoint on the remote registry.
+    pub async fn is_v2_supported_and_authorized(&self) -> Result<(bool, bool)> {
         let api_header = "Docker-Distribution-API-Version";
         let api_version = "registry/2.0";
 
         // GET request to bare v2 endpoint.
         let v2_endpoint = format!("{}/v2/", self.base_url);
-        let request = reqwest::Url::parse(&v2_endpoint)
-            .map(|url| {
-                trace!("GET {:?}", url);
-                self.build_reqwest(Method::GET, url)
-            })?;
+        let request = reqwest::Url::parse(&v2_endpoint).map(|url| {
+            trace!("GET {:?}", url);
+            self.build_reqwest(Method::GET, url)
+        })?;
 
         let response = request.send().await?;
 
         let b = match (response.status(), response.headers().get(api_header)) {
-            (StatusCode::OK, Some(x)) => Ok(x == api_version),
-            (StatusCode::UNAUTHORIZED, Some(x)) => Ok(x == api_version),
+            (StatusCode::OK, Some(x)) => Ok((x == api_version, true)),
+            (StatusCode::UNAUTHORIZED, Some(x)) => Ok((x == api_version, false)),
             (s, v) => {
                 trace!("Got unexpected status {}, header version {:?}", s, v);
-                Ok(false)
+                return Err(crate::Error::UnexpectedHttpStatus(s));
             }
         };
-
-        trace!("v2 API supported: {:?}", b);
 
         b
     }

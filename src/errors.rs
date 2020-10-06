@@ -9,7 +9,7 @@ pub enum Error {
     HeaderParse(#[from] http::header::ToStrError),
     #[error("json error")]
     Json(#[from] serde_json::Error),
-    #[error("http transport error")]
+    #[error("http transport error: {0}")]
     Reqwest(#[from] reqwest::Error),
     #[error("URI parse error")]
     Uri(#[from] url::ParseError),
@@ -52,7 +52,7 @@ pub enum Error {
     #[error("reference is invalid")]
     ReferenceParse(#[from] crate::reference::ReferenceParseError),
     #[error("requested operation requires that credentials are available")]
-    NoCredentials
+    NoCredentials,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

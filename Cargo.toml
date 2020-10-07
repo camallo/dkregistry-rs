@@ -14,13 +14,12 @@ exclude = [
 edition = "2018"
 
 [package.metadata.release]
-sign-commit = true
-upload-doc = false
 disable-publish = true
 disable-push = true
+post-release-commit-message = "cargo: development version bump"
 pre-release-commit-message = "cargo: dkregistry release {{version}}"
-pro-release-commit-message = "cargo: development version bump"
-tag-prefix = ""
+sign-commit = true
+tag-message = "dkregistry v{{version}}"
 
 [dependencies]
 base64 = "0.13"

@@ -46,7 +46,7 @@ url = "2.1.1"
 [dev-dependencies]
 dirs = "3.0"
 env_logger = "0.8"
-mockito = "0.27"
+mockito = "0.28"
 spectral = "0.6"
 test-case = "1.0.0"
 tokio = { version = "0.2", features = ["macros"] }

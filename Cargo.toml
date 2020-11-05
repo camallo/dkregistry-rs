@@ -49,7 +49,7 @@ env_logger = "0.7"
 mockito = "0.27"
 spectral = "0.6"
 test-case = "1.0.0"
-tokio = { version = "0.3", features = ["macros"] }
+tokio = { version = "0.3", features = ["macros", "rt-multi-thread"] }
 
 [features]
 default = ["reqwest-default-tls"]

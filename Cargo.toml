@@ -36,7 +36,7 @@ serde_ignored = "0.1"
 strum = "0.20"
 strum_macros = "0.20"
 tar = "0.4"
-tokio = "0.2"
+tokio = "1.2"
 reqwest = { version = "0.10", default-features = false, features = ["json"] }
 sha2 = "^0.9.0"
 async-stream = "0.2"
@@ -49,7 +49,7 @@ env_logger = "0.8"
 mockito = "0.29"
 spectral = "0.6"
 test-case = "1.0.0"
-tokio = { version = "0.2", features = ["macros"] }
+tokio = { version = "1.2", features = ["macros"] }
 
 [features]
 default = ["reqwest-default-tls"]

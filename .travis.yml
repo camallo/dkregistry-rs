@@ -3,7 +3,7 @@ rust:
   - stable
   - beta
   - nightly
-  - 1.43.1
+  - 1.45.0
 cache: cargo
 matrix:
   allow_failures:

@@ -1,6 +1,7 @@
 use crate::errors::{Error, Result};
 use crate::v2::*;
 use reqwest::{header::HeaderValue, RequestBuilder, StatusCode, Url};
+use std::convert::TryFrom;
 
 /// Represents all supported authentication schemes and is stored by `Client`.
 #[derive(Debug, Clone)]
@@ -21,13 +22,49 @@ impl Auth {
     }
 }
 
+/// Intermediate struct used for Bearer HTTP Authentication deserialization.
+#[derive(Debug, Clone, Default, Deserialize)]
+struct BearerIntermediate {
+    token: Option<String>,
+    /* "For compatibility with OAuth 2.0, we will also accept token under the name access_token.
+     At least one of these fields must be specified, but both may also appear
+     (for compatibility with older clients). When both are specified, they should be equivalent;
+     if they differ the client's choice is undefined."
+    from: https://docs.docker.com/registry/spec/auth/token/ */
+    access_token: Option<String>,
+    expires_in: Option<u32>,
+    issued_at: Option<String>,
+    refresh_token: Option<String>,
+}
+
 /// Used for Bearer HTTP Authentication.
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
+/* We have a required field that may appear under multiple names.
+serde does not provide attributes for that scenario, so instead of manually
+implementing Deserialize we use an intermediate struct. */
+#[serde(try_from = "BearerIntermediate")]
 pub struct BearerAuth {
     token: String,
     expires_in: Option<u32>,
     issued_at: Option<String>,
     refresh_token: Option<String>,
+}
+
+impl TryFrom<BearerIntermediate> for BearerAuth {
+    type Error = &'static str;
+    fn try_from(value: BearerIntermediate) -> std::result::Result<BearerAuth, Self::Error> {
+        // if both specified, prefer 'token'
+        let token = value
+            .token
+            .or(value.access_token)
+            .ok_or("Missing 'token' field")?;
+        Ok(BearerAuth {
+            token: token,
+            expires_in: value.expires_in,
+            issued_at: value.issued_at,
+            refresh_token: value.refresh_token,
+        })
+    }
 }
 
 impl BearerAuth {

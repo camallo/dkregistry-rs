@@ -1,5 +1,7 @@
 use crate::errors::{Error, Result};
 use reqwest::Method;
+use serde::ser::SerializeMap;
+use std::collections::{HashMap, HashSet};
 
 /// Manifest version 2 schema 2.
 ///
@@ -36,8 +38,107 @@ pub struct Config {
 /// [image-spec-v1]: https://github.com/moby/moby/blob/a30990b3c8d0d42280fa501287859e1d2393a951/image/spec/v1.md#image-json-description
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct ConfigBlob {
-    architecture: String,
+    /// CPU Architecture supported by this image.
+    /// Common values: "amd64", "arm", "386".
+    pub architecture: String,
+    /// Operating system, supported as a host.
+    /// Common values: "linux", "freebsd", "darwin".
+    pub os: String,
+    /// Runtime configuration
+    #[serde(rename = "config", default, skip_serializing_if = "Option::is_none")]
+    pub runtime_config: Option<RuntimeConfig>,
 }
+
+/// RunConfig, as defined by [OCI image specification][image-spec-v1].
+/// See specification for detailed explanation.
+///
+/// [image-spec-v1]: https://github.com/moby/moby/blob/a30990b3c8d0d42280fa501287859e1d2393a951/image/spec/v1.md#container-runconfig-field-descriptions
+#[derive(Debug, Default, Deserialize, Serialize)]
+pub struct RuntimeConfig {
+    /// Defines user and optionally group to use when running this image.
+    #[serde(rename = "User", default, skip_serializing_if = "Option::is_none")]
+    pub user: Option<String>,
+    /// Default memory limit in bytes.
+    #[serde(rename = "Memory", default, skip_serializing_if = "Option::is_none")]
+    pub memory: Option<u64>,
+    /// Default memory+swap limit in bytes; value of -1 disables swap.
+    #[serde(
+        rename = "MemorySwap",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub memory_swap: Option<i64>,
+    /// Default CPU shares.
+    #[serde(rename = "CpuShares", default, skip_serializing_if = "Option::is_none")]
+    pub cpu_shares: Option<u32>,
+    /// Ports that should be exposed
+    #[serde(
+        rename = "ExposedPorts",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub exposed_ports: Option<OciHashSet<String>>,
+    /// Environment variables that should be set
+    #[serde(rename = "Env", default, skip_serializing_if = "Option::is_none")]
+    pub env: Option<Vec<String>>,
+    /// Environment variables that should be set
+    #[serde(
+        rename = "Entrypoint",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub entrypoint: Option<Vec<String>>,
+    /// Environment variables that should be set
+    #[serde(rename = "Cmd", default, skip_serializing_if = "Option::is_none")]
+    pub cmd: Option<Vec<String>>,
+    /// Volumes that should be exposed
+    #[serde(rename = "Volumes", default, skip_serializing_if = "Option::is_none")]
+    pub volumes: Option<OciHashSet<std::path::PathBuf>>,
+    /// Default working directory
+    #[serde(
+        rename = "WorkingDir",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub working_dir: Option<std::path::PathBuf>,
+    /// User-defined metadata
+    #[serde(rename = "Labels")]
+    pub labels: Option<HashMap<String, String>>,
+}
+
+/// OCI specification uses strange JSON encoding for sets.
+/// This struct wraps HashSet, implementing this encoding.
+#[derive(Debug, Default)]
+pub struct OciHashSet<T>(pub HashSet<T>);
+
+impl<T: serde::Serialize> serde::Serialize for OciHashSet<T> {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut map_serializer = serializer.serialize_map(Some(self.0.len()))?;
+        for item in &self.0 {
+            map_serializer.serialize_entry(item, &EmptyStruct {})?;
+        }
+        map_serializer.end()
+    }
+}
+
+impl<'de, T: serde::Deserialize<'de> + Eq + std::hash::Hash> serde::Deserialize<'de>
+    for OciHashSet<T>
+{
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::de::Deserializer<'de>,
+    {
+        let map = std::collections::HashMap::<T, EmptyStruct>::deserialize(deserializer)?;
+        Ok(OciHashSet(map.into_iter().map(|(k, _v)| k).collect()))
+    }
+}
+
+// will be encoded as `{}` in JSON, while () would encode as `null`
+#[derive(Serialize, Deserialize)]
+struct EmptyStruct {}
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 struct S2Layer {

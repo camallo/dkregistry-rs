@@ -9,6 +9,7 @@ pub struct Config {
     username: Option<String>,
     password: Option<String>,
     accept_invalid_certs: bool,
+    client: Option<reqwest::Client>,
 }
 
 impl Config {
@@ -21,6 +22,7 @@ impl Config {
             user_agent: Some(crate::USER_AGENT.to_owned()),
             username: None,
             password: None,
+            client: None,
         }
     }
 
@@ -69,6 +71,12 @@ impl Config {
         self
     }
 
+    /// Specify a prebuilt reqwest http client to be used when interacting with the registry.
+    pub fn client(mut self, client: reqwest::Client) -> Self {
+        self.client = Some(client);
+        self
+    }
+
     /// Return a `Client` to interact with a v2 registry.
     pub fn build(self) -> Result<Client> {
         let base = if self.insecure_registry {
@@ -89,9 +97,13 @@ impl Config {
                 p.unwrap_or_else(|| "".into()),
             )),
         };
-        let client = reqwest::ClientBuilder::new()
-            .danger_accept_invalid_certs(self.accept_invalid_certs)
-            .build()?;
+
+        let client = match self.client {
+            Some(client) => Ok(client),
+            None => reqwest::ClientBuilder::new()
+                .danger_accept_invalid_certs(self.accept_invalid_certs)
+                .build(),
+        }?;
 
         let c = Client {
             base_url: base,

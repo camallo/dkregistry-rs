@@ -206,7 +206,7 @@ fn parse_url(input: &str) -> Result<Reference, ReferenceParseError> {
     let registry = if regex::Regex::new(r"(?x)
         ^
         # hostname
-        (([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)+([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])
+        (([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])
 
         # optional port
         ([:][0-9]{1,6})?

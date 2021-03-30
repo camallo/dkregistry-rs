@@ -10,7 +10,7 @@ fn valid_references() {
         input: &'a str,
         expected_repo: &'a str,
         expected_registry: &'a str,
-    };
+    }
 
     impl<'a> Default for Tcase<'a> {
         fn default() -> Tcase<'a> {
@@ -73,6 +73,11 @@ fn valid_references() {
             input: "1.2.3.4/busybox:5000",
             expected_registry: "1.2.3.4",
             expected_repo: "busybox",
+        },
+        Tcase {
+            input: "registry:5000/busybox",
+            expected_repo: "busybox",
+            expected_registry: "registry:5000",
         },
     ] {
         let r = Reference::from_str(t.input);

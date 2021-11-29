@@ -91,16 +91,17 @@ pub struct BasicAuth {
 
 /// Structured representation for the content of the authentication response header.
 #[derive(Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all(deserialize = "lowercase"))]
 pub(crate) enum WwwAuthenticateHeaderContent {
     Bearer(WwwAuthenticateHeaderContentBearer),
     Basic(WwwAuthenticateHeaderContentBasic),
 }
 
 const REGEX: &str = r#"(?x)\s*
-((?P<method>[A-Z][a-z]+)\s*)?
+((?P<method>[A-Za-z]+)\s)?
+\s*
 (
-    \s*
-        (?P<key>[a-z]+)
+        (?P<key>[A-Za-z]+)
     \s*
         =
     \s*
@@ -133,6 +134,7 @@ impl WwwAuthenticateHeaderContent {
             .name("method")
             .ok_or(WwwHeaderParseError::FieldMethodMissing)?
             .as_str()
+            .to_lowercase()
             .to_string();
 
         let serialized_content = {
@@ -140,7 +142,7 @@ impl WwwAuthenticateHeaderContent {
                 .iter()
                 .filter_map(|capture| {
                     match (
-                        capture.name("key").map(|n| n.as_str().to_string()),
+                        capture.name("key").map(|n| n.as_str().to_lowercase().to_string()),
                         capture.name("value").map(|n| n.as_str().to_string()),
                     ) {
                         (Some(key), Some(value)) => Some(format!(
@@ -319,12 +321,29 @@ mod tests {
         let service = "sat-r220-02.lab.eng.rdu2.redhat.com";
         let scope = "repository:registry:pull,push";
 
-        let header_value = HeaderValue::from_str(&format!(
-            r#"Bearer realm="{}",service="{}",scope="{}""#,
-            realm, service, scope
-        )).expect("this statically known header value only contains ASCII chars so it is correct header value");
-
-        let content = WwwAuthenticateHeaderContent::from_www_authentication_header(header_value)?;
+        for header_value in [
+            HeaderValue::from_str(&format!(
+                r#"Bearer realm="{}",service="{}",scope="{}""#,
+                realm, service, scope
+            )).unwrap(),
+            HeaderValue::from_str(&format!(
+                r#"bearer realm="{}",service="{}",scope="{}""#,
+                realm, service, scope
+            )).unwrap(),
+            HeaderValue::from_str(&format!(
+                r#"BEARER realm="{}",service="{}",scope="{}""#,
+                realm, service, scope
+            )).unwrap(),
+            HeaderValue::from_str(&format!(
+                r#"Bearer Realm="{}",Service="{}",Scope="{}""#,
+                realm, service, scope
+            )).unwrap(),
+            HeaderValue::from_str(&format!(
+                r#"Bearer REALM="{}",SERVICE="{}",SCOPE="{}""#,
+                realm, service, scope
+            )).unwrap()
+        ] {
+            let content = WwwAuthenticateHeaderContent::from_www_authentication_header(header_value)?;
 
         assert_eq!(
             WwwAuthenticateHeaderContent::Bearer(WwwAuthenticateHeaderContentBearer {
@@ -334,6 +353,7 @@ mod tests {
             }),
             content
         );
+        }
 
         Ok(())
     }
@@ -350,16 +370,23 @@ mod tests {
     fn basic_realm_parses_correctly() -> Result<()> {
         let realm = "Registry realm";
 
-        let header_value = HeaderValue::from_str(&format!(r#"Basic realm="{}""#, realm)).unwrap();
+        for header_value in [
+            HeaderValue::from_str(&format!(r#"Basic realm="{}""#, realm)).unwrap(),
+            HeaderValue::from_str(&format!(r#"basic realm="{}""#, realm)).unwrap(),
+            HeaderValue::from_str(&format!(r#"BASIC realm="{}""#, realm)).unwrap(),
+            HeaderValue::from_str(&format!(r#"Basic Realm="{}""#, realm)).unwrap(),
+            HeaderValue::from_str(&format!(r#"Basic REALM="{}""#, realm)).unwrap()
+        ] {
+            let content =
+                WwwAuthenticateHeaderContent::from_www_authentication_header(header_value)?;
 
-        let content = WwwAuthenticateHeaderContent::from_www_authentication_header(header_value)?;
-
-        assert_eq!(
-            WwwAuthenticateHeaderContent::Basic(WwwAuthenticateHeaderContentBasic {
-                realm: realm.to_string(),
-            }),
-            content
-        );
+            assert_eq!(
+                WwwAuthenticateHeaderContent::Basic(WwwAuthenticateHeaderContentBasic {
+                    realm: realm.to_string(),
+                }),
+                content
+            );
+        }
 
         Ok(())
     }

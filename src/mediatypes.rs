@@ -1,6 +1,6 @@
 //! Media-types for API objects.
 
-use crate::errors::{Result};
+use crate::errors::Result;
 use mime;
 use strum::EnumProperty;
 

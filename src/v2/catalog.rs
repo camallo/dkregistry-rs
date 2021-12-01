@@ -43,9 +43,7 @@ async fn fetch_catalog(req: RequestBuilder) -> Result<Catalog> {
     let status = r.status();
     trace!("Got status: {:?}", status);
     match status {
-        StatusCode::OK => r
-            .json::<Catalog>()
-            .await.map_err(Into::into),
+        StatusCode::OK => r.json::<Catalog>().await.map_err(Into::into),
         _ => Err(crate::Error::UnexpectedHttpStatus(status)),
     }
 }

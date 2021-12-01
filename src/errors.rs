@@ -37,14 +37,9 @@ pub enum Error {
     LoginReturnedBadToken,
     #[error("www-authenticate header parse error")]
     Www(#[from] crate::v2::WwwHeaderParseError),
-    #[error(
-        "request failed with status {status} and body of size {len}: {}",
-        String::from_utf8_lossy(body)
-    )]
+    #[error("request failed with status {status}")]
     Client {
         status: http::StatusCode,
-        len: usize,
-        body: Vec<u8>,
     },
     #[error("content digest error")]
     ContentDigestParse(#[from] crate::v2::ContentDigestError),

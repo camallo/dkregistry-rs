@@ -44,7 +44,7 @@ thiserror = "1.0.19"
 url = "2.1.1"
 
 [dev-dependencies]
-dirs = "3.0"
+dirs = "4.0"
 env_logger = "0.8"
 mockito = "0.30"
 spectral = "0.6"

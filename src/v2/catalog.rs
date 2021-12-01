@@ -23,7 +23,7 @@ impl v2::Client {
             };
             let ep = format!("{}/v2/_catalog{}", self.base_url.clone(), suffix);
 
-            reqwest::Url::parse(&ep).map_err(|err| crate::Error::from(err))
+            reqwest::Url::parse(&ep).map_err(crate::Error::from)
         };
 
         try_stream! {

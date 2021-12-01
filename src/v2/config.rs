@@ -99,7 +99,7 @@ impl Config {
             index: self.index,
             user_agent: self.user_agent,
             auth: None,
-            client: client,
+            client,
         };
         Ok(c)
     }

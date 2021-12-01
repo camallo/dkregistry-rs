@@ -101,7 +101,7 @@ impl Client {
             name,
             reference
         );
-        reqwest::Url::parse(&ep).map_err(|e| Error::from(e))
+        reqwest::Url::parse(&ep).map_err(Error::from)
     }
 
     /// Fetch content digest for a particular tag.
@@ -151,7 +151,7 @@ impl Client {
                 let m = mediatypes::MediaTypes::ManifestV2S2.to_mime();
                 vec![m]
             }
-            Some(ref v) => to_mimes(v),
+            Some(v) => to_mimes(v),
         };
 
         let mut accept_headers = header::HeaderMap::with_capacity(accept_types.len());
@@ -184,7 +184,7 @@ impl Client {
             | StatusCode::FOUND
             | StatusCode::OK => {
                 let media_type =
-                    evaluate_media_type(r.headers().get(header::CONTENT_TYPE), &r.url())?;
+                    evaluate_media_type(r.headers().get(header::CONTENT_TYPE), r.url())?;
                 trace!("Manifest media-type: {:?}", media_type);
                 Ok(Some(media_type))
             }

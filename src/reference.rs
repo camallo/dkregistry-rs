@@ -29,7 +29,6 @@
 // The `docker://` schema is not officially documented, but has a reference implementation:
 // https://github.com/docker/distribution/blob/v2.6.1/reference/reference.go
 
-use regex;
 use std::collections::VecDeque;
 use std::str::FromStr;
 use std::{fmt, str};

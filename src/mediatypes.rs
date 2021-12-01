@@ -1,7 +1,6 @@
 //! Media-types for API objects.
 
 use crate::errors::Result;
-use mime;
 use strum::EnumProperty;
 
 // For schema1 types, see https://docs.docker.com/registry/spec/manifest-v2-1/

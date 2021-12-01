@@ -5,7 +5,6 @@
 
 use libflate::gzip;
 use std::{fs, path};
-use tar;
 
 #[derive(Debug, thiserror::Error)]
 pub enum RenderError {

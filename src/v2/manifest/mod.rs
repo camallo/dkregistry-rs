@@ -1,7 +1,6 @@
 use crate::errors::{Error, Result};
 use crate::mediatypes;
 use crate::v2::*;
-use mime;
 use reqwest::{self, header, StatusCode, Url};
 use std::iter::FromIterator;
 use std::str::FromStr;

@@ -342,8 +342,8 @@ mod tests {
                 r#"Bearer REALM="{}",SERVICE="{}",SCOPE="{}""#,
                 realm, service, scope
             )).unwrap()
-        ] {
-            let content = WwwAuthenticateHeaderContent::from_www_authentication_header(header_value)?;
+        ].iter() {
+            let content = WwwAuthenticateHeaderContent::from_www_authentication_header(header_value.to_owned())?;
 
         assert_eq!(
             WwwAuthenticateHeaderContent::Bearer(WwwAuthenticateHeaderContentBearer {
@@ -376,9 +376,9 @@ mod tests {
             HeaderValue::from_str(&format!(r#"BASIC realm="{}""#, realm)).unwrap(),
             HeaderValue::from_str(&format!(r#"Basic Realm="{}""#, realm)).unwrap(),
             HeaderValue::from_str(&format!(r#"Basic REALM="{}""#, realm)).unwrap()
-        ] {
+        ].iter() {
             let content =
-                WwwAuthenticateHeaderContent::from_www_authentication_header(header_value)?;
+                WwwAuthenticateHeaderContent::from_www_authentication_header(header_value.to_owned())?;
 
             assert_eq!(
                 WwwAuthenticateHeaderContent::Basic(WwwAuthenticateHeaderContentBasic {

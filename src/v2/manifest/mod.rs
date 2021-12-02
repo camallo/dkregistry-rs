@@ -269,7 +269,7 @@ fn build_accept_headers(registry: &str) -> header::HeaderMap {
         .map(|(ty, q)| {
             format!(
                 "{}{}",
-                ty.to_string(),
+                ty,
                 if no_q {
                     String::default()
                 } else {

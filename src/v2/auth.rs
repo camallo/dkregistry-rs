@@ -141,9 +141,7 @@ impl WwwAuthenticateHeaderContent {
                 .iter()
                 .filter_map(|capture| {
                     match (
-                        capture
-                            .name("key")
-                            .map(|n| n.as_str().to_lowercase()),
+                        capture.name("key").map(|n| n.as_str().to_lowercase()),
                         capture.name("value").map(|n| n.as_str().to_string()),
                     ) {
                         (Some(key), Some(value)) => Some(format!(

@@ -134,8 +134,7 @@ impl WwwAuthenticateHeaderContent {
             .name("method")
             .ok_or(WwwHeaderParseError::FieldMethodMissing)?
             .as_str()
-            .to_lowercase()
-            .to_string();
+            .to_lowercase();
 
         let serialized_content = {
             let serialized_captures = captures
@@ -144,7 +143,7 @@ impl WwwAuthenticateHeaderContent {
                     match (
                         capture
                             .name("key")
-                            .map(|n| n.as_str().to_lowercase().to_string()),
+                            .map(|n| n.as_str().to_lowercase()),
                         capture.name("value").map(|n| n.as_str().to_string()),
                     ) {
                         (Some(key), Some(value)) => Some(format!(

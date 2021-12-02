@@ -142,7 +142,9 @@ impl WwwAuthenticateHeaderContent {
                 .iter()
                 .filter_map(|capture| {
                     match (
-                        capture.name("key").map(|n| n.as_str().to_lowercase().to_string()),
+                        capture
+                            .name("key")
+                            .map(|n| n.as_str().to_lowercase().to_string()),
                         capture.name("value").map(|n| n.as_str().to_string()),
                     ) {
                         (Some(key), Some(value)) => Some(format!(
@@ -325,34 +327,43 @@ mod tests {
             HeaderValue::from_str(&format!(
                 r#"Bearer realm="{}",service="{}",scope="{}""#,
                 realm, service, scope
-            )).unwrap(),
+            ))
+            .unwrap(),
             HeaderValue::from_str(&format!(
                 r#"bearer realm="{}",service="{}",scope="{}""#,
                 realm, service, scope
-            )).unwrap(),
+            ))
+            .unwrap(),
             HeaderValue::from_str(&format!(
                 r#"BEARER realm="{}",service="{}",scope="{}""#,
                 realm, service, scope
-            )).unwrap(),
+            ))
+            .unwrap(),
             HeaderValue::from_str(&format!(
                 r#"Bearer Realm="{}",Service="{}",Scope="{}""#,
                 realm, service, scope
-            )).unwrap(),
+            ))
+            .unwrap(),
             HeaderValue::from_str(&format!(
                 r#"Bearer REALM="{}",SERVICE="{}",SCOPE="{}""#,
                 realm, service, scope
-            )).unwrap()
-        ].iter() {
-            let content = WwwAuthenticateHeaderContent::from_www_authentication_header(header_value.to_owned())?;
+            ))
+            .unwrap(),
+        ]
+        .iter()
+        {
+            let content = WwwAuthenticateHeaderContent::from_www_authentication_header(
+                header_value.to_owned(),
+            )?;
 
-        assert_eq!(
-            WwwAuthenticateHeaderContent::Bearer(WwwAuthenticateHeaderContentBearer {
-                realm: realm.to_string(),
-                service: Some(service.to_string()),
-                scope: Some(scope.to_string()),
-            }),
-            content
-        );
+            assert_eq!(
+                WwwAuthenticateHeaderContent::Bearer(WwwAuthenticateHeaderContentBearer {
+                    realm: realm.to_string(),
+                    service: Some(service.to_string()),
+                    scope: Some(scope.to_string()),
+                }),
+                content
+            );
         }
 
         Ok(())
@@ -375,10 +386,13 @@ mod tests {
             HeaderValue::from_str(&format!(r#"basic realm="{}""#, realm)).unwrap(),
             HeaderValue::from_str(&format!(r#"BASIC realm="{}""#, realm)).unwrap(),
             HeaderValue::from_str(&format!(r#"Basic Realm="{}""#, realm)).unwrap(),
-            HeaderValue::from_str(&format!(r#"Basic REALM="{}""#, realm)).unwrap()
-        ].iter() {
-            let content =
-                WwwAuthenticateHeaderContent::from_www_authentication_header(header_value.to_owned())?;
+            HeaderValue::from_str(&format!(r#"Basic REALM="{}""#, realm)).unwrap(),
+        ]
+        .iter()
+        {
+            let content = WwwAuthenticateHeaderContent::from_www_authentication_header(
+                header_value.to_owned(),
+            )?;
 
             assert_eq!(
                 WwwAuthenticateHeaderContent::Basic(WwwAuthenticateHeaderContentBasic {

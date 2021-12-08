@@ -24,7 +24,7 @@ tag-message = "dkregistry v{{version}}"
 
 [dependencies]
 base64 = "0.13"
-futures = "0.3"
+futures = "0.3.8"
 http = "0.2"
 libflate = "1.0"
 log = "0.4"
@@ -42,6 +42,8 @@ sha2 = "^0.10.0"
 async-stream = "0.3"
 thiserror = "1.0.19"
 url = "2.1.1"
+backoff = { version = "0.3.0", features = ["tokio"]}
+async-trait = "0.1.51"
 
 [dev-dependencies]
 dirs = "4.0"

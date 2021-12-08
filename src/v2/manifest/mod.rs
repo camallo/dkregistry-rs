@@ -40,7 +40,7 @@ impl Client {
         let res = self
             .build_reqwest(Method::GET, url.clone())
             .headers(accept_headers)
-            .send()
+            .send_retry()
             .await?;
 
         let status = res.status();
@@ -112,7 +112,7 @@ impl Client {
         let res = self
             .build_reqwest(Method::HEAD, url)
             .headers(accept_headers)
-            .send()
+            .send_retry()
             .await?;
 
         let status = res.status();
@@ -165,7 +165,7 @@ impl Client {
         let r = self
             .build_reqwest(Method::HEAD, url.clone())
             .headers(accept_headers)
-            .send()
+            .send_retry()
             .await
             .map_err(Error::from)?;
 

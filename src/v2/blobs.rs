@@ -10,7 +10,10 @@ impl Client {
             reqwest::Url::parse(&ep)?
         };
 
-        let res = self.build_reqwest(Method::HEAD, url.clone()).send().await?;
+        let res = self
+            .build_reqwest(Method::HEAD, url.clone())
+            .send_retry()
+            .await?;
 
         trace!("Blob HEAD status: {:?}", res.status());
 
@@ -28,7 +31,10 @@ impl Client {
             let ep = format!("{}/v2/{}/blobs/{}", self.base_url, name, digest);
             let url = reqwest::Url::parse(&ep)?;
 
-            let res = self.build_reqwest(Method::GET, url.clone()).send().await?;
+            let res = self
+                .build_reqwest(Method::GET, url.clone())
+                .send_retry()
+                .await?;
 
             trace!("GET {} status: {}", res.url(), res.status());
             let status = res.status();

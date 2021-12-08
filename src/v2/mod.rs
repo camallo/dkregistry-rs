@@ -30,7 +30,7 @@
 use crate::errors::*;
 use crate::mediatypes::MediaTypes;
 use futures::prelude::*;
-use reqwest::{Method, StatusCode, Url};
+use reqwest::{Method, Response, StatusCode, Url};
 
 mod config;
 pub use self::config::Config;
@@ -49,6 +49,8 @@ mod blobs;
 mod content_digest;
 pub(crate) use self::content_digest::ContentDigest;
 pub use self::content_digest::ContentDigestError;
+
+use backoff::{future::retry, ExponentialBackoff};
 
 /// A Client to make outgoing API requests to a registry.
 #[derive(Clone, Debug)]
@@ -97,7 +99,7 @@ impl Client {
             self.build_reqwest(Method::GET, url)
         })?;
 
-        let response = request.send().await?;
+        let response = request.send_retry().await?;
 
         let b = match (response.status(), response.headers().get(api_header)) {
             (StatusCode::OK, Some(x)) => Ok((x == api_version, true)),
@@ -124,6 +126,35 @@ impl Client {
         };
 
         builder
+    }
+}
+
+#[async_trait]
+pub trait SendRetry {
+    const RETRY_CODE: u16 = 429;
+    async fn send_retry(self) -> Result<Response>;
+}
+
+#[async_trait]
+impl SendRetry for reqwest::RequestBuilder {
+    async fn send_retry(self) -> Result<Response> {
+        let op = || async {
+            self.try_clone().unwrap().send().await.map_err(|err| {
+                if Some(StatusCode::from_u16(Self::RETRY_CODE).unwrap()) == err.status() {
+                    backoff::Error::Transient(Error::from(err))
+                } else {
+                    backoff::Error::Permanent(Error::from(err))
+                }
+            })
+        };
+
+        retry(
+            ExponentialBackoff {
+                ..ExponentialBackoff::default()
+            },
+            op,
+        )
+        .await
     }
 }
 

@@ -59,7 +59,7 @@ impl Client {
         let resp = self
             .build_reqwest(Method::GET, url.clone())
             .header(header::ACCEPT, "application/json")
-            .send()
+            .send_retry()
             .await?
             .error_for_status()?;
 

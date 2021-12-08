@@ -1,4 +1,5 @@
 use crate::errors::{Error, Result};
+use crate::v2::SendRetry;
 use reqwest::Method;
 
 /// Manifest version 2 schema 2.
@@ -105,7 +106,7 @@ impl ManifestSchema2Spec {
 
         let r = client
             .build_reqwest(Method::GET, url.clone())
-            .send()
+            .send_retry()
             .await?;
 
         let status = r.status();

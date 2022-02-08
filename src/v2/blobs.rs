@@ -33,30 +33,24 @@ impl Client {
 
         let res = self.build_reqwest(Method::GET, url.clone()).send().await?;
 
-        trace!("GET {} status: {}", res.url(), res.status());
         let status = res.status();
+        trace!("GET {} status: {}", res.url(), status);
 
-        if !(status.is_success()
-            // Let client errors through to populate them with the body
-            || status.is_client_error())
-        {
-            return Err(Error::UnexpectedHttpStatus(status));
-        }
-
-        let status = res.status();
-
-        if status.is_success() {
-            trace!("Receiving a blob");
-            Ok(res)
-        } else if status.is_client_error() {
-            Err(Error::Client { status })
-        } else {
-            // We only want to handle success and client errors here
-            error!(
-                    "Received unexpected HTTP status '{}' after fetching the body. Please submit a bug report.",
-                    status
-                );
-            Err(Error::UnexpectedHttpStatus(status))
+        match res.error_for_status_ref() {
+            Ok(_) => {
+                if let Some(len) = res.content_length() {
+                    trace!("Receiving a blob with {} bytes", len);
+                } else {
+                    trace!("Receiving a blob");
+                }
+                Ok(res)
+            }
+            Err(_) if status.is_client_error() => Err(Error::Client { status }),
+            Err(_) if status.is_server_error() => Err(Error::Server { status }),
+            Err(_) => {
+                error!("Received unexpected HTTP status '{}'", status);
+                Err(Error::UnexpectedHttpStatus(status))
+            }
         }
     }
 
@@ -66,7 +60,7 @@ impl Client {
         let blob = blob_resp.bytes().await?.to_vec();
 
         let mut digest = ContentDigest::try_new(digest)?;
-        digest.hash(&blob);
+        digest.update(&blob);
         digest.verify()?;
 
         Ok(blob.to_vec())
@@ -114,7 +108,7 @@ where
                     None => return Poll::Ready(None),
                 };
                 let chunk = chunk_res?;
-                digest.hash(&chunk);
+                digest.update(&chunk);
                 Poll::Ready(Some(Ok(chunk.to_vec())))
             }
             Poll::Ready(None) => match this.digest.take() {

@@ -39,6 +39,8 @@ pub enum Error {
     Www(#[from] crate::v2::WwwHeaderParseError),
     #[error("request failed with status {status}")]
     Client { status: http::StatusCode },
+    #[error("request failed with status {status}")]
+    Server { status: http::StatusCode },
     #[error("content digest error")]
     ContentDigestParse(#[from] crate::v2::ContentDigestError),
     #[error("no header Content-Type given and no workaround to apply")]

@@ -32,7 +32,7 @@ pub enum ContentDigestError {
 /// ContentDigest stores a digest and its DigestAlgorithm
 #[derive(Clone, Debug)]
 pub struct ContentDigest {
-    expected_digest: String,
+    digest: String,
     algorithm: DigestAlgorithm,
 }
 
@@ -51,21 +51,21 @@ impl ContentDigest {
 
         let algorithm = std::str::FromStr::from_str(digest_split[0])?;
         Ok(ContentDigest {
-            expected_digest: digest.to_string(),
+            digest: digest.to_string(),
             algorithm,
         })
     }
 
-    pub fn hash(&mut self, input: &[u8]) {
+    pub fn update(&mut self, input: &[u8]) {
         self.algorithm.update(input)
     }
 
     pub fn verify(self) -> std::result::Result<(), ContentDigestError> {
         let digest = self.algorithm.digest();
-        if digest != self.expected_digest {
+        if digest != self.digest {
             return Err(ContentDigestError::Verify {
-                expected: self.expected_digest.clone(),
-                got: digest.clone(),
+                expected: self.digest,
+                got: digest,
             });
         }
         Ok(())
@@ -74,7 +74,7 @@ impl ContentDigest {
 
 impl std::fmt::Display for ContentDigest {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}:{}", self.algorithm, "self.digest")
+        write!(f, "{}:{}", self.algorithm, self.digest)
     }
 }
 
@@ -114,7 +114,7 @@ mod tests {
     }
 
     #[test]
-    fn try_new_succeeds_with_incorrect_digest() {
+    fn try_new_fails_with_incorrect_digest() {
         for incorrect_digest in &[
             "invalid",
             "invalid:",
@@ -130,22 +130,22 @@ mod tests {
     }
 
     #[test]
-    fn verify_content_ok() -> Fallible<()> {
+    fn verify_succeeds_with_same_content() -> Fallible<()> {
         let blob: &[u8] = b"somecontent";
         let mut content_digest = ContentDigest::try_new(
             "sha256:d5a3477d91583e65a7aba6f6db7a53e2de739bc7bf8f4a08f0df0457b637f1fb",
         )?;
-        content_digest.hash(blob);
+        content_digest.update(blob);
         content_digest.verify().map_err(Into::into)
     }
 
     #[test]
-    fn verify_chunked_content_ok() -> Fallible<()> {
+    fn verify_chunked_succeeds_with_same_content() -> Fallible<()> {
         let mut content_digest = ContentDigest::try_new(
             "sha256:d5a3477d91583e65a7aba6f6db7a53e2de739bc7bf8f4a08f0df0457b637f1fb",
         )?;
-        content_digest.hash(b"some");
-        content_digest.hash(b"content");
+        content_digest.update(b"some");
+        content_digest.update(b"content");
         content_digest.verify().map_err(Into::into)
     }
 
@@ -159,7 +159,7 @@ mod tests {
         let expected_digest = expected_digest.digest();
 
         let mut content_digest = ContentDigest::try_new(&expected_digest)?;
-        content_digest.hash(blob);
+        content_digest.update(blob);
         if content_digest.verify().is_ok() {
             panic!("expected try_verify to fail for a different blob");
         }

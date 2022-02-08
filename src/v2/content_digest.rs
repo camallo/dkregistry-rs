@@ -13,12 +13,8 @@ impl std::str::FromStr for DigestAlgorithm {
 
     fn from_str(name: &str) -> Result<Self, Self::Err> {
         match name {
-            "sha256" => {
-                Ok(DigestAlgorithm::Sha256(sha2::Sha256::new()))
-            }
-            _ => {
-                Err(ContentDigestError::AlgorithmUnknown(name.to_string()))
-            }
+            "sha256" => Ok(DigestAlgorithm::Sha256(sha2::Sha256::new())),
+            _ => Err(ContentDigestError::AlgorithmUnknown(name.to_string())),
         }
     }
 }
@@ -30,10 +26,7 @@ pub enum ContentDigestError {
     #[error("unknown algorithm: {0}")]
     AlgorithmUnknown(String),
     #[error("verification failed: expected '{expected}', got '{got}'")]
-    Verify {
-        expected: String,
-        got: String,
-    },
+    Verify { expected: String, got: String },
 }
 
 /// ContentDigest stores a digest and its DigestAlgorithm
@@ -96,9 +89,7 @@ impl DigestAlgorithm {
 
     fn digest(self) -> String {
         let (algo, digest) = match self {
-            DigestAlgorithm::Sha256(hash) => {
-                ("sha256", hash.finalize())
-            }
+            DigestAlgorithm::Sha256(hash) => ("sha256", hash.finalize()),
         };
         format!("{}:{:x}", algo, &digest)
     }
@@ -106,8 +97,8 @@ impl DigestAlgorithm {
 
 #[cfg(test)]
 mod tests {
-    use sha2;
     use super::*;
+    use sha2;
 
     type Fallible<T> = Result<T, crate::Error>;
 
@@ -142,22 +133,20 @@ mod tests {
     fn verify_content_ok() -> Fallible<()> {
         let blob: &[u8] = b"somecontent";
         let mut content_digest = ContentDigest::try_new(
-            "sha256:d5a3477d91583e65a7aba6f6db7a53e2de739bc7bf8f4a08f0df0457b637f1fb"
+            "sha256:d5a3477d91583e65a7aba6f6db7a53e2de739bc7bf8f4a08f0df0457b637f1fb",
         )?;
         content_digest.hash(blob);
-        content_digest.verify()
-            .map_err(Into::into)
+        content_digest.verify().map_err(Into::into)
     }
 
     #[test]
     fn verify_chunked_content_ok() -> Fallible<()> {
         let mut content_digest = ContentDigest::try_new(
-            "sha256:d5a3477d91583e65a7aba6f6db7a53e2de739bc7bf8f4a08f0df0457b637f1fb"
+            "sha256:d5a3477d91583e65a7aba6f6db7a53e2de739bc7bf8f4a08f0df0457b637f1fb",
         )?;
         content_digest.hash(b"some");
         content_digest.hash(b"content");
-        content_digest.verify()
-            .map_err(Into::into)
+        content_digest.verify().map_err(Into::into)
     }
 
     #[test]

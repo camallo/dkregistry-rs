@@ -49,9 +49,7 @@ impl Client {
             trace!("Receiving a blob");
             Ok(res)
         } else if status.is_client_error() {
-            Err(Error::Client {
-                status,
-            })
+            Err(Error::Client { status })
         } else {
             // We only want to handle success and client errors here
             error!(
@@ -75,20 +73,25 @@ impl Client {
     }
 
     /// Retrieve blob stream.
-    pub async fn get_blob_stream(&self, name: &str, digest: &str) -> Result<impl Stream<Item = Result<Vec<u8>>>> {
+    pub async fn get_blob_stream(
+        &self,
+        name: &str,
+        digest: &str,
+    ) -> Result<impl Stream<Item = Result<Vec<u8>>>> {
         let blob_resp = self.get_blob_response(name, digest).await?;
         let blob_stream = blob_resp.bytes_stream();
 
         Ok(BlobStream {
             stream: blob_stream,
-            digest: Some(ContentDigest::try_new(digest)?)
+            digest: Some(ContentDigest::try_new(digest)?),
         })
     }
 }
 
 #[pin_project]
 struct BlobStream<S>
-    where S: Stream<Item = reqwest::Result<Bytes>>
+where
+    S: Stream<Item = reqwest::Result<Bytes>>,
 {
     #[pin]
     stream: S,
@@ -97,7 +100,8 @@ struct BlobStream<S>
 }
 
 impl<S> Stream for BlobStream<S>
-    where S: Stream<Item = reqwest::Result<Bytes>> + Unpin
+where
+    S: Stream<Item = reqwest::Result<Bytes>> + Unpin,
 {
     type Item = Result<Vec<u8>>;
 
@@ -112,18 +116,13 @@ impl<S> Stream for BlobStream<S>
                 let chunk = chunk_res?;
                 digest.hash(&chunk);
                 Poll::Ready(Some(Ok(chunk.to_vec())))
-            },
-            Poll::Ready(None) => {
-                match this.digest.take() {
-                    Some(digest) => {
-                        match digest.verify() {
-                            Ok(()) => Poll::Ready(None),
-                            Err(err) => Poll::Ready(Some(Err(err.into())))
-
-                        }
-                    }
-                    None => Poll::Ready(None)
-                }
+            }
+            Poll::Ready(None) => match this.digest.take() {
+                Some(digest) => match digest.verify() {
+                    Ok(()) => Poll::Ready(None),
+                    Err(err) => Poll::Ready(Some(Err(err.into()))),
+                },
+                None => Poll::Ready(None),
             },
             Poll::Pending => Poll::Pending,
         }

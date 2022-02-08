@@ -38,9 +38,7 @@ pub enum Error {
     #[error("www-authenticate header parse error")]
     Www(#[from] crate::v2::WwwHeaderParseError),
     #[error("request failed with status {status}")]
-    Client {
-        status: http::StatusCode,
-    },
+    Client { status: http::StatusCode },
     #[error("content digest error")]
     ContentDigestParse(#[from] crate::v2::ContentDigestError),
     #[error("no header Content-Type given and no workaround to apply")]

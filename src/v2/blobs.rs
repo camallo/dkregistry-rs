@@ -27,23 +27,23 @@ impl Client {
         }
     }
 
-    async fn get_blob_response(&self, name: &str, digest: &str) -> Result<reqwest::Response> {
+    pub async fn get_blob_response(&self, name: &str, digest: &str) -> Result<BlobResponse> {
         let ep = format!("{}/v2/{}/blobs/{}", self.base_url, name, digest);
         let url = reqwest::Url::parse(&ep)?;
 
-        let res = self.build_reqwest(Method::GET, url.clone()).send().await?;
+        let resp = self.build_reqwest(Method::GET, url.clone()).send().await?;
 
-        let status = res.status();
-        trace!("GET {} status: {}", res.url(), status);
+        let status = resp.status();
+        trace!("GET {} status: {}", resp.url(), status);
 
-        match res.error_for_status_ref() {
+        match resp.error_for_status_ref() {
             Ok(_) => {
-                if let Some(len) = res.content_length() {
+                if let Some(len) = resp.content_length() {
                     trace!("Receiving a blob with {} bytes", len);
                 } else {
                     trace!("Receiving a blob");
                 }
-                Ok(res)
+                Ok(BlobResponse::new(resp, ContentDigest::try_new(digest)?))
             }
             Err(_) if status.is_client_error() => Err(Error::Client { status }),
             Err(_) if status.is_server_error() => Err(Error::Server { status }),
@@ -56,14 +56,7 @@ impl Client {
 
     /// Retrieve blob.
     pub async fn get_blob(&self, name: &str, digest: &str) -> Result<Vec<u8>> {
-        let blob_resp = self.get_blob_response(name, digest).await?;
-        let blob = blob_resp.bytes().await?.to_vec();
-
-        let mut digest = ContentDigest::try_new(digest)?;
-        digest.update(&blob);
-        digest.verify()?;
-
-        Ok(blob.to_vec())
+        self.get_blob_response(name, digest).await?.bytes().await
     }
 
     /// Retrieve blob stream.
@@ -72,13 +65,41 @@ impl Client {
         name: &str,
         digest: &str,
     ) -> Result<impl Stream<Item = Result<Vec<u8>>>> {
-        let blob_resp = self.get_blob_response(name, digest).await?;
-        let blob_stream = blob_resp.bytes_stream();
+        Ok(self.get_blob_response(name, digest).await?.stream())
+    }
+}
 
-        Ok(BlobStream {
-            stream: blob_stream,
-            digest: Some(ContentDigest::try_new(digest)?),
-        })
+#[derive(Debug)]
+pub struct BlobResponse {
+    resp: reqwest::Response,
+    digest: ContentDigest,
+}
+
+impl BlobResponse {
+    fn new(resp: reqwest::Response, digest: ContentDigest) -> Self {
+        Self { resp, digest }
+    }
+
+    /// Get size of the blob.
+    /// This method can be useful to render progress bar when downloading a blob.
+    pub fn size(&self) -> Option<u64> {
+        self.resp.content_length()
+    }
+
+    /// Retrieve content of the blob.
+    pub async fn bytes(self) -> Result<Vec<u8>> {
+        let blob = self.resp.bytes().await?.to_vec();
+
+        let mut digest = self.digest;
+        digest.update(&blob);
+        digest.verify()?;
+
+        Ok(blob)
+    }
+
+    /// Get bytes stream of the blob.
+    pub fn stream(self) -> impl Stream<Item = Result<Vec<u8>>> {
+        BlobStream::new(self.resp.bytes_stream(), self.digest)
     }
 }
 
@@ -91,6 +112,18 @@ where
     stream: S,
     #[pin]
     digest: Option<ContentDigest>,
+}
+
+impl<S> BlobStream<S>
+where
+    S: Stream<Item = reqwest::Result<Bytes>> + Unpin,
+{
+    fn new(stream: S, digest: ContentDigest) -> Self {
+        Self {
+            stream,
+            digest: Some(digest),
+        }
+    }
 }
 
 impl<S> Stream for BlobStream<S>

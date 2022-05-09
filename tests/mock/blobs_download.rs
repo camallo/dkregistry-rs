@@ -157,10 +157,11 @@ fn get_blobs_stream() -> Fallible<()> {
         .build()
         .unwrap();
 
-    let futcheck = dclient.get_blob_stream(&name, &digest);
+    let futcheck = dclient.get_blob_response(&name, &digest);
 
-    let mut result_stream = runtime.block_on(futcheck)?;
-    let stream_output = result_stream.next().now_or_never();
+    let blob_resp = runtime.block_on(futcheck)?;
+    assert_eq!(blob_resp.size(), Some(5));
+    let stream_output = blob_resp.stream().next().now_or_never();
     let output = stream_output.unwrap_or_else(|| panic!("No stream output"));
     let received_blob = output.unwrap_or_else(|| panic!("No blob data"))?;
     assert_eq!(blob.to_vec(), received_blob);

@@ -295,8 +295,20 @@ pub enum ManifestError {
 
 impl Manifest {
     /// List digests of all layers referenced by this manifest, if available.
+    /// For ManifestList, returns the digests of all the manifest list images.
     ///
-    /// The returned layers list is ordered starting with the base image first.
+    /// As manifest list images only contain digests of the
+    /// images contained in the manifest, the `layers_digests`
+    /// function returns the digests of all the images
+    /// contained in the ManifestList instead of individual
+    /// layers of the manifests.
+    /// The layers of a specific image from manifest list can
+    /// be obtained using the digest of the image from the
+    /// manifest list and getting its manifest and manifestref
+    /// (get_manifest_and_ref()) and using this manifest of
+    /// the individual image to get the layers.
+    ///
+    /// The returned layers list for non ManifestList images is ordered starting with the base image first.
     pub fn layers_digests(&self, architecture: Option<&str>) -> Result<Vec<String>> {
         match (self, self.architectures(), architecture) {
             (Manifest::S1Signed(m), _, None) => Ok(m.get_layers()),
@@ -319,7 +331,7 @@ impl Manifest {
                 }
                 Ok(m.get_layers())
             }
-            // Manifest::ML(_) => TODO(steveeJ),
+            (Manifest::ML(m), _, _) => Ok(m.get_digests()),
             _ => Err(ManifestError::LayerDigestsUnsupported(format!("{:?}", self)).into()),
         }
     }
@@ -329,8 +341,7 @@ impl Manifest {
         match self {
             Manifest::S1Signed(m) => Ok([m.architecture.clone()].to_vec()),
             Manifest::S2(m) => Ok([m.architecture()].to_vec()),
-            // Manifest::ML(_) => TODO(steveeJ),
-            _ => Err(ManifestError::ArchitectureNotSupported(format!("{:?}", self)).into()),
+            Manifest::ML(m) => Ok(m.architectures()),
         }
     }
 }

@@ -353,9 +353,9 @@ mod tests {
 
     use crate::v2::Client;
 
-    #[test_case("not-gcr.io" => "application/vnd.docker.distribution.manifest.v2+json; q=0.5,application/vnd.docker.distribution.manifest.v1+prettyjws; q=0.4"; "Not gcr registry")]
-    #[test_case("gcr.io" => "application/vnd.docker.distribution.manifest.v2+json,application/vnd.docker.distribution.manifest.v1+prettyjws"; "gcr.io")]
-    #[test_case("foobar.gcr.io" => "application/vnd.docker.distribution.manifest.v2+json,application/vnd.docker.distribution.manifest.v1+prettyjws"; "Custom gcr.io registry")]
+    #[test_case("not-gcr.io" => "application/vnd.docker.distribution.manifest.v2+json; q=0.5,application/vnd.docker.distribution.manifest.v1+prettyjws; q=0.4,application/vnd.docker.distribution.manifest.list.v2+json; q=0.5"; "Not gcr registry")]
+    #[test_case("gcr.io" => "application/vnd.docker.distribution.manifest.v2+json,application/vnd.docker.distribution.manifest.v1+prettyjws,application/vnd.docker.distribution.manifest.list.v2+json"; "gcr.io")]
+    #[test_case("foobar.gcr.io" => "application/vnd.docker.distribution.manifest.v2+json,application/vnd.docker.distribution.manifest.v1+prettyjws,application/vnd.docker.distribution.manifest.list.v2+json"; "Custom gcr.io registry")]
     fn gcr_io_accept_headers(registry: &str) -> String {
         let client_builder = Client::configure().registry(&registry);
         let client = client_builder.build().unwrap();
@@ -367,14 +367,16 @@ mod tests {
             .unwrap()
             .to_string()
     }
-    #[test_case(None => "application/vnd.docker.distribution.manifest.v2+json; q=0.5,application/vnd.docker.distribution.manifest.v1+prettyjws; q=0.4"; "Default settings")]
+    #[test_case(None => "application/vnd.docker.distribution.manifest.v2+json; q=0.5,application/vnd.docker.distribution.manifest.v1+prettyjws; q=0.4,application/vnd.docker.distribution.manifest.list.v2+json; q=0.5"; "Default settings")]
     #[test_case(Some(vec![
         (MediaTypes::ManifestV2S2, Some(0.5)),
         (MediaTypes::ManifestV2S1Signed, Some(0.2)),
-    ]) => "application/vnd.docker.distribution.manifest.v2+json; q=0.5,application/vnd.docker.distribution.manifest.v1+prettyjws; q=0.2"; "Custom accept types with weight")]
+        (MediaTypes::ManifestList, Some(0.5)),
+    ]) => "application/vnd.docker.distribution.manifest.v2+json; q=0.5,application/vnd.docker.distribution.manifest.v1+prettyjws; q=0.2,application/vnd.docker.distribution.manifest.list.v2+json; q=0.5"; "Custom accept types with weight")]
     #[test_case(Some(vec![
         (MediaTypes::ManifestV2S2, None),
-    ]) => "application/vnd.docker.distribution.manifest.v2+json"; "Custom accept types, no weight")]
+        (MediaTypes::ManifestList, None),
+    ]) => "application/vnd.docker.distribution.manifest.v2+json,application/vnd.docker.distribution.manifest.list.v2+json"; "Custom accept types, no weight")]
     fn custom_accept_headers(accept_headers: Option<Vec<(MediaTypes, Option<f64>)>>) -> String {
         let registry = "https://example.com";
 

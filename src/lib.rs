@@ -39,6 +39,8 @@ extern crate serde;
 extern crate log;
 #[macro_use]
 extern crate strum_macros;
+#[macro_use]
+extern crate async_trait;
 
 pub mod errors;
 pub mod mediatypes;

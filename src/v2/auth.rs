@@ -55,7 +55,7 @@ impl BearerAuth {
         }
         .build_reqwest(Method::GET, url);
 
-        let r = auth_req.send().await?;
+        let r = auth_req.send_retry().await?;
         let status = r.status();
         trace!("authenticate: got status {}", status);
         if status != StatusCode::OK {
@@ -232,7 +232,10 @@ impl Client {
             reqwest::Url::parse(&ep)?
         };
 
-        let r = self.build_reqwest(Method::GET, url.clone()).send().await?;
+        let r = self
+            .build_reqwest(Method::GET, url.clone())
+            .send_retry()
+            .await?;
 
         trace!("GET '{}' status: {:?}", r.url(), r.status());
         r.headers()
@@ -297,7 +300,7 @@ impl Client {
         let req = self.build_reqwest(Method::GET, url.clone());
 
         trace!("Sending request to '{}'", url);
-        let resp = req.send().await?;
+        let resp = req.send_retry().await?;
         trace!("GET '{:?}'", resp);
 
         let status = resp.status();

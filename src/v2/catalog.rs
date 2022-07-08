@@ -1,5 +1,5 @@
 use crate::errors::Result;
-use crate::v2;
+use crate::v2::{Client, SendRetry};
 use async_stream::try_stream;
 use futures::stream::Stream;
 use futures::{self};
@@ -10,7 +10,7 @@ struct Catalog {
     pub repositories: Vec<String>,
 }
 
-impl v2::Client {
+impl Client {
     pub fn get_catalog<'a, 'b: 'a>(
         &'b self,
         paginate: Option<u32>,
@@ -39,7 +39,7 @@ impl v2::Client {
 }
 
 async fn fetch_catalog(req: RequestBuilder) -> Result<Catalog> {
-    let r = req.send().await?;
+    let r = req.send_retry().await?;
     let status = r.status();
     trace!("Got status: {:?}", status);
     match status {

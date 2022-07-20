@@ -155,7 +155,7 @@ impl Client {
 
         let mut accept_headers = header::HeaderMap::with_capacity(accept_types.len());
         for accept_type in accept_types {
-            let header_value = header::HeaderValue::from_str(&accept_type.to_string())
+            let header_value = header::HeaderValue::from_str(accept_type.as_ref())
                 .expect("mime type is always valid header value");
             accept_headers.insert(header::ACCEPT, header_value);
         }

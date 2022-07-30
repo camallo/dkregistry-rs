@@ -8,7 +8,7 @@ use self::mockito::mock;
 use self::tokio::runtime::Runtime;
 
 #[test]
-fn test_tags_simple() {
+fn test_dockerv2_tags_simple() {
     let name = "repo";
     let tags = r#"{"name": "repo", "tags": [ "t1", "t2" ]}"#;
 
@@ -39,20 +39,20 @@ fn test_tags_simple() {
 }
 
 #[test]
-fn test_tags_paginate() {
+fn test_dockerv2_tags_paginate() {
     let name = "repo";
     let tags_p1 = r#"{"name": "repo", "tags": [ "t1" ]}"#;
     let tags_p2 = r#"{"name": "repo", "tags": [ "t2" ]}"#;
 
     let ep1 = format!("/v2/{}/tags/list?n=1", name);
-    let ep2 = format!("/v2/{}/tags/list?n=1&next_page=t1", name);
+    let ep2 = format!("/v2/{}/tags/list?n=1&last=t1", name);
     let addr = mockito::server_address().to_string();
     let _m1 = mock("GET", ep1.as_str())
         .with_status(200)
         .with_header(
             "Link",
             &format!(
-                r#"<{}/v2/_tags?n=1&next_page=t1>; rel="next""#,
+                r#"<{}/v2/_tags?n=1&last=t1>; rel="next""#,
                 mockito::server_url()
             ),
         )
@@ -91,7 +91,7 @@ fn test_tags_paginate() {
 }
 
 #[test]
-fn test_tags_404() {
+fn test_dockerv2_tags_404() {
     let name = "repo";
     let ep = format!("/v2/{}/tags/list", name);
     let addr = mockito::server_address().to_string();
@@ -118,7 +118,7 @@ fn test_tags_404() {
 }
 
 #[test]
-fn test_tags_missing_header() {
+fn test_dockerv2_tags_missing_header() {
     let name = "repo";
     let tags = r#"{"name": "repo", "tags": [ "t1", "t2" ]}"#;
     let ep = format!("/v2/{}/tags/list", name);

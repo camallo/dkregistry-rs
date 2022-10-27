@@ -106,7 +106,10 @@ impl Config {
 
         let accepted_types = match self.accepted_types {
             Some(a) => a,
-            None => match self.index == "gcr.io" || self.index.ends_with(".gcr.io") {
+            None => match self.index == "gcr.io"
+                || self.index.ends_with(".gcr.io")
+                || self.index.ends_with(".k8s.io")
+            {
                 false => vec![
                     // accept header types and their q value, as documented in
                     // https://tools.ietf.org/html/rfc7231#section-5.3.2
@@ -117,6 +120,7 @@ impl Config {
                 // GCR incorrectly parses `q` parameters, so we use special Accept for it.
                 // Bug: https://issuetracker.google.com/issues/159827510.
                 // TODO: when bug is fixed, this workaround should be removed.
+                // *.k8s.io container registries use GCR and are similarly affected.
                 true => vec![
                     (MediaTypes::ManifestV2S2, None),
                     (MediaTypes::ManifestV2S1Signed, None),

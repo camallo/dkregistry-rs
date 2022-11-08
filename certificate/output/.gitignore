@@ -1,0 +1,11 @@
+# For CA, only need public key after server certificate is created
+ca.csr
+ca-key.pem
+
+# For server, only need private key and chained public key
+localhost.csr
+localhost.pem
+
+# Throw away pkcs1 flavor and keep pkcs8 flavor
+localhost-key.pem
+

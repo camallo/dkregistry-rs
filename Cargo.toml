@@ -23,7 +23,7 @@ sign-tag = true
 tag-message = "dkregistry v{{version}}"
 
 [dependencies]
-base64 = "0.13"
+base64 = "0.21"
 futures = "0.3"
 http = "0.2"
 libflate = "1.0"

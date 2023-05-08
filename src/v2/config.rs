@@ -13,19 +13,6 @@ pub struct Config {
 }
 
 impl Config {
-    /// Initialize `Config` with default values.
-    pub fn default() -> Self {
-        Self {
-            index: "registry-1.docker.io".into(),
-            insecure_registry: false,
-            accept_invalid_certs: false,
-            accepted_types: None,
-            user_agent: Some(crate::USER_AGENT.to_owned()),
-            username: None,
-            password: None,
-        }
-    }
-
     /// Set registry service to use (vhost or IP).
     pub fn registry(mut self, reg: &str) -> Self {
         self.index = reg.to_owned();
@@ -133,5 +120,20 @@ impl Config {
             accepted_types,
         };
         Ok(c)
+    }
+}
+
+impl Default for Config {
+    /// Initialize `Config` with default values.
+    fn default() -> Self {
+        Self {
+            index: "registry-1.docker.io".into(),
+            insecure_registry: false,
+            accept_invalid_certs: false,
+            accepted_types: None,
+            user_agent: Some(crate::USER_AGENT.to_owned()),
+            username: None,
+            password: None,
+        }
     }
 }

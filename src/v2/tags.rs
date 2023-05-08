@@ -108,7 +108,7 @@ fn parse_link(hdr: Option<&header::HeaderValue>) -> Option<String> {
 
     // Query parameters for next page URL.
     let uri = sval.trim_end_matches(">; rel=\"next\"");
-    let query: Vec<&str> = uri.splitn(2, "?").collect();
+    let query: Vec<&str> = uri.splitn(2, '?').collect();
     match query.get(1) {  //use the entire query param string since some registries have different ways of pagination
         Some(v) if !v.is_empty() => Some(v.to_string()), 
         _ => None,

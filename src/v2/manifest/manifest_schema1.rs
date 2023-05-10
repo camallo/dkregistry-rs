@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 /// Manifest version 2 schema 1, signed.
 ///
-/// Specification is at https://docs.docker.com/registry/spec/manifest-v2-1/.
+/// Specification is at <https://docs.docker.com/registry/spec/manifest-v2-1/>.
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct ManifestSchema1Signed {
     #[serde(rename = "schemaVersion")]

@@ -8,6 +8,7 @@ pub struct Config {
     user_agent: Option<String>,
     username: Option<String>,
     password: Option<String>,
+    #[cfg(any(feature = "reqwest-default-tls", feature = "reqwest-rustls"))]
     accept_invalid_certs: bool,
     accepted_types: Option<Vec<(MediaTypes, Option<f64>)>>,
 }
@@ -17,7 +18,11 @@ impl Config {
     pub fn default() -> Self {
         Self {
             index: "registry-1.docker.io".into(),
-            insecure_registry: false,
+            insecure_registry: cfg!(not(any(
+                feature = "reqwest-default-tls",
+                feature = "reqwest-rustls"
+            ))),
+            #[cfg(any(feature = "reqwest-default-tls", feature = "reqwest-rustls"))]
             accept_invalid_certs: false,
             accepted_types: None,
             user_agent: Some(crate::USER_AGENT.to_owned()),
@@ -33,12 +38,14 @@ impl Config {
     }
 
     /// Whether to use an insecure HTTP connection to the registry.
+    #[cfg(any(feature = "reqwest-default-tls", feature = "reqwest-rustls"))]
     pub fn insecure_registry(mut self, insecure: bool) -> Self {
         self.insecure_registry = insecure;
         self
     }
 
     /// Set whether or not to accept invalid certificates.
+    #[cfg(any(feature = "reqwest-default-tls", feature = "reqwest-rustls"))]
     pub fn accept_invalid_certs(mut self, accept_invalid_certs: bool) -> Self {
         self.accept_invalid_certs = accept_invalid_certs;
         self
@@ -100,9 +107,10 @@ impl Config {
                 p.unwrap_or_else(|| "".into()),
             )),
         };
-        let client = reqwest::ClientBuilder::new()
-            .danger_accept_invalid_certs(self.accept_invalid_certs)
-            .build()?;
+        let client_builder = reqwest::ClientBuilder::new();
+        #[cfg(any(feature = "reqwest-default-tls", feature = "reqwest-rustls"))]
+        let client_builder = client_builder.danger_accept_invalid_certs(self.accept_invalid_certs);
+        let client = client_builder.build()?;
 
         let accepted_types = match self.accepted_types {
             Some(a) => a,

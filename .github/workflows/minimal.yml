@@ -17,6 +17,10 @@ jobs:
         include:
           - rust: nightly
             experimental: true
+        features:
+          - default
+          - reqwest-rustls
+          - ""
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
@@ -32,6 +36,8 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
+          features: ${{ matrix.features }}
+          no-default-features: true
 
   test:
     name: Test Suite

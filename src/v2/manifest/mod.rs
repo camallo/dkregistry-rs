@@ -9,7 +9,9 @@ mod manifest_schema1;
 pub use self::manifest_schema1::*;
 
 mod manifest_schema2;
-pub use self::manifest_schema2::*;
+pub use self::manifest_schema2::{
+    ConfigBlob, ManifestList, ManifestObj, ManifestSchema2, ManifestSchema2Spec, Platform,
+};
 
 impl Client {
     /// Fetch an image manifest.

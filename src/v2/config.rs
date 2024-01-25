@@ -1,3 +1,5 @@
+use reqwest::Certificate;
+
 use crate::{mediatypes::MediaTypes, v2::*};
 
 /// Configuration for a `Client`.
@@ -10,6 +12,7 @@ pub struct Config {
     password: Option<String>,
     accept_invalid_certs: bool,
     accepted_types: Option<Vec<(MediaTypes, Option<f64>)>>,
+    root_certificate: Option<Certificate>,
 }
 
 impl Config {
@@ -67,6 +70,12 @@ impl Config {
         self
     }
 
+    /// Set the root certificate if required for the registry
+    pub fn root_certificate(mut self, root_certificate: Certificate) -> Self {
+        self.root_certificate = Some(root_certificate);
+        self
+    }
+
     /// Return a `Client` to interact with a v2 registry.
     pub fn build(self) -> Result<Client> {
         let base = if self.insecure_registry {
@@ -87,9 +96,20 @@ impl Config {
                 p.unwrap_or_else(|| "".into()),
             )),
         };
-        let client = reqwest::ClientBuilder::new()
-            .danger_accept_invalid_certs(self.accept_invalid_certs)
-            .build()?;
+
+        let client: reqwest::Client;
+        if self.root_certificate.is_some() {
+            client = reqwest::ClientBuilder::new()
+                .add_root_certificate(self.root_certificate.unwrap())
+                .use_native_tls()
+                .danger_accept_invalid_certs(self.accept_invalid_certs)
+                .build()?;
+        } else {
+            client = reqwest::ClientBuilder::new()
+                .use_native_tls()
+                .danger_accept_invalid_certs(self.accept_invalid_certs)
+                .build()?;
+        }
 
         let accepted_types = match self.accepted_types {
             Some(a) => a,
@@ -134,6 +154,7 @@ impl Default for Config {
             user_agent: Some(crate::USER_AGENT.to_owned()),
             username: None,
             password: None,
+            root_certificate: None,
         }
     }
 }

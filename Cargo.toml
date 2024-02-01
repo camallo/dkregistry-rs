@@ -25,7 +25,6 @@ tag-message = "dkregistry v{{version}}"
 [dependencies]
 base64 = "0.13"
 futures = "0.3"
-http = "0.2"
 
 # Pin libflate <1.3.0
 # https://github.com/sile/libflate/commit/aba829043f8a2d527b6c4984034fbe5e7adb0da6
@@ -55,7 +54,9 @@ url = "2.1.1"
 [dev-dependencies]
 dirs = "4.0"
 env_logger = "0.8"
+hyper = "0.14.28"
 mockito = "0.30"
+native-tls = "0.2"
 spectral = "0.6"
 test-case = "1.0.0"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }

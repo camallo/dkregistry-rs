@@ -129,7 +129,7 @@ impl WwwAuthenticateHeaderContent {
         let captures = re.captures_iter(&header).collect::<Vec<_>>();
 
         let method = captures
-            .get(0)
+            .first()
             .ok_or(WwwHeaderParseError::InvalidValue)?
             .name("method")
             .ok_or(WwwHeaderParseError::FieldMethodMissing)?

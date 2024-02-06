@@ -87,7 +87,7 @@ impl Client {
                     content_digest,
                 ))
             }
-            mediatypes::MediaTypes::ManifestList => Ok((
+            mediatypes::MediaTypes::ManifestList | mediatypes::MediaTypes::OCIImageIndexV1 => Ok((
                 res.json::<ManifestList>().await.map(Manifest::ML)?,
                 content_digest,
             )),

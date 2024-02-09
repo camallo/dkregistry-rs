@@ -78,7 +78,7 @@ impl Client {
                     .map(Manifest::S1Signed)?,
                 content_digest,
             )),
-            mediatypes::MediaTypes::ManifestV2S2 => {
+            mediatypes::MediaTypes::ManifestV2S2 | mediatypes::MediaTypes::OciImageManifest => {
                 let m = res.json::<ManifestSchema2Spec>().await?;
                 Ok((
                     m.fetch_config_blob(client_spare0, name.to_string())

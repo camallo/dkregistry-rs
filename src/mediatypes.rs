@@ -32,6 +32,10 @@ pub enum MediaTypes {
     #[strum(serialize = "application/vnd.docker.container.image.v1+json")]
     #[strum(props(Sub = "vnd.docker.container.image.v1+json"))]
     ContainerConfigV1,
+    /// OCI Manifest
+    #[strum(serialize = "application/vnd.oci.image.manifest.v1+json")]
+    #[strum(props(Sub = "vnd.oci.image.manifest.v1+json"))]
+    OciImageManifest,
     /// Generic JSON
     #[strum(serialize = "application/json")]
     #[strum(props(Sub = "json"))]
@@ -55,6 +59,7 @@ impl MediaTypes {
                     }
                     ("vnd.docker.image.rootfs.diff.tar.gzip", _) => Ok(MediaTypes::ImageLayerTgz),
                     ("vnd.docker.container.image.v1", "json") => Ok(MediaTypes::ContainerConfigV1),
+                    ("vnd.oci.image.manifest.v1", "json") => Ok(MediaTypes::OciImageManifest),
                     _ => Err(crate::Error::UnknownMimeType(mtype.clone())),
                 }
             }

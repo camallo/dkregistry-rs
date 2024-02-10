@@ -45,7 +45,7 @@ impl Client {
                 }
                 Ok(BlobResponse::new(resp, ContentDigest::try_new(digest)?))
             }
-            Err(_) if status.is_client_error() => Err(Error::Client { status }),
+            Err(_) if status.is_client_error() => Err(ApiErrors::from(resp).await),
             Err(_) if status.is_server_error() => Err(Error::Server { status }),
             Err(_) => {
                 error!("Received unexpected HTTP status '{}'", status);

@@ -3,6 +3,8 @@
 #[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
+    #[error("Api Error: {0}")]
+    Api(#[from] crate::v2::ApiErrors),
     #[error("base64 decode error")]
     Base64Decode(#[from] base64::DecodeError),
     #[error("header parse error")]

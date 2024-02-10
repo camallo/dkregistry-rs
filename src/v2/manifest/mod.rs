@@ -50,7 +50,7 @@ impl Client {
 
         match status {
             StatusCode::OK => {}
-            _ => return Err(Error::UnexpectedHttpStatus(status)),
+            _ => return Err(ApiErrors::from(res).await),
         }
 
         let headers = res.headers();
@@ -78,7 +78,7 @@ impl Client {
                     .map(Manifest::S1Signed)?,
                 content_digest,
             )),
-            mediatypes::MediaTypes::ManifestV2S2 => {
+            mediatypes::MediaTypes::ManifestV2S2 | mediatypes::MediaTypes::OciImageManifest => {
                 let m = res.json::<ManifestSchema2Spec>().await?;
                 Ok((
                     m.fetch_config_blob(client_spare0, name.to_string())
@@ -87,7 +87,7 @@ impl Client {
                     content_digest,
                 ))
             }
-            mediatypes::MediaTypes::ManifestList => Ok((
+            mediatypes::MediaTypes::ManifestList | mediatypes::MediaTypes::OciImageIndexV1 => Ok((
                 res.json::<ManifestList>().await.map(Manifest::ML)?,
                 content_digest,
             )),
@@ -122,7 +122,7 @@ impl Client {
 
         match status {
             StatusCode::OK => {}
-            _ => return Err(Error::UnexpectedHttpStatus(status)),
+            _ => return Err(ApiErrors::from(res).await),
         }
 
         let headers = res.headers();
@@ -190,7 +190,7 @@ impl Client {
                 Ok(Some(media_type))
             }
             StatusCode::NOT_FOUND => Ok(None),
-            _ => Err(Error::UnexpectedHttpStatus(status)),
+            _ => Err(ApiErrors::from(r).await),
         }
     }
 }

@@ -1,0 +1,16 @@
+{
+    "errors": [
+        {
+            "code": "UNAUTHORIZED",
+            "message": "authentication required",
+            "detail": [
+                {
+                    "Type": "repository",
+                    "Class":"",
+                    "Name":"some/image",
+                    "Action":"some_action"
+                }
+            ]
+        }
+    ]
+}

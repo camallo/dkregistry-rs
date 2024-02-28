@@ -24,6 +24,7 @@ impl Auth {
 /// Used for Bearer HTTP Authentication.
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct BearerAuth {
+    #[serde(alias = "access_token")]
     token: String,
     expires_in: Option<u32>,
     issued_at: Option<String>,

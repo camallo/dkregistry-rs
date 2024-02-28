@@ -1,3 +1,5 @@
+use std::convert::{TryFrom, TryInto};
+
 use crate::errors::{Error, Result};
 use crate::v2::*;
 use reqwest::{header::HeaderValue, RequestBuilder, StatusCode, Url};
@@ -28,6 +30,34 @@ pub struct BearerAuth {
     expires_in: Option<u32>,
     issued_at: Option<String>,
     refresh_token: Option<String>,
+}
+
+/// Used to support different response schemas of Bearer HTTP Authentication
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct MultiTokenBearerAuth {
+    token: Option<String>,
+    access_token: Option<String>,
+    expires_in: Option<u32>,
+    issued_at: Option<String>,
+    refresh_token: Option<String>,
+}
+
+impl TryFrom<MultiTokenBearerAuth> for BearerAuth {
+    type Error = Error;
+
+    fn try_from(value: MultiTokenBearerAuth) -> std::result::Result<Self, Error> {
+        let t = value
+            .token
+            .or(value.access_token)
+            .ok_or(Error::NoTokenReceived)?;
+
+        Ok(Self {
+            token: t,
+            expires_in: value.expires_in,
+            issued_at: value.issued_at,
+            refresh_token: value.refresh_token,
+        })
+    }
 }
 
 impl BearerAuth {
@@ -62,7 +92,7 @@ impl BearerAuth {
             return Err(Error::UnexpectedHttpStatus(status));
         }
 
-        let bearer_auth = r.json::<BearerAuth>().await?;
+        let bearer_auth: BearerAuth = r.json::<MultiTokenBearerAuth>().await?.try_into()?;
 
         match bearer_auth.token.as_str() {
             "unauthenticated" | "" => return Err(Error::InvalidAuthToken(bearer_auth.token)),

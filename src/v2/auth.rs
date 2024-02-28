@@ -1,3 +1,5 @@
+use std::convert::{TryFrom, TryInto};
+
 use crate::errors::{Error, Result};
 use crate::v2::*;
 use reqwest::{header::HeaderValue, RequestBuilder, StatusCode, Url};
@@ -24,11 +26,37 @@ impl Auth {
 /// Used for Bearer HTTP Authentication.
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct BearerAuth {
-    #[serde(alias = "access_token")]
     token: String,
     expires_in: Option<u32>,
     issued_at: Option<String>,
     refresh_token: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct AzureBearerAuth {
+    token: Option<String>,
+    access_token: Option<String>,
+    expires_in: Option<u32>,
+    issued_at: Option<String>,
+    refresh_token: Option<String>,
+}
+
+impl TryFrom<AzureBearerAuth> for BearerAuth {
+    type Error = Error;
+
+    fn try_from(value: AzureBearerAuth) -> std::result::Result<Self, Error> {
+        let t = value
+            .token
+            .or(value.access_token)
+            .ok_or(Error::NoTokenReceived)?;
+
+        Ok(Self {
+            token: t,
+            expires_in: value.expires_in,
+            issued_at: value.issued_at,
+            refresh_token: value.refresh_token,
+        })
+    }
 }
 
 impl BearerAuth {
@@ -63,7 +91,7 @@ impl BearerAuth {
             return Err(Error::UnexpectedHttpStatus(status));
         }
 
-        let bearer_auth = r.json::<BearerAuth>().await?;
+        let bearer_auth: BearerAuth = r.json::<AzureBearerAuth>().await?.try_into()?;
 
         match bearer_auth.token.as_str() {
             "unauthenticated" | "" => return Err(Error::InvalidAuthToken(bearer_auth.token)),

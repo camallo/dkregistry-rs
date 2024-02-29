@@ -74,6 +74,11 @@ fn valid_references() {
             expected_registry: "1.2.3.4",
             expected_repo: "busybox",
         },
+        Tcase {
+            input: "registry:5000/busybox",
+            expected_repo: "busybox",
+            expected_registry: "registry:5000",
+        },
     ] {
         let r = Reference::from_str(t.input);
         asserting(t.input).that(&r).is_ok();

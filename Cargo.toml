@@ -24,7 +24,7 @@ sign-tag = true
 tag-message = "dkregistry v{{version}}"
 
 [dependencies]
-base64 = "0.13"
+base64 = "0.21"
 futures = "0.3"
 
 # Pin libflate <1.3.0

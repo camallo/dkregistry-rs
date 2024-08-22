@@ -5,12 +5,12 @@
 //! ## Example
 //!
 //! ```rust
-//! # extern crate dkregistry;
+//! # extern crate dockreg;
 //! # fn main() {
-//! # fn run() -> dkregistry::errors::Result<()> {
+//! # fn run() -> dockreg::errors::Result<()> {
 //! #
 //! use std::str::FromStr;
-//! use dkregistry::reference::Reference;
+//! use dockreg::reference::Reference;
 //!
 //! // Parse an image reference
 //! let dkref = Reference::from_str("docker://busybox")?;

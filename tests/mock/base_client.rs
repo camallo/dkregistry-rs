@@ -1,4 +1,4 @@
-extern crate dkregistry;
+extern crate dockreg;
 extern crate mockito;
 extern crate tokio;
 
@@ -18,7 +18,7 @@ fn test_base_no_insecure() {
         .create();
 
     let runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(false)
         .username(None)
@@ -40,13 +40,13 @@ fn test_base_no_insecure() {
 fn test_base_useragent() {
     let addr = mockito::server_address().to_string();
     let _m = mock("GET", "/v2/")
-        .match_header("user-agent", dkregistry::USER_AGENT)
+        .match_header("user-agent", dockreg::USER_AGENT)
         .with_status(200)
         .with_header(API_VERSION_K, API_VERSION_V)
         .create();
 
     let runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)
@@ -74,7 +74,7 @@ fn test_base_custom_useragent() {
         .create();
 
     let runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .user_agent(Some(ua.to_string()))
@@ -92,7 +92,7 @@ fn test_base_custom_useragent() {
 }
 
 mod test_custom_root_certificate {
-    use dkregistry::v2::Client;
+    use dockreg::v2::Client;
     use native_tls::{HandshakeError, Identity, TlsStream};
     use reqwest::Certificate;
     use std::error::Error;
@@ -142,7 +142,7 @@ mod test_custom_root_certificate {
 
         let err = registry.is_auth().await.unwrap_err();
 
-        if let dkregistry::errors::Error::Reqwest(r) = err {
+        if let dockreg::errors::Error::Reqwest(r) = err {
             if let Some(s) = r.source() {
                 let oh: Option<&hyper::Error> = s.downcast_ref();
 

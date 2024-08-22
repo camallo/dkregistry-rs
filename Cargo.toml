@@ -1,16 +1,15 @@
 [package]
-name = "dkregistry"
+name = "dockreg"
 rust-version = "1.70.0"
 version = "0.5.1-alpha.0"
-authors = ["Luca Bruno <lucab@debian.org>", "Stefan Junker <sjunker@redhat.com>"]
+authors = ["Bryant Biggs <bryantbiggs@gamil.com>", "Luca Bruno <lucab@debian.org>", "Stefan Junker <sjunker@redhat.com>"]
 license = "MIT OR Apache-2.0"
-documentation = "https://docs.rs/dkregistry"
-repository = "https://github.com/camallo/dkregistry-rs"
+documentation = "https://docs.rs/dockreg"
+repository = "https://github.com/clowdhaus/dockreg-rs"
 description = "A pure-Rust asynchronous library for Docker Registry API"
 keywords = ["docker", "registry", "async"]
 exclude = [
 ".gitignore",
-".travis.yml",
 ]
 edition = "2018"
 
@@ -18,10 +17,10 @@ edition = "2018"
 disable-publish = true
 disable-push = true
 post-release-commit-message = "cargo: development version bump"
-pre-release-commit-message = "cargo: dkregistry release {{version}}"
+pre-release-commit-message = "cargo: dockreg release {{version}}"
 sign-commit = true
 sign-tag = true
-tag-message = "dkregistry v{{version}}"
+tag-message = "dockreg v{{version}}"
 
 [dependencies]
 base64 = "0.13"

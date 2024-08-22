@@ -7,7 +7,7 @@ use std::{fs, io};
 fn test_deserialize_manifest_v2s1_signed() {
     let f = fs::File::open("tests/fixtures/manifest_v2_s1.json").expect("Missing fixture");
     let bufrd = io::BufReader::new(f);
-    let _manif: dkregistry::v2::manifest::ManifestSchema1Signed =
+    let _manif: dockreg::v2::manifest::ManifestSchema1Signed =
         serde_json::from_reader(bufrd).unwrap();
 }
 
@@ -15,16 +15,16 @@ fn test_deserialize_manifest_v2s1_signed() {
 fn test_deserialize_manifest_v2s2() {
     let f = fs::File::open("tests/fixtures/manifest_v2_s2.json").expect("Missing fixture");
     let bufrd = io::BufReader::new(f);
-    let _manif: dkregistry::v2::manifest::ManifestSchema2Spec =
+    let _manif: dockreg::v2::manifest::ManifestSchema2Spec =
         serde_json::from_reader(bufrd).unwrap();
 }
 
 fn deserialize_manifest_v2s2_config(
-) -> Result<dkregistry::v2::manifest::Manifest, Box<dyn std::error::Error>> {
+) -> Result<dockreg::v2::manifest::Manifest, Box<dyn std::error::Error>> {
     let manifest_spec = {
         let f = fs::File::open("tests/fixtures/quay.io_v2_openshift-release-dev_ocp-release_manifests_4.1.0-rc.9/application_vnd.docker.distribution.manifest.v2+json").expect("Missing fixture");
 
-        serde_json::from_reader::<_, dkregistry::v2::manifest::ManifestSchema2Spec>(f)?
+        serde_json::from_reader::<_, dockreg::v2::manifest::ManifestSchema2Spec>(f)?
     };
 
     let config_blob = {
@@ -33,11 +33,11 @@ fn deserialize_manifest_v2s2_config(
             &manifest_spec.config().digest.replace(":", "_")
         ))
         .expect("Missing fixture");
-        serde_json::from_reader::<_, dkregistry::v2::manifest::ConfigBlob>(f)?
+        serde_json::from_reader::<_, dockreg::v2::manifest::ConfigBlob>(f)?
     };
 
-    Ok(dkregistry::v2::manifest::Manifest::S2(
-        dkregistry::v2::manifest::ManifestSchema2 {
+    Ok(dockreg::v2::manifest::Manifest::S2(
+        dockreg::v2::manifest::ManifestSchema2 {
             manifest_spec,
             config_blob,
         },
@@ -73,7 +73,7 @@ fn test_manifest_v2s2() -> Result<(), Box<dyn std::error::Error>> {
 fn test_deserialize_manifest_list_v2() {
     let f = fs::File::open("tests/fixtures/manifest_list_v2.json").expect("Missing fixture");
     let bufrd = io::BufReader::new(f);
-    let _manif: dkregistry::v2::manifest::ManifestList = serde_json::from_reader(bufrd).unwrap();
+    let _manif: dockreg::v2::manifest::ManifestList = serde_json::from_reader(bufrd).unwrap();
 }
 
 #[test]
@@ -81,7 +81,7 @@ fn test_deserialize_etcd_manifest() {
     let f =
         fs::File::open("tests/fixtures/quayio_coreos_etcd_latest.json").expect("Missing fixture");
     let bufrd = io::BufReader::new(f);
-    let _manif: dkregistry::v2::manifest::ManifestSchema1Signed =
+    let _manif: dockreg::v2::manifest::ManifestSchema1Signed =
         serde_json::from_reader(bufrd).unwrap();
 }
 
@@ -89,15 +89,15 @@ fn test_deserialize_etcd_manifest() {
 fn test_labels_manifest_v2s1_signed() {
     let f = fs::File::open("tests/fixtures/manifest_v2_s1.json").expect("Missing fixture");
     let bufrd = io::BufReader::new(f);
-    let manif: dkregistry::v2::manifest::ManifestSchema1Signed =
+    let manif: dockreg::v2::manifest::ManifestSchema1Signed =
         serde_json::from_reader(bufrd).unwrap();
     assert_eq!(None, manif.get_labels(0));
 
     let f =
-        fs::File::open("tests/fixtures/quayio_steveej_cincinnati-test-labels_dkregistry-test.json")
+        fs::File::open("tests/fixtures/quayio_steveej_cincinnati-test-labels_dockreg-test.json")
             .expect("Missing fixture");
     let bufrd = io::BufReader::new(f);
-    let manif: dkregistry::v2::manifest::ManifestSchema1Signed =
+    let manif: dockreg::v2::manifest::ManifestSchema1Signed =
         serde_json::from_reader(bufrd).unwrap();
 
     let labels_0 = manif.get_labels(0).expect("Missing labels");

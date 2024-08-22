@@ -3,7 +3,7 @@ extern crate futures;
 extern crate serde_json;
 extern crate tokio;
 
-use dkregistry::render;
+use dockreg::render;
 use futures::future::try_join_all;
 use std::path::Path;
 use std::result::Result;
@@ -48,7 +48,7 @@ async fn main() -> Result<(), boxed::Box<dyn error::Error>> {
     let home = dirs::home_dir().unwrap();
     let cfg = fs::File::open(home.join(".docker/config.json"));
     if let Ok(fp) = cfg {
-        let creds = dkregistry::get_credentials(io::BufReader::new(fp), &registry);
+        let creds = dockreg::get_credentials(io::BufReader::new(fp), &registry);
         if let Ok(user_pass) = creds {
             user = user_pass.0;
             password = user_pass.1;
@@ -85,11 +85,11 @@ async fn run(
     path: &Path,
 ) -> Result<(), boxed::Box<dyn error::Error>> {
     env_logger::Builder::new()
-        .filter(Some("dkregistry"), log::LevelFilter::Trace)
+        .filter(Some("dockreg"), log::LevelFilter::Trace)
         .filter(Some("trace"), log::LevelFilter::Trace)
         .try_init()?;
 
-    let client = dkregistry::v2::Client::configure()
+    let client = dockreg::v2::Client::configure()
         .registry(registry)
         .insecure_registry(false)
         .username(user)

@@ -7,13 +7,13 @@
 //! ## Example
 //!
 //! ```rust,no_run
-//! # extern crate dkregistry;
+//! # extern crate dockreg;
 //! # extern crate tokio;
 //! # #[tokio::main]
 //! # async fn main() {
-//! # async fn run() -> dkregistry::errors::Result<()> {
+//! # async fn run() -> dockreg::errors::Result<()> {
 //! #
-//! use dkregistry::v2::Client;
+//! use dockreg::v2::Client;
 //!
 //! // Retrieve an image manifest.
 //! let dclient = Client::configure()

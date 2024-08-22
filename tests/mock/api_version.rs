@@ -1,4 +1,4 @@
-extern crate dkregistry;
+extern crate dockreg;
 extern crate mockito;
 extern crate tokio;
 
@@ -17,7 +17,7 @@ fn test_version_check_status_ok() {
         .create();
 
     let runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)
@@ -44,7 +44,7 @@ fn test_version_check_status_unauth() {
         .create();
 
     let runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)
@@ -69,7 +69,7 @@ fn test_version_check_status_notfound() {
         .create();
 
     let runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)
@@ -94,7 +94,7 @@ fn test_version_check_status_forbidden() {
         .create();
 
     let runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)
@@ -116,7 +116,7 @@ fn test_version_check_noheader() {
     let _m = mock("GET", "/v2/").with_status(403).create();
 
     let runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)
@@ -141,7 +141,7 @@ fn test_version_check_trailing_slash() {
         .create();
 
     let runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)

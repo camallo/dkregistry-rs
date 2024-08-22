@@ -1,4 +1,4 @@
-extern crate dkregistry;
+extern crate dockreg;
 extern crate futures;
 extern crate mockito;
 extern crate tokio;
@@ -19,7 +19,7 @@ fn test_catalog_simple() {
         .create();
 
     let runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)
@@ -60,7 +60,7 @@ fn test_catalog_paginate() {
         .create();
 
     let runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)

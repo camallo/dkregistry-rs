@@ -6,13 +6,13 @@
 //! ## Example
 //!
 //! ```rust,no_run
-//! # extern crate dkregistry;
+//! # extern crate dockreg;
 //! # extern crate tokio;
 //! # #[tokio::main]
 //! # async fn main() {
-//! # async fn run() -> dkregistry::errors::Result<()> {
+//! # async fn run() -> dockreg::errors::Result<()> {
 //! #
-//! use dkregistry::v2::Client;
+//! use dockreg::v2::Client;
 //!
 //! // Check whether a registry supports API v2.
 //! let host = "quay.io";
@@ -51,7 +51,7 @@ use std::collections::HashMap;
 use std::io::Read;
 
 /// Default User-Agent client identity.
-pub static USER_AGENT: &str = "camallo-dkregistry/0.0";
+pub static USER_AGENT: &str = "camallo-dockreg/0.0";
 
 /// Get registry credentials from a JSON config reader.
 ///

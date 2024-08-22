@@ -1,6 +1,6 @@
 extern crate spectral;
 
-use dkregistry::reference::Reference;
+use dockreg::reference::Reference;
 use spectral::prelude::*;
 use std::str::FromStr;
 
@@ -17,7 +17,7 @@ fn valid_references() {
             Tcase {
                 input: "",
                 expected_repo: "library/busybox",
-                expected_registry: dkregistry::reference::DEFAULT_REGISTRY,
+                expected_registry: dockreg::reference::DEFAULT_REGISTRY,
             }
         }
     }

@@ -1,14 +1,9 @@
-# dkregistry
+# Docker Registry HTTP API v2
 
+A pure-Rust asynchronous library for the Docker Registry HTTP API v2.
 
-[![Build Status](https://travis-ci.org/camallo/dkregistry-rs.svg?branch=master)](https://travis-ci.org/camallo/dkregistry-rs)
-[![LoC](https://tokei.rs/b1/github/camallo/dkregistry-rs?category=code)](https://github.com/camallo/dkregistry-rs)
-[![Documentation](https://docs.rs/dkregistry/badge.svg)](https://docs.rs/dkregistry)
-
-A pure-Rust asynchronous library for Docker Registry API.
-
-`dkregistry` provides support for asynchronous interaction with container registries
-conformant to the [Docker Registry HTTP API V2][registry-v2] specification.
+`dockreg` provides support for asynchronous interaction with container registries
+conformant to the [Docker Registry HTTP API v2][registry-v2] specification.
 
 [registry-v2]: https://docs.docker.com/registry/spec/api/
 

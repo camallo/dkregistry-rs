@@ -5,7 +5,7 @@ extern crate tokio;
 
 mod common;
 
-use dkregistry::reference;
+use dockreg::reference;
 use std::str::FromStr;
 use std::{boxed, env, error, fs, io};
 
@@ -25,7 +25,7 @@ async fn main() {
     let home = dirs::home_dir().unwrap();
     let cfg = fs::File::open(home.join(".docker/config.json"));
     if let Ok(fp) = cfg {
-        let creds = dkregistry::get_credentials(io::BufReader::new(fp), &registry);
+        let creds = dockreg::get_credentials(io::BufReader::new(fp), &registry);
         if let Ok(user_pass) = creds {
             user = user_pass.0;
             password = user_pass.1;
@@ -57,14 +57,14 @@ async fn run(
     passwd: Option<String>,
 ) -> Result<(), boxed::Box<dyn error::Error>> {
     env_logger::Builder::new()
-        .filter(Some("dkregistry"), log::LevelFilter::Trace)
+        .filter(Some("dockreg"), log::LevelFilter::Trace)
         .filter(Some("trace"), log::LevelFilter::Trace)
         .try_init()?;
 
     let image = dkr_ref.repository();
     let version = dkr_ref.version();
 
-    let client = dkregistry::v2::Client::configure()
+    let client = dockreg::v2::Client::configure()
         .registry(&dkr_ref.registry())
         .insecure_registry(false)
         .username(user)

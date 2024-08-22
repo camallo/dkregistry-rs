@@ -1,4 +1,4 @@
-extern crate dkregistry;
+extern crate dockreg;
 extern crate futures;
 extern crate mockito;
 extern crate tokio;
@@ -21,7 +21,7 @@ fn test_quay_tags_simple() {
         .create();
 
     let runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)
@@ -66,7 +66,7 @@ fn test_quay_tags_paginate() {
         .create();
 
     let runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)
@@ -101,7 +101,7 @@ fn test_quay_tags_404() {
         .create();
 
     let runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)
@@ -130,7 +130,7 @@ fn test_quay_tags_missing_header() {
         .create();
 
     let runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)

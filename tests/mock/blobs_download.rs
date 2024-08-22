@@ -1,4 +1,4 @@
-extern crate dkregistry;
+extern crate dockreg;
 extern crate mockito;
 extern crate sha2;
 extern crate tokio;
@@ -26,7 +26,7 @@ fn test_blobs_has_layer() {
         .create();
 
     let runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)
@@ -52,7 +52,7 @@ fn test_blobs_hasnot_layer() {
     let _m = mock("HEAD", ep.as_str()).with_status(404).create();
 
     let runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)
@@ -83,7 +83,7 @@ fn get_blobs_succeeds_with_consistent_layer() -> Fallible<()> {
         .create();
 
     let runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)
@@ -116,7 +116,7 @@ fn get_blobs_fails_with_inconsistent_layer() -> Fallible<()> {
         .create();
 
     let runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)
@@ -149,7 +149,7 @@ fn get_blobs_stream() -> Fallible<()> {
         .create();
 
     let runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(&addr)
         .insecure_registry(true)
         .username(None)

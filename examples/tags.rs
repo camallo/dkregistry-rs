@@ -44,11 +44,11 @@ async fn run(
     image: &str,
 ) -> Result<(), boxed::Box<dyn error::Error>> {
     env_logger::Builder::new()
-        .filter(Some("dkregistry"), log::LevelFilter::Trace)
+        .filter(Some("dockreg"), log::LevelFilter::Trace)
         .filter(Some("trace"), log::LevelFilter::Trace)
         .try_init()?;
 
-    let client = dkregistry::v2::Client::configure()
+    let client = dockreg::v2::Client::configure()
         .registry(host)
         .insecure_registry(false)
         .username(user)

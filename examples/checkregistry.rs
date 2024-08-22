@@ -18,7 +18,7 @@ async fn main() {
 }
 
 async fn run(host: &str) -> Result<bool, boxed::Box<dyn error::Error>> {
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(host)
         .insecure_registry(false)
         .build()?;

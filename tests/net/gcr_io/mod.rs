@@ -1,4 +1,4 @@
-extern crate dkregistry;
+extern crate dockreg;
 extern crate futures;
 extern crate tokio;
 
@@ -34,7 +34,7 @@ fn test_gcrio_base() {
     };
 
     let runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
         .username(Some(user))
@@ -51,7 +51,7 @@ fn test_gcrio_base() {
 #[test]
 fn test_gcrio_insecure() {
     let runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(true)
         .username(None)
@@ -68,7 +68,7 @@ fn test_gcrio_insecure() {
 #[test]
 fn test_gcrio_get_tags() {
     let runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
         .username(None)
@@ -87,7 +87,7 @@ fn test_gcrio_get_tags() {
 #[test]
 fn test_gcrio_has_manifest() {
     let runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
         .username(None)
@@ -97,7 +97,7 @@ fn test_gcrio_has_manifest() {
 
     let image = "google_containers/mounttest";
     let tag = "0.2";
-    let manifest_type = dkregistry::mediatypes::MediaTypes::ManifestV2S1Signed.to_string();
+    let manifest_type = dockreg::mediatypes::MediaTypes::ManifestV2S1Signed.to_string();
     let manifest_type_str = manifest_type.as_str();
     let manifest_type_vec = vec![manifest_type_str];
     let fut = dclient.has_manifest(image, tag, Some(manifest_type_vec.as_slice()));
@@ -105,14 +105,14 @@ fn test_gcrio_has_manifest() {
 
     assert_eq!(
         has_manifest,
-        Some(dkregistry::mediatypes::MediaTypes::ManifestV2S1Signed)
+        Some(dockreg::mediatypes::MediaTypes::ManifestV2S1Signed)
     );
 }
 
 #[test]
 fn test_gcrio_get_manifest() {
     let runtime = Runtime::new().unwrap();
-    let dclient = dkregistry::v2::Client::configure()
+    let dclient = dockreg::v2::Client::configure()
         .registry(REGISTRY)
         .insecure_registry(false)
         .username(None)

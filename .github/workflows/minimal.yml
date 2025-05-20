@@ -11,7 +11,7 @@ jobs:
         rust:
           - stable
           - beta
-          - "1.70.0"  # MSRV
+          - "1.84.1"  # MSRV
         include:
           - rust: nightly
             experimental: true
@@ -35,7 +35,7 @@ jobs:
         rust:
           - stable
           - beta
-          - "1.70.0"  # MSRV
+          - "1.84.1"  # MSRV
         include:
           - rust: nightly
             experimental: true
@@ -62,7 +62,7 @@ jobs:
         rust:
           - stable
           - beta
-          - "1.70.0"  # MSRV
+          - "1.84.1"  # MSRV
         include:
           - rust: nightly
             experimental: true
@@ -89,7 +89,7 @@ jobs:
         rust:
           - stable
           - beta
-          - "1.70.0"  # MSRV
+          - "1.84.1"  # MSRV
         include:
           - rust: nightly
             experimental: true

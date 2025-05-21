@@ -105,7 +105,8 @@ mod tests {
     #[test]
     fn try_new_succeeds_with_correct_digest() -> Fallible<()> {
         {
-            let correct_digest = &"sha256:0000000000000000000000000000000000000000000000000000000000000000";
+            let correct_digest =
+                &"sha256:0000000000000000000000000000000000000000000000000000000000000000";
             ContentDigest::try_new(correct_digest)?;
         }
 

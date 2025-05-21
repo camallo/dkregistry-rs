@@ -65,9 +65,7 @@ impl Client {
         let header_content_type = headers.get(header::CONTENT_TYPE);
         let media_type = evaluate_media_type(header_content_type, &url)?;
 
-        trace!(
-            "content-type: {header_content_type:?}, media-type: {media_type:?}"
-        );
+        trace!("content-type: {header_content_type:?}, media-type: {media_type:?}");
 
         match media_type {
             mediatypes::MediaTypes::ManifestV2S1Signed => Ok((

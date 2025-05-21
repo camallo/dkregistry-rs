@@ -172,9 +172,7 @@ impl WwwAuthenticateHeaderContent {
         )?;
 
         if !unsupported_keys.is_empty() {
-            warn!(
-                "skipping unrecognized keys in authentication header: {unsupported_keys:#?}"
-            );
+            warn!("skipping unrecognized keys in authentication header: {unsupported_keys:#?}");
         }
 
         Ok(content)

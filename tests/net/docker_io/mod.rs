@@ -67,7 +67,7 @@ fn test_dockerio_insecure() {
 fn test_dockerio_anonymous_auth() {
     let runtime = Runtime::new().unwrap();
     let image = "library/alpine";
-    let version = "latest";
+    let version = "2.6";
     let login_scope = format!("repository:{}:pull", image);
     let scopes = vec![login_scope.as_str()];
     let dclient_future = dkregistry::v2::Client::configure()

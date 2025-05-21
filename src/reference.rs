@@ -85,7 +85,7 @@ impl fmt::Debug for Version {
             Version::Tag(ref s) => ":".to_string() + s,
             Version::Digest(ref t, ref d) => "@".to_string() + t + ":" + d,
         };
-        write!(f, "{}", v)
+        write!(f, "{v}")
     }
 }
 
@@ -95,7 +95,7 @@ impl fmt::Display for Version {
             Version::Tag(ref s) => s.to_string(),
             Version::Digest(ref t, ref d) => t.to_string() + ":" + d,
         };
-        write!(f, "{}", v)
+        write!(f, "{v}")
     }
 }
 

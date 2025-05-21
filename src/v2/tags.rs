@@ -49,9 +49,9 @@ impl Client {
         link: &Option<String>,
     ) -> Result<(TagsChunk, Option<String>)> {
         let url_paginated = match (paginate, link) {
-            (Some(p), None) => format!("{}?n={}", base_url, p),
-            (None, Some(l)) => format!("{}?{}", base_url, l),
-            (Some(_p), Some(l)) => format!("{}?{}", base_url, l),
+            (Some(p), None) => format!("{base_url}?n={p}"),
+            (None, Some(l)) => format!("{base_url}?{l}"),
+            (Some(_p), Some(l)) => format!("{base_url}?{l}"),
             _ => base_url.to_string(),
         };
         let url = Url::parse(&url_paginated)?;
@@ -66,7 +66,7 @@ impl Client {
         // ensure the CONTENT_TYPE header is application/json
         let ct_hdr = resp.headers().get(header::CONTENT_TYPE).cloned();
 
-        trace!("page url {:?}", ct_hdr);
+        trace!("page url {ct_hdr:?}");
 
         let ok = match ct_hdr {
             None => false,
@@ -75,12 +75,12 @@ impl Client {
         if !ok {
             // TODO:(steveeJ): Make this an error once Satellite
             // returns the content type correctly
-            debug!("get_tags: wrong content type '{:?}', ignoring...", ct_hdr);
+            debug!("get_tags: wrong content type '{ct_hdr:?}', ignoring...");
         }
 
         // extract the response body and parse the LINK header
         let next = parse_link(resp.headers().get(header::LINK));
-        trace!("next_page {:?}", next);
+        trace!("next_page {next:?}");
 
         let tags_chunk = resp.json::<TagsChunk>().await?;
         Ok((tags_chunk, next))
@@ -95,10 +95,7 @@ fn parse_link(hdr: Option<&header::HeaderValue>) -> Option<String> {
     // whether there is a a common library to do this, in the future.
 
     // Raw Header value bytes.
-    let hval = match hdr {
-        Some(v) => v,
-        None => return None,
-    };
+    let hval = hdr?;
 
     // Header value string.
     let sval = match hval.to_str() {

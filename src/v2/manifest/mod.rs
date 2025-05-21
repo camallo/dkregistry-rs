@@ -65,11 +65,7 @@ impl Client {
         let header_content_type = headers.get(header::CONTENT_TYPE);
         let media_type = evaluate_media_type(header_content_type, &url)?;
 
-        trace!(
-            "content-type: {:?}, media-type: {:?}",
-            header_content_type,
-            media_type
-        );
+        trace!("content-type: {header_content_type:?}, media-type: {media_type:?}");
 
         match media_type {
             mediatypes::MediaTypes::ManifestV2S1Signed => Ok((
@@ -162,7 +158,7 @@ impl Client {
             accept_headers.insert(header::ACCEPT, header_value);
         }
 
-        trace!("HEAD {:?}", url);
+        trace!("HEAD {url:?}");
 
         let r = self
             .build_reqwest(Method::HEAD, url.clone())
@@ -186,7 +182,7 @@ impl Client {
             | StatusCode::OK => {
                 let media_type =
                     evaluate_media_type(r.headers().get(header::CONTENT_TYPE), r.url())?;
-                trace!("Manifest media-type: {:?}", media_type);
+                trace!("Manifest media-type: {media_type:?}");
                 Ok(Some(media_type))
             }
             StatusCode::NOT_FOUND => Ok(None),
@@ -236,7 +232,7 @@ fn evaluate_media_type(
                     .map_err(Into::into)
                 }
                 _ => {
-                    debug!("Received content-type '{}' from pulp-based registry. Feeling lucky and trying to parse it...", header_value);
+                    debug!("Received content-type '{header_value}' from pulp-based registry. Feeling lucky and trying to parse it...");
                     mediatypes::MediaTypes::from_str(header_value).map_err(Into::into)
                 }
             }
@@ -260,7 +256,7 @@ fn build_accept_headers(accepted_types: &[(MediaTypes, Option<f64>)]) -> header:
                 ty,
                 match q {
                     None => String::default(),
-                    Some(v) => format!("; q={}", v),
+                    Some(v) => format!("; q={v}"),
                 }
             )
         })
@@ -334,7 +330,7 @@ impl Manifest {
                 Ok(m.get_layers())
             }
             (Manifest::ML(m), _, _) => Ok(m.get_digests()),
-            _ => Err(ManifestError::LayerDigestsUnsupported(format!("{:?}", self)).into()),
+            _ => Err(ManifestError::LayerDigestsUnsupported(format!("{self:?}")).into()),
         }
     }
 
@@ -359,7 +355,7 @@ mod tests {
     #[test_case("gcr.io" => "application/vnd.docker.distribution.manifest.v2+json,application/vnd.docker.distribution.manifest.v1+prettyjws,application/vnd.docker.distribution.manifest.list.v2+json"; "gcr.io")]
     #[test_case("foobar.gcr.io" => "application/vnd.docker.distribution.manifest.v2+json,application/vnd.docker.distribution.manifest.v1+prettyjws,application/vnd.docker.distribution.manifest.list.v2+json"; "Custom gcr.io registry")]
     fn gcr_io_accept_headers(registry: &str) -> String {
-        let client_builder = Client::configure().registry(&registry);
+        let client_builder = Client::configure().registry(registry);
         let client = client_builder.build().unwrap();
         let header_map = build_accept_headers(&client.accepted_types);
         header_map
@@ -383,7 +379,7 @@ mod tests {
         let registry = "https://example.com";
 
         let client_builder = Client::configure()
-            .registry(&registry)
+            .registry(registry)
             .accepted_types(accept_headers);
         let client = client_builder.build().unwrap();
         let header_map = build_accept_headers(&client.accepted_types);

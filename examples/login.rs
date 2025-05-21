@@ -20,17 +20,17 @@ async fn main() {
 
     let user = std::env::var("DKREG_USER").ok();
     if user.is_none() {
-        println!("[{}] no $DKREG_USER for login user", registry);
+        println!("[{registry}] no $DKREG_USER for login user");
     }
     let password = std::env::var("DKREG_PASSWD").ok();
     if password.is_none() {
-        println!("[{}] no $DKREG_PASSWD for login password", registry);
+        println!("[{registry}] no $DKREG_PASSWD for login password");
     }
 
     let res = run(&registry, user, password, login_scope).await;
 
     if let Err(e) = res {
-        println!("[{}] {}", registry, e);
+        println!("[{registry}] {e}");
         std::process::exit(1);
     };
 }

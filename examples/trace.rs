@@ -18,7 +18,7 @@ async fn main() {
     .unwrap();
     let registry = dkr_ref.registry();
 
-    println!("[{}] downloading image {}", registry, dkr_ref);
+    println!("[{registry}] downloading image {dkr_ref}");
 
     let mut user = None;
     let mut password = None;
@@ -30,23 +30,23 @@ async fn main() {
             user = user_pass.0;
             password = user_pass.1;
         } else {
-            println!("[{}] no credentials found in config.json", registry);
+            println!("[{registry}] no credentials found in config.json");
         }
     } else {
         user = env::var("DKREG_USER").ok();
         if user.is_none() {
-            println!("[{}] no $DKREG_USER for login user", registry);
+            println!("[{registry}] no $DKREG_USER for login user");
         }
         password = env::var("DKREG_PASSWD").ok();
         if password.is_none() {
-            println!("[{}] no $DKREG_PASSWD for login password", registry);
+            println!("[{registry}] no $DKREG_PASSWD for login password");
         }
     };
 
     let res = run(&dkr_ref, user, password).await;
 
     if let Err(e) = res {
-        println!("[{}] {:?}", registry, e);
+        println!("[{registry}] {e:?}");
         std::process::exit(1);
     };
 }
@@ -73,14 +73,14 @@ async fn run(
 
     let login_scope = "";
 
-    let dclient = client.authenticate(&[&login_scope]).await?;
+    let dclient = client.authenticate(&[login_scope]).await?;
     let manifest = dclient.get_manifest(&image, &version).await?;
 
     let layers_digests = manifest.layers_digests(None)?;
     println!("{} -> got {} layer(s)", &image, layers_digests.len(),);
 
     for layer_digest in &layers_digests {
-        let blob = dclient.get_blob(&image, &layer_digest).await?;
+        let blob = dclient.get_blob(&image, layer_digest).await?;
         println!("Layer {}, got {} bytes.\n", layer_digest, blob.len());
     }
 

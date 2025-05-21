@@ -35,13 +35,13 @@ async fn main() -> Result<(), boxed::Box<dyn error::Error>> {
         match std::env::var("IMAGE_OVERWRITE") {
             Ok(value) if value == "true" => {
                 std::fs::remove_dir_all(path)?;
-                eprintln!("{}, removing.", msg);
+                eprintln!("{msg}, removing.");
             }
-            _ => return Err(format!("{}, exiting.", msg).into()),
+            _ => return Err(format!("{msg}, exiting.").into()),
         }
     };
 
-    println!("[{}] downloading image {}:{}", registry, image, version);
+    println!("[{registry}] downloading image {image}:{version}");
 
     let mut user = None;
     let mut password = None;
@@ -53,23 +53,23 @@ async fn main() -> Result<(), boxed::Box<dyn error::Error>> {
             user = user_pass.0;
             password = user_pass.1;
         } else {
-            println!("[{}] no credentials found in config.json", registry);
+            println!("[{registry}] no credentials found in config.json");
         }
     } else {
         user = env::var("DKREG_USER").ok();
         if user.is_none() {
-            println!("[{}] no $DKREG_USER for login user", registry);
+            println!("[{registry}] no $DKREG_USER for login user");
         }
         password = env::var("DKREG_PASSWD").ok();
         if password.is_none() {
-            println!("[{}] no $DKREG_PASSWD for login password", registry);
+            println!("[{registry}] no $DKREG_PASSWD for login password");
         }
     };
 
-    let res = run(&registry, &image, &version, user, password, &path).await;
+    let res = run(&registry, &image, &version, user, password, path).await;
 
     if let Err(e) = res {
-        println!("[{}] {}", registry, e);
+        println!("[{registry}] {e}");
         std::process::exit(1);
     };
 
@@ -96,17 +96,17 @@ async fn run(
         .password(passwd)
         .build()?;
 
-    let login_scope = format!("repository:{}:pull", image);
+    let login_scope = format!("repository:{image}:pull");
 
     let dclient = client.authenticate(&[&login_scope]).await?;
-    let manifest = dclient.get_manifest(&image, &version).await?;
+    let manifest = dclient.get_manifest(image, version).await?;
     let layers_digests = manifest.layers_digests(None)?;
 
     println!("{} -> got {} layer(s)", &image, layers_digests.len(),);
 
     let blob_futures = layers_digests
         .iter()
-        .map(|layer_digest| dclient.get_blob(&image, &layer_digest))
+        .map(|layer_digest| dclient.get_blob(image, layer_digest))
         .collect::<Vec<_>>();
 
     let blobs = try_join_all(blob_futures).await?;
@@ -114,7 +114,7 @@ async fn run(
     println!("Downloaded {} layers", blobs.len());
 
     // TODO: use async io
-    std::fs::create_dir(&path).unwrap();
+    std::fs::create_dir(path).unwrap();
     let can_path = path.canonicalize().unwrap();
 
     println!("Unpacking layers to {:?}", &can_path);

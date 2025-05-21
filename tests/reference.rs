@@ -91,7 +91,7 @@ fn valid_references() {
 
 #[test]
 fn invalid_references() {
-    let tcases = vec!["".into(), "L".repeat(128), ":justatag".into()];
+    let tcases = ["".into(), "L".repeat(128), ":justatag".into()];
 
     for t in tcases.iter() {
         let r = Reference::from_str(t);

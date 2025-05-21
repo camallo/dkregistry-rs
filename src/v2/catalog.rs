@@ -17,7 +17,7 @@ impl v2::Client {
     ) -> impl Stream<Item = Result<String>> + 'a {
         let url = {
             let suffix = if let Some(n) = paginate {
-                format!("?n={}", n)
+                format!("?n={n}")
             } else {
                 "".to_string()
             };
@@ -41,7 +41,7 @@ impl v2::Client {
 async fn fetch_catalog(req: RequestBuilder) -> Result<Catalog> {
     let r = req.send().await?;
     let status = r.status();
-    trace!("Got status: {:?}", status);
+    trace!("Got status: {status:?}");
     match status {
         StatusCode::OK => r.json::<Catalog>().await.map_err(Into::into),
         _ => Err(crate::Error::UnexpectedHttpStatus(status)),

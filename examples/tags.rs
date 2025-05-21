@@ -18,21 +18,21 @@ async fn main() {
         Some(x) => x,
         None => "library/debian".into(),
     };
-    println!("[{}] requesting tags for image {}", registry, image);
+    println!("[{registry}] requesting tags for image {image}");
 
     let user = std::env::var("DKREG_USER").ok();
     if user.is_none() {
-        println!("[{}] no $DKREG_USER for login user", registry);
+        println!("[{registry}] no $DKREG_USER for login user");
     }
     let password = std::env::var("DKREG_PASSWD").ok();
     if password.is_none() {
-        println!("[{}] no $DKREG_PASSWD for login password", registry);
+        println!("[{registry}] no $DKREG_PASSWD for login password");
     }
 
     let res = run(&registry, user, password, &image).await;
 
     if let Err(e) = res {
-        println!("[{}] {}", registry, e);
+        println!("[{registry}] {e}");
         std::process::exit(1);
     };
 }
@@ -55,18 +55,18 @@ async fn run(
         .password(passwd)
         .build()?;
 
-    let login_scope = format!("repository:{}:pull", image);
+    let login_scope = format!("repository:{image}:pull");
 
     let dclient = client.authenticate(&[&login_scope]).await?;
 
     dclient
-        .get_tags(&image, Some(7))
+        .get_tags(image, Some(7))
         .collect::<Vec<_>>()
         .await
         .into_iter()
         .map(Result::unwrap)
         .for_each(|tag| {
-            println!("{:?}", tag);
+            println!("{tag:?}");
         });
 
     Ok(())

@@ -93,7 +93,7 @@ impl Client {
         // GET request to bare v2 endpoint.
         let v2_endpoint = format!("{}/v2/", self.base_url);
         let request = reqwest::Url::parse(&v2_endpoint).map(|url| {
-            trace!("GET {:?}", url);
+            trace!("GET {url:?}");
             self.build_reqwest(Method::GET, url)
         })?;
 
@@ -103,7 +103,7 @@ impl Client {
             (StatusCode::OK, Some(x)) => Ok((x == api_version, true)),
             (StatusCode::UNAUTHORIZED, Some(x)) => Ok((x == api_version, false)),
             (s, v) => {
-                trace!("Got unexpected status {}, header version {:?}", s, v);
+                trace!("Got unexpected status {s}, header version {v:?}");
                 return Err(crate::Error::UnexpectedHttpStatus(s));
             }
         };

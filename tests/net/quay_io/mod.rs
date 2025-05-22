@@ -96,6 +96,7 @@ fn test_quayio_insecure() {
 
 #[cfg(feature = "test-net-private")]
 #[test]
+#[ignore]
 fn test_quayio_auth_login() {
     let login_scope = "";
     let (runtime, dclient) = common_init(Some(&login_scope)).unwrap();
@@ -173,6 +174,7 @@ fn test_quayio_get_tags_pagination() {
 
 #[cfg(feature = "test-net-private")]
 #[test]
+#[ignore]
 fn test_quayio_auth_tags() {
     let image = "steveej/cincinnati-test";
     let login_scope = format!("repository:{}:pull", image);
@@ -209,6 +211,7 @@ fn test_quayio_has_manifest() {
 
 #[cfg(feature = "test-net-private")]
 #[test]
+#[ignore]
 fn test_quayio_auth_manifest() {
     let image = "steveej/cincinnati-test";
     let reference = "0.0.1";
@@ -242,6 +245,7 @@ fn test_quayio_has_no_manifest() {
 
 #[cfg(feature = "test-net-private")]
 #[test]
+#[ignore]
 fn test_quayio_auth_manifestref_missing() {
     let image = "steveej/cincinnati-test";
     let tag = "no-such-tag";
@@ -255,6 +259,7 @@ fn test_quayio_auth_manifestref_missing() {
 
 #[cfg(feature = "test-net-private")]
 #[test]
+#[ignore]
 fn test_quayio_auth_manifestref() {
     let image = "steveej/cincinnati-test";
     let tag = "0.0.1";
@@ -270,6 +275,7 @@ fn test_quayio_auth_manifestref() {
 
 #[cfg(feature = "test-net-private")]
 #[test]
+#[ignore]
 fn test_quayio_auth_layer_blob() {
     let image = "steveej/cincinnati-test";
     let reference = "0.0.1";

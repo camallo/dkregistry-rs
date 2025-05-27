@@ -70,6 +70,13 @@ fn test_manifest_v2s2() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
+fn test_deserialize_oci_image_manifest() {
+    let f = fs::File::open("tests/fixtures/manifest_oci_image_manifest.json").expect("Missing fixture");
+    let bufrd = io::BufReader::new(f);
+    let _manif: dkregistry::v2::manifest::ManifestSchema2Spec = serde_json::from_reader(bufrd).unwrap();
+}
+
+#[test]
 fn test_deserialize_manifest_list_v2() {
     let f = fs::File::open("tests/fixtures/manifest_list_v2.json").expect("Missing fixture");
     let bufrd = io::BufReader::new(f);

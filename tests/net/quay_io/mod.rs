@@ -174,7 +174,7 @@ fn test_quayio_get_tags_pagination() {
 #[cfg(feature = "test-net-private")]
 #[test]
 fn test_quayio_auth_tags() {
-    let image = "steveej/cincinnati-test";
+    let image = "openshift-ota/cincinnati-test";
     let login_scope = format!("repository:{}:pull", image);
     let (runtime, dclient) = common_init(Some(&login_scope)).unwrap();
 
@@ -210,7 +210,7 @@ fn test_quayio_has_manifest() {
 #[cfg(feature = "test-net-private")]
 #[test]
 fn test_quayio_auth_manifest() {
-    let image = "steveej/cincinnati-test";
+    let image = "openshift-ota/cincinnati-test";
     let reference = "0.0.1";
     let login_scope = format!("repository:{}:pull", image);
     let (runtime, dclient) = common_init(Some(&login_scope)).unwrap();
@@ -243,7 +243,7 @@ fn test_quayio_has_no_manifest() {
 #[cfg(feature = "test-net-private")]
 #[test]
 fn test_quayio_auth_manifestref_missing() {
-    let image = "steveej/cincinnati-test";
+    let image = "openshift-ota/cincinnati-test";
     let tag = "no-such-tag";
 
     let login_scope = format!("repository:{}:pull", image);
@@ -256,10 +256,10 @@ fn test_quayio_auth_manifestref_missing() {
 #[cfg(feature = "test-net-private")]
 #[test]
 fn test_quayio_auth_manifestref() {
-    let image = "steveej/cincinnati-test";
+    let image = "openshift-ota/cincinnati-test";
     let tag = "0.0.1";
     let expected =
-        String::from("sha256:cc1f79c6a6fc92982a10ced91bddeefb8fbd037a01ae106a64d0a7e79d0e4813");
+        String::from("sha256:0a407c420a4a8b0239146d073562d8443f47a6d618e29453599e0610bf84844f");
 
     let login_scope = format!("repository:{}:pull", image);
     let (runtime, dclient) = common_init(Some(&login_scope)).unwrap();
@@ -271,10 +271,10 @@ fn test_quayio_auth_manifestref() {
 #[cfg(feature = "test-net-private")]
 #[test]
 fn test_quayio_auth_layer_blob() {
-    let image = "steveej/cincinnati-test";
+    let image = "openshift-ota/cincinnati-test";
     let reference = "0.0.1";
-    let layer0_sha = "sha256:ef11b765159341c08891fb84fa57d4a094903dd79059a2f8af9e1c3babda74e5";
-    let layer0_len: usize = 198;
+    let layer0_sha = "sha256:d97affeca500c97474d6b38339c44a33affed621dd61a961627228c057965aca";
+    let layer0_len: usize = 2485228;
 
     let login_scope = format!("repository:{}:pull", image);
     let (runtime, dclient) = common_init(Some(&login_scope)).unwrap();
@@ -286,7 +286,7 @@ fn test_quayio_auth_layer_blob() {
             .and_then(|manifest| {
                 let layers: Vec<String> = manifest.layers_digests(None)?;
                 let num_layers = layers.len();
-                assert!(num_layers == 1, "layers length: {}", num_layers);
+                assert!(num_layers == 2, "layers length: {}", num_layers);
                 let digest = layers[0].clone();
                 assert!(digest == layer0_sha, "layer0 digest: {}", digest);
                 Ok(digest)

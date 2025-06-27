@@ -26,11 +26,12 @@
 //! # run().await.unwrap();
 //! # }
 //! ```
+use std::fmt;
 
-use crate::errors::*;
+use crate::errors::{self, *};
 use crate::mediatypes::MediaTypes;
 use futures::prelude::*;
-use reqwest::{Method, StatusCode, Url};
+use reqwest::{Method, StatusCode, Url, Response};
 
 mod config;
 pub use self::config::Config;
@@ -128,13 +129,66 @@ impl Client {
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
-struct ApiError {
+pub struct ApiError {
     code: String,
-    message: String,
-    detail: String,
+    message: Option<String>,
+    detail: Option<Box<serde_json::value::RawValue>>,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
-struct Errors {
-    errors: Vec<ApiError>,
+#[derive(Debug, Default, Deserialize, Serialize, thiserror::Error)]
+pub struct ApiErrors {
+    errors: Option<Vec<ApiError>>,
+}
+
+impl ApiError {
+    /// Return the API error code.
+    pub fn code(&self) -> &str {
+        &self.code
+    }
+
+    pub fn message(&self) -> Option<&str> {
+        self.message.as_deref()
+    }
+}
+impl fmt::Display for ApiError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({})", self.code)?;
+        if let Some(message) = &self.message {
+            write!(f, ", message: {}", message)?;
+        }
+        if let Some(detail) = &self.detail {
+            write!(f, ", detail: {}", detail)?;
+        }
+        Ok(())
+    }
+}
+
+impl ApiErrors {
+    /// Create a new ApiErrors from a API Json response.
+    /// Returns an ApiError if the content is a valid per
+    /// https://github.com/opencontainers/distribution-spec/blob/main/spec.md#error-codes
+    pub async fn from(r: Response) -> errors::Error {
+        match r.json::<ApiErrors>().await {
+            Ok(e) => errors::Error::Api(e),
+            Err(e) => errors::Error::Reqwest(e),
+        }
+    }
+
+    /// Returns the errors returned by the API.
+    pub fn errors(&self) -> &Option<Vec<ApiError>> {
+        &self.errors
+  }
+}
+
+
+impl fmt::Display for ApiErrors {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.errors.is_none() {
+            return Ok(());
+        }
+        for error in self.errors.as_ref().unwrap().iter() {
+            write!(f, "({})", error)?
+        }
+        Ok(())
+}
 }

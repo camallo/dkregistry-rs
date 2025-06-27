@@ -50,7 +50,7 @@ impl Client {
 
         match status {
             StatusCode::OK => {}
-            _ => return Err(Error::UnexpectedHttpStatus(status)),
+            _ => return Err(ApiErrors::from(res).await),
         }
 
         let headers = res.headers();
@@ -118,7 +118,7 @@ impl Client {
 
         match status {
             StatusCode::OK => {}
-            _ => return Err(Error::UnexpectedHttpStatus(status)),
+            _ => return Err(ApiErrors::from(res).await),
         }
 
         let headers = res.headers();
@@ -186,7 +186,7 @@ impl Client {
                 Ok(Some(media_type))
             }
             StatusCode::NOT_FOUND => Ok(None),
-            _ => Err(Error::UnexpectedHttpStatus(status)),
+            _ => Err(ApiErrors::from(r).await),
         }
     }
 }

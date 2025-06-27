@@ -5,6 +5,8 @@ extern crate tokio;
 use self::mockito::mock;
 use self::tokio::runtime::Runtime;
 
+use dkregistry::errors;
+
 static API_VERSION_K: &'static str = "Docker-Distribution-API-Version";
 static API_VERSION_V: &'static str = "registry/2.0";
 
@@ -88,6 +90,44 @@ fn test_base_custom_useragent() {
     let res = runtime.block_on(futcheck).unwrap();
     assert_eq!(res, true);
 
+    mockito::reset();
+}
+
+/// Test that we properly deserialize API error payload and can access error contents.
+#[test_case::test_case("tests/fixtures/api_error_fixture_with_detail.json".to_string() ; "API error with detail")]
+#[test_case::test_case("tests/fixtures/api_error_fixture_without_detail.json".to_string() ; "API error without detail")]
+fn test_base_api_error(fixture: String) {
+    let ua = "custom-ua/1.0";
+    let image = "fake/image";
+    let version = "fakeversion";
+    let addr = mockito::server_address().to_string();
+    let _m = mock("GET", format!("/v2/{}/manifests/{}", image, version).as_str())
+        .match_header("user-agent", ua)
+        .with_status(404)
+        .with_header(API_VERSION_K, API_VERSION_V)
+        .with_body_from_file(fixture)
+        .create();
+
+    let runtime = Runtime::new().unwrap();
+    let dclient = dkregistry::v2::Client::configure()
+        .registry(&addr)
+        .insecure_registry(true)
+        .user_agent(Some(ua.to_string()))
+        .username(None)
+        .password(None)
+        .build()
+        .unwrap();
+
+    let futcheck = dclient.get_manifest(image, version);
+
+    let res = runtime.block_on(futcheck);
+    assert_eq!(res.is_err(), true);
+
+    assert!(matches!(res, Err(errors::Error::Api(_))));
+    if let errors::Error::Api(e) = res.unwrap_err() {
+        assert_eq!(e.errors().as_ref().unwrap()[0].code(), "UNAUTHORIZED");
+        assert_eq!(e.errors().as_ref().unwrap()[0].message().unwrap(), "authentication required");
+    }
     mockito::reset();
 }
 

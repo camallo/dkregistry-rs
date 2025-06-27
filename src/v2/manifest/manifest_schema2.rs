@@ -1,5 +1,7 @@
-use crate::errors::{Error, Result};
+use crate::errors::Result;
 use reqwest::Method;
+
+pub use crate::v2::ApiErrors;
 
 /// Manifest version 2 schema 2.
 ///
@@ -112,7 +114,7 @@ impl ManifestSchema2Spec {
         trace!("GET {:?}: {}", url, &status);
 
         if !status.is_success() {
-            return Err(Error::UnexpectedHttpStatus(status));
+            return Err(ApiErrors::from(r).await);
         }
 
         let config_blob = r.json::<ConfigBlob>().await?;

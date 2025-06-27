@@ -33,7 +33,12 @@ pub enum MediaTypes {
     #[strum(props(Sub = "vnd.docker.container.image.v1+json"))]
     ContainerConfigV1,
     /// Generic JSON
-    #[strum(serialize = "application/json")]
+    #[strum(
+        serialize = "application/json",
+
+        // TODO(steveeJ) find a generic way to handle this form
+        serialize = "application/json; charset=utf-8",
+    )]
     #[strum(props(Sub = "json"))]
     ApplicationJson,
 }

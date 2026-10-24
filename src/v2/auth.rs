@@ -1,3 +1,5 @@
+use std::convert::{TryFrom, TryInto};
+
 use crate::errors::{Error, Result};
 use crate::v2::*;
 use reqwest::{header::HeaderValue, RequestBuilder, StatusCode, Url};
@@ -28,6 +30,34 @@ pub struct BearerAuth {
     expires_in: Option<u32>,
     issued_at: Option<String>,
     refresh_token: Option<String>,
+}
+
+/// Used to support different response schemas of Bearer HTTP Authentication.
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct MultiTokenBearerAuth {
+    token: Option<String>,
+    access_token: Option<String>,
+    expires_in: Option<u32>,
+    issued_at: Option<String>,
+    refresh_token: Option<String>,
+}
+
+impl TryFrom<MultiTokenBearerAuth> for BearerAuth {
+    type Error = Error;
+
+    fn try_from(value: MultiTokenBearerAuth) -> std::result::Result<Self, Error> {
+        let token = value
+            .token
+            .or(value.access_token)
+            .ok_or(Error::NoTokenReceived)?;
+
+        Ok(Self {
+            token,
+            expires_in: value.expires_in,
+            issued_at: value.issued_at,
+            refresh_token: value.refresh_token,
+        })
+    }
 }
 
 impl BearerAuth {
@@ -62,7 +92,7 @@ impl BearerAuth {
             return Err(Error::UnexpectedHttpStatus(status));
         }
 
-        let bearer_auth = r.json::<BearerAuth>().await?;
+        let bearer_auth: BearerAuth = r.json::<MultiTokenBearerAuth>().await?.try_into()?;
 
         match bearer_auth.token.as_str() {
             "unauthenticated" | "" => return Err(Error::InvalidAuthToken(bearer_auth.token)),
@@ -310,6 +340,49 @@ impl Client {
 mod tests {
     use super::*;
     use test_case::test_case;
+
+    #[test]
+    fn multi_token_bearer_auth_prefers_token_and_preserves_metadata() {
+        let response = MultiTokenBearerAuth {
+            token: Some("docker-token".to_string()),
+            access_token: Some("azure-token".to_string()),
+            expires_in: Some(300),
+            issued_at: Some("2026-01-01T00:00:00Z".to_string()),
+            refresh_token: Some("synthetic-refresh".to_string()),
+        };
+
+        let auth = <BearerAuth as std::convert::TryFrom<MultiTokenBearerAuth>>::try_from(response)
+            .unwrap();
+
+        assert_eq!(auth.token, "docker-token");
+        assert_eq!(auth.expires_in, Some(300));
+        assert_eq!(auth.issued_at.as_deref(), Some("2026-01-01T00:00:00Z"));
+        assert_eq!(auth.refresh_token.as_deref(), Some("synthetic-refresh"));
+    }
+
+    #[test]
+    fn multi_token_bearer_auth_uses_access_token_when_token_is_null() {
+        let response = MultiTokenBearerAuth {
+            token: None,
+            access_token: Some("azure-token".to_string()),
+            ..Default::default()
+        };
+
+        let auth = <BearerAuth as std::convert::TryFrom<MultiTokenBearerAuth>>::try_from(response)
+            .unwrap();
+
+        assert_eq!(auth.token, "azure-token");
+    }
+
+    #[test]
+    fn multi_token_bearer_auth_rejects_missing_tokens() {
+        let error = <BearerAuth as std::convert::TryFrom<MultiTokenBearerAuth>>::try_from(
+            MultiTokenBearerAuth::default(),
+        )
+        .unwrap_err();
+
+        assert!(matches!(error, Error::NoTokenReceived));
+    }
 
     #[test]
     fn bearer_realm_parses_correctly() -> Result<()> {

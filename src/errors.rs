@@ -51,6 +51,8 @@ pub enum Error {
     ReferenceParse(#[from] crate::reference::ReferenceParseError),
     #[error("requested operation requires that credentials are available")]
     NoCredentials,
+    #[error("did not receive auth token")]
+    NoTokenReceived,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
